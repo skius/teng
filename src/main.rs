@@ -66,6 +66,38 @@ impl std::io::Write for BoardWriter {
     }
 }
 
+struct CustomBufWriter {
+    buf: Vec<u8>,
+    flush_num: usize,
+    stdout: Stdout,
+}
+
+impl CustomBufWriter {
+    fn new() -> Self {
+        Self {
+            buf: vec![],
+            flush_num: 0,
+            stdout: stdout(),
+        }
+    }
+}
+
+impl std::io::Write for CustomBufWriter {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.buf.extend_from_slice(buf);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.stdout.write_all(&self.buf)?;
+        self.stdout.flush()?;
+        self.buf.clear();
+        // self.flush_num += 1;
+        // eprintln!("Flushed {}", self.flush_num);
+        Ok(())
+    }
+}
+
 /// Returns whether a flood fill happened or not
 fn flood_fill(board: &mut Vec<Vec<bool>>) -> bool {
     // determine inaccessible regions starting from the border. 'true' determines a line and must
@@ -140,12 +172,9 @@ fn max_color(a: char, b: char) -> char {
 }
 
 fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
+    let mut stdout = CustomBufWriter::new();
 
-    let sprite = [
-        ['▁', '▄', '▁'],
-        ['▗', '▀', '▖'],
-    ];
-
+    let sprite = [['▁', '▄', '▁'], ['▗', '▀', '▖']];
 
     let mut debug_messages = vec![];
     let mut debug_line_deletion_timestamps = vec![];
@@ -215,7 +244,7 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
         };
 
         // board = [[b' '; MAX_WIDTH]; MAX_HEIGHT];
-        execute!(stdout, cursor::MoveTo(0, 0))?;
+        queue!(stdout, cursor::MoveTo(0, 0))?;
         current_time = std::time::Instant::now();
 
         if current_time - max_frametime_time > Duration::from_secs(5) {
@@ -249,11 +278,14 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
                 .sum::<usize>()
         );
 
-        let rgb_string = format!("r: {:3} g: {:3} b: {:3}", rgb_color[0], rgb_color[1], rgb_color[2]);
+        let rgb_string = format!(
+            "r: {:3} g: {:3} b: {:3}",
+            rgb_color[0], rgb_color[1], rgb_color[2]
+        );
 
         // Wait up to 1s for another event
         // if poll(Duration::from_nanos(1_000_000 /*1000*/))? {
-        if poll(Duration::from_nanos(1/*1000*/))? {
+        if poll(Duration::from_nanos(0 /*1000*/))? {
             // It's guaranteed that read() won't block if `poll` returns `Ok(true)`
             let event = read()?;
             // write_debug(format!("{:?}", event));
@@ -306,21 +338,21 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
                     }
                 }
                 Event::Key(KeyEvent {
-                               code: KeyCode::Char('r'),
-                               ..
-                           }) => {
+                    code: KeyCode::Char('r'),
+                    ..
+                }) => {
                     selected_rgb_index = 0;
                 }
                 Event::Key(KeyEvent {
-                               code: KeyCode::Char('g'),
-                               ..
-                           }) => {
+                    code: KeyCode::Char('g'),
+                    ..
+                }) => {
                     selected_rgb_index = 1;
                 }
                 Event::Key(KeyEvent {
-                               code: KeyCode::Char('b'),
-                               ..
-                           }) => {
+                    code: KeyCode::Char('b'),
+                    ..
+                }) => {
                     selected_rgb_index = 2;
                 }
                 Event::Key(KeyEvent {
@@ -495,25 +527,53 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
                 y += 1;
             }
         }
-
+        // let mut buf = [0u8; 4];
+        let mut last_fg_colors = [255, 255, 255];
         for y in 0..height {
             for x in 0..width {
+                // if write_board[y][x] == ' ' {
+                //     write!(stdout, " ")?;
+                //     continue;
+                // }
                 // write!(stdout, "{}", write_board[y][x])?;
-                queue!(
-                    stdout,
-                    // style::SetAttribute(style::Attribute::Italic),
-                    // style::SetAttribute(style::Attribute::Bold),
-                    style::SetColors(
-                        Colored::ForegroundColor(Color::Rgb {
-                            r: rgb_color[0],
-                            g: rgb_color[1],
-                            b: rgb_color[2]
-                        })
-                        .into()
-                    ),
-                    style::Print(write_board[y][x]),
-                    style::ResetColor
-                )?;
+                // let c_as_s = write_board[y][x].encode_utf8(&mut buf);
+                if rgb_color == last_fg_colors {
+                    queue!(stdout, style::Print(write_board[y][x]))?;
+                } else {
+                    last_fg_colors = rgb_color;
+                    queue!(
+                        stdout,
+                        style::SetForegroundColor(
+                            Color::Rgb {
+                                r: rgb_color[0],
+                                g: rgb_color[1],
+                                b: rgb_color[2]
+                            }
+                        ),
+                        style::Print(write_board[y][x]),
+                        // style::ResetColor
+                    )?;
+                }
+                // queue!(
+                //     stdout,
+                //     // style::SetAttribute(style::Attribute::Italic),
+                //     // style::SetAttribute(style::Attribute::Bold),
+                //     style::SetColors(
+                //         Colored::ForegroundColor(Color::Rgb {
+                //             r: rgb_color[0],
+                //             g: rgb_color[1],
+                //             b: rgb_color[2]
+                //         })
+                //         .into()
+                //     ),
+                //     style::Print(write_board[y][x]),
+                //     style::ResetColor
+                // )?;
+                // stdout.write(c_as_s.as_bytes())?;
+                // queue!(
+                //     stdout,
+                //     style::ResetColor
+                // )?;
             }
             // stdout.write_all(
             //     &write_board[y][0..width]
