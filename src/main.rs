@@ -140,6 +140,13 @@ fn max_color(a: char, b: char) -> char {
 }
 
 fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
+
+    let sprite = [
+        ['▁', '▄', '▁'],
+        ['▗', '▀', '▖'],
+    ];
+
+
     let mut debug_messages = vec![];
     let mut debug_line_deletion_timestamps = vec![];
 
@@ -245,7 +252,8 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
         let rgb_string = format!("r: {:3} g: {:3} b: {:3}", rgb_color[0], rgb_color[1], rgb_color[2]);
 
         // Wait up to 1s for another event
-        if poll(Duration::from_nanos(1_000_000 /*1000*/))? {
+        // if poll(Duration::from_nanos(1_000_000 /*1000*/))? {
+        if poll(Duration::from_nanos(1/*1000*/))? {
             // It's guaranteed that read() won't block if `poll` returns `Ok(true)`
             let event = read()?;
             // write_debug(format!("{:?}", event));
@@ -369,6 +377,7 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
                     //     }
                     // }
                     write_debug("Flood fill happened".to_string());
+                    // print!("\x07");
                 }
             }
         }
@@ -459,6 +468,19 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
                 x += 1;
             }
             y += 1;
+            x = 0;
+
+            // draw sprite
+            for row in &sprite {
+                for &c in row {
+                    if x < width && y < height {
+                        write_board[y][x] = c;
+                    }
+                    x += 1;
+                }
+                x = 0;
+                y += 1;
+            }
         }
 
         if draw_debug_messages {
@@ -479,7 +501,7 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
                 // write!(stdout, "{}", write_board[y][x])?;
                 queue!(
                     stdout,
-                    style::SetAttribute(style::Attribute::Italic),
+                    // style::SetAttribute(style::Attribute::Italic),
                     // style::SetAttribute(style::Attribute::Bold),
                     style::SetColors(
                         Colored::ForegroundColor(Color::Rgb {
