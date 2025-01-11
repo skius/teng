@@ -69,10 +69,7 @@ struct ColorRendererAdapter<'a, R> {
 
 impl<'a, R: Renderer> Renderer for ColorRendererAdapter<'a, R> {
     fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32) {
-        self.renderer.render_pixel(x, y, Pixel {
-            color: self.color,
-            ..pixel
-        }, depth);
+        self.renderer.render_pixel(x, y, pixel.with_color(self.color), depth);
     }
 
     fn flush(&mut self) -> std::io::Result<()> {

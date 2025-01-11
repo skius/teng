@@ -11,22 +11,22 @@ pub use render::*;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pixel {
     c: char,
-    color: [u8; 3],
+    color: Option<[u8; 3]>,
 }
 
 impl Pixel {
     pub fn new(c: char) -> Self {
-        Self { c, color: [255, 255, 255] }
+        Self { c, color: None }
     }
 
     pub fn with_color(self, color: [u8; 3]) -> Self {
-        Self { color, ..self }
+        Self { color: Some(color), c: self.c }
     }
 }
 
 impl Default for Pixel {
     fn default() -> Self {
-        Self { c: ' ', color: [255, 255, 255]}
+        Self { c: ' ', color: None }
     }
 }
 
