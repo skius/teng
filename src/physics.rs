@@ -77,8 +77,6 @@ fn update_physics_col(
     let damping = 0.8;
     let max_time_at_bottom = 3.0;
 
-    let mut height_to_entities = vec![vec![]; height];
-
     for  entity in physics_entities.iter_mut() {
         entity.vel_y += earth_accel * dt;
         entity.y += entity.vel_y * dt;
@@ -101,6 +99,8 @@ fn update_physics_col(
 
     physics_entities.retain(|entity| entity.time_at_bottom < max_time_at_bottom);
     let total_physics_entities = physics_entities.len();
+
+    let mut height_to_entities = vec![vec![]; height];
 
     for (i, entity) in physics_entities.iter().enumerate() {
         let height = entity.y.floor() as usize;

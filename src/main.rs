@@ -171,7 +171,7 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
     let mut draw_char = '█';
     let mut last_mouse_pos = (0, 0);
 
-    let mut rgb_color = [0u8, 0, 0];
+    let mut rgb_color: [u8; 3] = [245, 200, 186];
     let mut selected_rgb_index = 0;
 
     let mut ff_board = vec![vec![false; width]; height];
@@ -181,6 +181,7 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
 
     let fps_update_interval = Duration::from_millis(300);
     let mut fps = 0.0;
+    let mut target_fps = 120.0;
     let mut last_fps_time = std::time::Instant::now() - fps_update_interval;
 
     let mut max_frametime_time = std::time::Instant::now();
@@ -239,11 +240,11 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
                 .map(|col| col.len())
                 .sum::<usize>()
         );
-        
+
         let rgb_string = format!("r: {:3} g: {:3} b: {:3}", rgb_color[0], rgb_color[1], rgb_color[2]);
 
         // Wait up to 1s for another event
-        if poll(Duration::from_nanos(1000))? {
+        if poll(Duration::from_nanos(1_000_000 /*1000*/))? {
             // It's guaranteed that read() won't block if `poll` returns `Ok(true)`
             let event = read()?;
             write_debug(format!("{:?}", event));
@@ -294,6 +295,24 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
                         MouseEventKind::ScrollRight => {}
                         _ => {}
                     }
+                }
+                Event::Key(KeyEvent {
+                               code: KeyCode::Char('r'),
+                               ..
+                           }) => {
+                    selected_rgb_index = 0;
+                }
+                Event::Key(KeyEvent {
+                               code: KeyCode::Char('g'),
+                               ..
+                           }) => {
+                    selected_rgb_index = 1;
+                }
+                Event::Key(KeyEvent {
+                               code: KeyCode::Char('b'),
+                               ..
+                           }) => {
+                    selected_rgb_index = 2;
                 }
                 Event::Key(KeyEvent {
                     code: KeyCode::Char('i'),
@@ -458,6 +477,8 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
                 // write!(stdout, "{}", write_board[y][x])?;
                 queue!(
                     stdout,
+                    style::SetAttribute(style::Attribute::Italic),
+                    // style::SetAttribute(style::Attribute::Bold),
                     style::SetColors(
                         Colored::ForegroundColor(Color::Rgb {
                             r: rgb_color[0],
@@ -483,6 +504,14 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
         }
 
         stdout.flush()?;
+
+        // This leads to slowdown when events are being processed, since they can now be processed
+        // at most at the fps
+        // let target_s_per_frame = 1.0 / target_fps;
+        // let elapsed_s = (std::time::Instant::now() - current_time).as_secs_f64();
+        // if elapsed_s < target_s_per_frame {
+        //     sleep(Duration::from_secs_f64(target_s_per_frame - elapsed_s));
+        // }
 
         last_time = current_time;
     }
