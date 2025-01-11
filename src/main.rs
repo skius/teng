@@ -3,6 +3,7 @@
 //! cargo run --example event-poll-read
 
 mod physics;
+mod game;
 
 use crossterm::event::{KeyEvent, MouseButton, MouseEventKind};
 use crossterm::style::{Color, Colored, Colors};
@@ -18,6 +19,7 @@ use std::io::{stdout, Stdout, Write};
 use std::thread::sleep;
 use std::time::Instant;
 use std::{io, time::Duration};
+use crate::game::{Render, WithColor};
 
 const HELP: &str = r#"Blocking poll() & non-blocking read()
  - Keyboard, mouse and terminal resize events enabled
@@ -603,9 +605,42 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
     Ok(())
 }
 
+fn render_loop() -> io::Result<()> {
+    let (width, height) = size()?;
+    let mut renderer = game::DisplayRenderer::new(width as usize, height as usize);
+    let mut iters = 0;
+    let mut last_size = (width, height);
+    loop {
+        let (width, height) = size()?;
+        if (width, height) != last_size {
+            renderer.resize_discard(width as usize, height as usize);
+            last_size = (width, height);
+        }
+        for y in 0..height as usize {
+            renderer.render_pixel(0, y, game::Pixel::new('█'), 1);
+            renderer.render_pixel(width as usize - 1, y, game::Pixel::new('█'), 1);
+        }
+        for x in 0..width as usize {
+            renderer.render_pixel(x, 0, game::Pixel::new('█').with_color([100,200,100]), 1);
+            renderer.render_pixel(x, height as usize - 1, game::Pixel::new('█'), 1);
+        }
+
+        "hello".render(&mut renderer, 3, 4, 5);
+        WithColor([100, 200, 100], "world").render(&mut renderer, 3, 5, 5);
+
+        renderer.flush()?;
+
+        iters += 1;
+        if iters > 20000 {
+            return Ok(());
+        }
+    }
+}
+
 fn main() -> io::Result<()> {
     println!("{}", HELP);
     println!("{:?}", size()?);
+    println!("{}", char::default());
     sleep(Duration::from_secs(1));
 
     enable_raw_mode()?;
@@ -615,7 +650,10 @@ fn main() -> io::Result<()> {
     // don't print cursor
     execute!(stdout, cursor::Hide)?;
 
-    if let Err(e) = game_loop(&mut stdout) {
+    // if let Err(e) = game_loop(&mut stdout) {
+    //     println!("Error: {:?}\r", e);
+    // }
+    if let Err(e) = render_loop() {
         println!("Error: {:?}\r", e);
     }
 

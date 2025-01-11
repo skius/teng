@@ -1,0 +1,171 @@
+use std::io;
+use std::io::{Stdout, Write};
+use std::ops::{Index, IndexMut};
+use crossterm::queue;
+use crate::game::{Pixel, Render};
+
+pub trait Renderer {
+    fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32);
+    fn flush(&mut self) -> io::Result<()>;
+}
+
+impl<W: Write> Renderer for DisplayRenderer<W> {
+    fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32) {
+        DisplayRenderer::render_pixel(self, x, y, pixel, depth);
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        DisplayRenderer::flush(self)
+    }
+}
+
+struct Display<T> {
+    width: usize,
+    height: usize,
+    pixels: Vec<T>,
+}
+
+impl<T: Clone + Default> Display<T> {
+    fn new(width: usize, height: usize, default: T) -> Self {
+        Self {
+            width,
+            height,
+            pixels: vec![default; width * height],
+        }
+    }
+
+    fn clear(&mut self) {
+        for pixel in self.pixels.iter_mut() {
+            *pixel = T::default();
+        }
+    }
+
+    fn resize_discard(&mut self, width: usize, height: usize) {
+        self.pixels.resize(width * height, T::default());
+    }
+}
+
+impl<T> Display<T> {
+    fn get_index(&self, x: usize, y: usize) -> usize {
+        y * self.width + x
+    }
+
+    fn get(&self, x: usize, y: usize) -> Option<&T> {
+        self.pixels.get(self.get_index(x, y))
+    }
+
+    fn get_mut(&mut self, x: usize, y: usize) -> Option<&mut T> {
+        let idx = self.get_index(x, y);
+        self.pixels.get_mut(idx)
+    }
+
+    fn set(&mut self, x: usize, y: usize, value: T) {
+        if let Some(pixel) = self.get_mut(x, y) {
+            *pixel = value;
+        }
+    }
+}
+
+impl<T> Index<(usize, usize)> for Display<T> {
+    type Output = T;
+
+    fn index(&self, (x, y): (usize, usize)) -> &Self::Output {
+        &self.pixels[self.get_index(x, y)]
+    }
+}
+
+impl<T> IndexMut<(usize, usize)> for Display<T> {
+    fn index_mut(&mut self, (x, y): (usize, usize)) -> &mut Self::Output {
+        let idx = self.get_index(x, y);
+        &mut self.pixels[idx]
+    }
+}
+
+pub struct DisplayRenderer<W: Write> {
+    width: usize,
+    height: usize,
+    display: Display<Pixel>,
+    // larger values are closer and get preference
+    depth_buffer: Display<i32>,
+    last_fg_color: [u8; 3],
+    sink: W,
+}
+
+impl DisplayRenderer<Stdout> {
+    pub fn new(width: usize, height: usize) -> Self {
+        Self::new_with_sink(width, height, std::io::stdout())
+    }
+}
+
+impl<W: Write> DisplayRenderer<W> {
+    pub fn new_with_sink(width: usize, height: usize, sink: W) -> Self {
+        Self {
+            width,
+            height,
+            display: Display::new(width, height, Pixel::default()),
+            depth_buffer: Display::new(width, height, i32::MIN),
+            sink,
+            last_fg_color: [255, 255, 255],
+        }
+    }
+
+    /// Resizes the display and mangles the existing contents.
+    pub fn resize_discard(&mut self, width: usize, height: usize) {
+        self.width = width;
+        self.height = height;
+        self.display.resize_discard(width, height);
+        self.depth_buffer.resize_discard(width, height);
+    }
+
+    /// Resizes the display and keeps the existing contents.
+    pub fn resize_keep(&mut self, width: usize, height: usize) {
+        let mut new_display = Display::new(width, height, Pixel::default());
+        let mut new_depth_buffer = Display::new(width, height, i32::MIN);
+
+        for y in 0..self.height.min(height) {
+            for x in 0..self.width.min(width) {
+                new_display[(x, y)] = self.display[(x, y)];
+                new_depth_buffer[(x, y)] = self.depth_buffer[(x, y)];
+            }
+        }
+
+        self.width = width;
+        self.height = height;
+        self.display = new_display;
+        self.depth_buffer = new_depth_buffer;
+    }
+
+    /// Higher depths have higher priority. At same depth, first write wins.
+    pub fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32) {
+        if depth > self.depth_buffer[(x, y)] {
+            self.display[(x, y)] = pixel;
+            self.depth_buffer[(x, y)] = depth;
+        }
+    }
+
+    pub fn flush(&mut self) -> io::Result<()> {
+        queue!(self.sink, crossterm::cursor::MoveTo(0, 0))?;
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let pixel = self.display[(x, y)];
+                if pixel.color != self.last_fg_color {
+                    queue!(self.sink, crossterm::style::SetForegroundColor(crossterm::style::Color::Rgb {
+                        r: pixel.color[0],
+                        g: pixel.color[1],
+                        b: pixel.color[2],
+                    }))?;
+                    self.last_fg_color = pixel.color;
+                }
+                queue!(self.sink, crossterm::style::Print(pixel.c))?;
+            }
+            if y < self.height - 1 {
+                queue!(self.sink, crossterm::cursor::MoveToNextLine(1))?;
+            }
+        }
+
+        self.sink.flush()?;
+        self.depth_buffer.clear();
+
+        Ok(())
+    }
+}
