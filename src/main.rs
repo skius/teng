@@ -5,12 +5,13 @@
 mod physics;
 
 use crossterm::event::{KeyEvent, MouseButton, MouseEventKind};
+use crossterm::style::{Color, Colored, Colors};
 use crossterm::terminal::size;
 use crossterm::{
     cursor,
     cursor::position,
     event::{poll, read, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
-    execute,
+    execute, queue, style,
     terminal::{disable_raw_mode, enable_raw_mode},
 };
 use std::io::{stdout, Stdout, Write};
@@ -110,7 +111,6 @@ fn flood_fill(board: &mut Vec<Vec<bool>>) -> bool {
         stack.push((y as i32 + 1, x as i32));
         stack.push((y as i32, x as i32 - 1));
         stack.push((y as i32, x as i32 + 1));
-
     }
 
     // fill inaccessible regions
@@ -125,8 +125,6 @@ fn flood_fill(board: &mut Vec<Vec<bool>>) -> bool {
     }
 
     flood_fill_happened
-
-
 }
 
 fn max_color(a: char, b: char) -> char {
@@ -140,7 +138,7 @@ fn max_color(a: char, b: char) -> char {
     colors[a_index.min(b_index)]
 }
 
-fn print_events(stdout: &mut Stdout) -> io::Result<()> {
+fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
     let mut debug_messages = vec![];
     let mut debug_line_deletion_timestamps = vec![];
 
@@ -173,9 +171,11 @@ fn print_events(stdout: &mut Stdout) -> io::Result<()> {
     let mut draw_char = '█';
     let mut last_mouse_pos = (0, 0);
 
+    let mut rgb_color = [0u8, 0, 0];
+    let mut selected_rgb_index = 0;
+
     let mut ff_board = vec![vec![false; width]; height];
     let mut ff_drawing = false;
-
 
     let mut last_resize_event = Some(std::time::Instant::now());
 
@@ -199,7 +199,9 @@ fn print_events(stdout: &mut Stdout) -> io::Result<()> {
             // if more than 5 lines, delete all but the last 5
             if debug_messages.len() > 5 {
                 debug_messages = debug_messages[debug_messages.len() - 5..].to_vec();
-                debug_line_deletion_timestamps = debug_line_deletion_timestamps[debug_line_deletion_timestamps.len() - 5..].to_vec();
+                debug_line_deletion_timestamps = debug_line_deletion_timestamps
+                    [debug_line_deletion_timestamps.len() - 5..]
+                    .to_vec();
             }
         };
 
@@ -217,9 +219,9 @@ fn print_events(stdout: &mut Stdout) -> io::Result<()> {
             max_frametime_time = current_time;
         }
 
-
         let frametime_string = format!("Frame time: {} ns", delta_time_ns);
-        let max_frametime_string = format!("Max frame time (past 5s): {} ns", max_frametime.as_nanos());
+        let max_frametime_string =
+            format!("Max frame time (past 5s): {} ns", max_frametime.as_nanos());
         if current_time - last_fps_time > fps_update_interval {
             last_fps_time = current_time;
             if fps == 0.0 {
@@ -229,7 +231,16 @@ fn print_events(stdout: &mut Stdout) -> io::Result<()> {
             }
         }
         let fps_string = format!("FPS: {:.2}", fps);
-        let entity_count_string = format!("Entities: {}", physics_board.board.iter().map(|col| col.len()).sum::<usize>());
+        let entity_count_string = format!(
+            "Entities: {}",
+            physics_board
+                .board
+                .iter()
+                .map(|col| col.len())
+                .sum::<usize>()
+        );
+        
+        let rgb_string = format!("r: {:3} g: {:3} b: {:3}", rgb_color[0], rgb_color[1], rgb_color[2]);
 
         // Wait up to 1s for another event
         if poll(Duration::from_nanos(1000))? {
@@ -270,10 +281,15 @@ fn print_events(stdout: &mut Stdout) -> io::Result<()> {
                                 }
                             }
                         }
-                        MouseEventKind::Drag(MouseButton::Left) | MouseEventKind::Moved => {
+                        MouseEventKind::Drag(MouseButton::Left) | MouseEventKind::Moved => {}
+                        MouseEventKind::ScrollDown => {
+                            rgb_color[selected_rgb_index] =
+                                rgb_color[selected_rgb_index].wrapping_sub(1);
                         }
-                        MouseEventKind::ScrollDown => {}
-                        MouseEventKind::ScrollUp => {}
+                        MouseEventKind::ScrollUp => {
+                            rgb_color[selected_rgb_index] =
+                                rgb_color[selected_rgb_index].wrapping_add(1);
+                        }
                         MouseEventKind::ScrollLeft => {}
                         MouseEventKind::ScrollRight => {}
                         _ => {}
@@ -286,9 +302,9 @@ fn print_events(stdout: &mut Stdout) -> io::Result<()> {
                     write_frame_info = !write_frame_info;
                 }
                 Event::Key(KeyEvent {
-                               code: KeyCode::Char('d'),
-                               ..
-                           }) => {
+                    code: KeyCode::Char('d'),
+                    ..
+                }) => {
                     draw_debug_messages = !draw_debug_messages;
                 }
                 Event::Key(KeyEvent {
@@ -414,6 +430,14 @@ fn print_events(stdout: &mut Stdout) -> io::Result<()> {
                 x += 1;
             }
             y += 1;
+            x = 0;
+            for c in rgb_string.chars() {
+                if x < width && y < height {
+                    write_board[y][x] = c;
+                }
+                x += 1;
+            }
+            y += 1;
         }
 
         if draw_debug_messages {
@@ -430,16 +454,35 @@ fn print_events(stdout: &mut Stdout) -> io::Result<()> {
         }
 
         for y in 0..height {
-            stdout.write_all(
-                &write_board[y][0..width]
-                    .iter()
-                    .collect::<String>()
-                    .as_bytes(),
-            )?;
+            for x in 0..width {
+                // write!(stdout, "{}", write_board[y][x])?;
+                queue!(
+                    stdout,
+                    style::SetColors(
+                        Colored::ForegroundColor(Color::Rgb {
+                            r: rgb_color[0],
+                            g: rgb_color[1],
+                            b: rgb_color[2]
+                        })
+                        .into()
+                    ),
+                    style::Print(write_board[y][x]),
+                    style::ResetColor
+                )?;
+            }
+            // stdout.write_all(
+            //     &write_board[y][0..width]
+            //         .iter()
+            //         .collect::<String>()
+            //         .as_bytes(),
+            // )?;
             if y < height {
-                execute!(stdout, cursor::MoveToNextLine(1))?;
+                queue!(stdout, cursor::MoveToNextLine(1))?;
+                // execute!(stdout, cursor::MoveToNextLine(1))?;
             }
         }
+
+        stdout.flush()?;
 
         last_time = current_time;
     }
@@ -459,7 +502,7 @@ fn main() -> io::Result<()> {
     // don't print cursor
     execute!(stdout, cursor::Hide)?;
 
-    if let Err(e) = print_events(&mut stdout) {
+    if let Err(e) = game_loop(&mut stdout) {
         println!("Error: {:?}\r", e);
     }
 
