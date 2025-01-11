@@ -117,7 +117,8 @@ fn flood_fill(board: &mut Vec<Vec<bool>>) -> bool {
     let mut flood_fill_happened = false;
     for y in 0..board.len() {
         for x in 0..board[0].len() {
-            if inaccessible[y][x] {
+            // if it's inaccessible and not part of the initial input walls
+            if inaccessible[y][x] && !board[y][x] {
                 board[y][x] = true;
                 flood_fill_happened = true;
             }
@@ -247,7 +248,7 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
         if poll(Duration::from_nanos(1_000_000 /*1000*/))? {
             // It's guaranteed that read() won't block if `poll` returns `Ok(true)`
             let event = read()?;
-            write_debug(format!("{:?}", event));
+            // write_debug(format!("{:?}", event));
             match event {
                 Event::Resize(t_width, t_height) => {
                     width = t_width as usize;
@@ -367,6 +368,7 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
                     //         }
                     //     }
                     // }
+                    write_debug("Flood fill happened".to_string());
                 }
             }
         }
