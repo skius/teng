@@ -16,9 +16,37 @@ impl Render for &str {
     }
 }
 
+impl Render for String {
+    fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
+        self.as_str().render(renderer, x, y, depth);
+    }
+}
+
 impl Render for Pixel {
     fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
         renderer.render_pixel(x, y, *self, depth);
+    }
+}
+
+pub struct Sprite<const WIDTH: usize, const HEIGHT: usize>(pub [[Pixel; WIDTH]; HEIGHT]);
+
+impl<const WIDTH: usize, const HEIGHT: usize>  Sprite<WIDTH, HEIGHT> {
+    pub fn height(&self) -> usize {
+        HEIGHT
+    }
+    
+    pub fn width(&self) -> usize {
+        WIDTH
+    }
+}
+
+impl<const WIDTH: usize, const HEIGHT: usize> Render for Sprite<WIDTH, HEIGHT> {
+    fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
+        for (i, row) in self.0.iter().enumerate() {
+            for (j, pixel) in row.iter().enumerate() {
+                renderer.render_pixel(x + j, y + i, *pixel, depth);
+            }
+        }
     }
 }
 

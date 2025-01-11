@@ -164,7 +164,7 @@ impl<W: Write> DisplayRenderer<W> {
         }
 
         self.sink.flush()?;
-        self.depth_buffer.clear();
+        self.depth_buffer.pixels.fill(i32::MIN);
 
         Ok(())
     }

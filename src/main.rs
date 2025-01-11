@@ -19,7 +19,8 @@ use std::io::{stdout, Stdout, Write};
 use std::thread::sleep;
 use std::time::Instant;
 use std::{io, time::Duration};
-use crate::game::{Render, WithColor};
+use std::ops::Deref;
+use crate::game::{DisplayRenderer, Pixel, Render, Renderer, Sprite, WithColor};
 
 const HELP: &str = r#"Blocking poll() & non-blocking read()
  - Keyboard, mouse and terminal resize events enabled
@@ -176,7 +177,9 @@ fn max_color(a: char, b: char) -> char {
 fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
     let mut stdout = CustomBufWriter::new();
 
+
     let sprite = [['▁', '▄', '▁'], ['▗', '▀', '▖']];
+    let sprite = Sprite(sprite.map(|row| row.map(|c| Pixel::new(c))));
 
     let mut debug_messages = vec![];
     let mut debug_line_deletion_timestamps = vec![];
@@ -185,6 +188,9 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
     let (t_width, t_height) = size()?;
     let mut width = t_width as usize;
     let mut height = t_height as usize;
+
+    let mut renderer = DisplayRenderer::new_with_sink(width, height, stdout);
+
 
     let mut physics_board = physics::PhysicsBoard::new(MAX_WIDTH);
     let mut start_drag_height = height;
@@ -246,7 +252,7 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
         };
 
         // board = [[b' '; MAX_WIDTH]; MAX_HEIGHT];
-        queue!(stdout, cursor::MoveTo(0, 0))?;
+        // queue!(stdout, cursor::MoveTo(0, 0))?;
         current_time = std::time::Instant::now();
 
         if current_time - max_frametime_time > Duration::from_secs(5) {
@@ -440,12 +446,20 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
         // writeln!(stdout, "{}", frametime_string)?;
         // writeln!(stdout, "{}", fps_string)?;
 
+        for y in 0..height {
+            for x in 0..width {
+                let depth = if board[y][x] == ' ' { -1 } else { 10 };
+                renderer.render_pixel(x, y, Pixel::new(board[y][x]), depth);
+            }
+        }
+
         let mut write_board = board.clone();
 
         for (y, col) in ff_board.iter().enumerate() {
             for (x, &val) in col.iter().enumerate() {
                 if val {
                     write_board[y][x] = draw_char;
+                    renderer.render_pixel(x, y, Pixel::new(draw_char), 9);
                 }
             }
         }
@@ -456,12 +470,14 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
                 let y = entity.y.floor() as usize;
                 if x < width && y < height {
                     write_board[y][x] = max_color(write_board[y][x], entity.c);
+                    renderer.render_pixel(x, y, Pixel::new(entity.c), 5);
                 }
             }
         }
 
         let mut x = 0;
         let mut y = 0;
+        let mut render_y = 0;
         if write_frame_info {
             for c in frametime_string.chars() {
                 if x < width && y < height {
@@ -469,6 +485,8 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
                 }
                 x += 1;
             }
+            frametime_string.render(&mut renderer, 0, render_y, 0);
+            render_y += 1;
             x = 0;
             y += 1;
             for c in max_frametime_string.chars() {
@@ -477,6 +495,8 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
                 }
                 x += 1;
             }
+            max_frametime_string.render(&mut renderer, 0, render_y, 0);
+            render_y += 1;
             x = 0;
             y += 1;
             for c in fps_string.chars() {
@@ -485,6 +505,8 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
                 }
                 x += 1;
             }
+            fps_string.render(&mut renderer, 0, render_y, 0);
+            render_y += 1;
             y += 1;
             x = 0;
             for c in entity_count_string.chars() {
@@ -493,6 +515,8 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
                 }
                 x += 1;
             }
+            entity_count_string.render(&mut renderer, 0, render_y, 0);
+            render_y += 1;
             y += 1;
             x = 0;
             for c in rgb_string.chars() {
@@ -505,16 +529,19 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
             x = 0;
 
             // draw sprite
-            for row in &sprite {
-                for &c in row {
-                    if x < width && y < height {
-                        write_board[y][x] = c;
-                    }
-                    x += 1;
-                }
-                x = 0;
-                y += 1;
-            }
+            sprite.render(&mut renderer, 0, render_y, 0);
+            render_y += sprite.height();
+            // for row in &sprite {
+            //     for &c in row {
+            //         if x < width && y < height {
+            //             write_board[y][x] = c;
+            //         }
+            //         x += 1;
+            //     }
+            //     x = 0;
+            //     y += 1;
+            // }
+
         }
 
         if draw_debug_messages {
@@ -526,70 +553,72 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
                     }
                     x += 1;
                 }
+                line.render(&mut renderer, 0, render_y, 0);
+                render_y += 1;
                 y += 1;
             }
         }
         // let mut buf = [0u8; 4];
-        let mut last_fg_colors = [255, 255, 255];
-        for y in 0..height {
-            for x in 0..width {
-                // if write_board[y][x] == ' ' {
-                //     write!(stdout, " ")?;
-                //     continue;
-                // }
-                // write!(stdout, "{}", write_board[y][x])?;
-                // let c_as_s = write_board[y][x].encode_utf8(&mut buf);
-                if rgb_color == last_fg_colors {
-                    queue!(stdout, style::Print(write_board[y][x]))?;
-                } else {
-                    last_fg_colors = rgb_color;
-                    queue!(
-                        stdout,
-                        style::SetForegroundColor(
-                            Color::Rgb {
-                                r: rgb_color[0],
-                                g: rgb_color[1],
-                                b: rgb_color[2]
-                            }
-                        ),
-                        style::Print(write_board[y][x]),
-                        // style::ResetColor
-                    )?;
-                }
-                // queue!(
-                //     stdout,
-                //     // style::SetAttribute(style::Attribute::Italic),
-                //     // style::SetAttribute(style::Attribute::Bold),
-                //     style::SetColors(
-                //         Colored::ForegroundColor(Color::Rgb {
-                //             r: rgb_color[0],
-                //             g: rgb_color[1],
-                //             b: rgb_color[2]
-                //         })
-                //         .into()
-                //     ),
-                //     style::Print(write_board[y][x]),
-                //     style::ResetColor
-                // )?;
-                // stdout.write(c_as_s.as_bytes())?;
-                // queue!(
-                //     stdout,
-                //     style::ResetColor
-                // )?;
-            }
-            // stdout.write_all(
-            //     &write_board[y][0..width]
-            //         .iter()
-            //         .collect::<String>()
-            //         .as_bytes(),
-            // )?;
-            if y < height {
-                queue!(stdout, cursor::MoveToNextLine(1))?;
-                // execute!(stdout, cursor::MoveToNextLine(1))?;
-            }
-        }
-
-        stdout.flush()?;
+        // let mut last_fg_colors = [255, 255, 255];
+        // for y in 0..height {
+        //     for x in 0..width {
+        //         // if write_board[y][x] == ' ' {
+        //         //     write!(stdout, " ")?;
+        //         //     continue;
+        //         // }
+        //         // write!(stdout, "{}", write_board[y][x])?;
+        //         // let c_as_s = write_board[y][x].encode_utf8(&mut buf);
+        //         if rgb_color == last_fg_colors {
+        //             queue!(stdout, style::Print(write_board[y][x]))?;
+        //         } else {
+        //             last_fg_colors = rgb_color;
+        //             queue!(
+        //                 stdout,
+        //                 style::SetForegroundColor(
+        //                     Color::Rgb {
+        //                         r: rgb_color[0],
+        //                         g: rgb_color[1],
+        //                         b: rgb_color[2]
+        //                     }
+        //                 ),
+        //                 style::Print(write_board[y][x]),
+        //                 // style::ResetColor
+        //             )?;
+        //         }
+        //         // queue!(
+        //         //     stdout,
+        //         //     // style::SetAttribute(style::Attribute::Italic),
+        //         //     // style::SetAttribute(style::Attribute::Bold),
+        //         //     style::SetColors(
+        //         //         Colored::ForegroundColor(Color::Rgb {
+        //         //             r: rgb_color[0],
+        //         //             g: rgb_color[1],
+        //         //             b: rgb_color[2]
+        //         //         })
+        //         //         .into()
+        //         //     ),
+        //         //     style::Print(write_board[y][x]),
+        //         //     style::ResetColor
+        //         // )?;
+        //         // stdout.write(c_as_s.as_bytes())?;
+        //         // queue!(
+        //         //     stdout,
+        //         //     style::ResetColor
+        //         // )?;
+        //     }
+        //     // stdout.write_all(
+        //     //     &write_board[y][0..width]
+        //     //         .iter()
+        //     //         .collect::<String>()
+        //     //         .as_bytes(),
+        //     // )?;
+        //     if y < height {
+        //         queue!(stdout, cursor::MoveToNextLine(1))?;
+        //         // execute!(stdout, cursor::MoveToNextLine(1))?;
+        //     }
+        // }
+        renderer.flush()?;
+        // stdout.flush()?;
 
         // This leads to slowdown when events are being processed, since they can now be processed
         // at most at the fps
@@ -650,12 +679,12 @@ fn main() -> io::Result<()> {
     // don't print cursor
     execute!(stdout, cursor::Hide)?;
 
-    // if let Err(e) = game_loop(&mut stdout) {
-    //     println!("Error: {:?}\r", e);
-    // }
-    if let Err(e) = render_loop() {
+    if let Err(e) = game_loop(&mut stdout) {
         println!("Error: {:?}\r", e);
     }
+    // if let Err(e) = render_loop() {
+    //     println!("Error: {:?}\r", e);
+    // }
 
     execute!(stdout, DisableMouseCapture)?;
     execute!(stdout, cursor::Show)?;
