@@ -35,7 +35,10 @@ impl Render for Pixel {
     }
 }
 
-pub struct Sprite<const WIDTH: usize, const HEIGHT: usize>(pub [[Pixel; WIDTH]; HEIGHT]);
+pub struct Sprite<const WIDTH: usize, const HEIGHT: usize> {
+    pixels: [[Pixel; WIDTH]; HEIGHT],
+    center_pos: (usize, usize),
+}
 
 impl<const WIDTH: usize, const HEIGHT: usize>  Sprite<WIDTH, HEIGHT> {
     pub fn height(&self) -> usize {
@@ -45,15 +48,29 @@ impl<const WIDTH: usize, const HEIGHT: usize>  Sprite<WIDTH, HEIGHT> {
     pub fn width(&self) -> usize {
         WIDTH
     }
+    
+    pub fn new(sprite: [[char; WIDTH]; HEIGHT], offset_x: usize, offset_y: usize) -> Self {
+        let pixels = sprite.map(|row| row.map(|c| Pixel::new(c)));
+        Self {
+            pixels,
+            center_pos: (offset_x, offset_y),
+        }
+    }
 }
 
 impl<const WIDTH: usize, const HEIGHT: usize> Render for Sprite<WIDTH, HEIGHT> {
     fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
-        for (i, row) in self.0.iter().enumerate() {
+        let (center_x, center_y) = self.center_pos;
+        let x = x.saturating_sub(center_x);
+        let y = y.saturating_sub(center_y);
+        
+        for (i, row) in self.pixels.iter().enumerate() {
             for (j, pixel) in row.iter().enumerate() {
                 renderer.render_pixel(x + j, y + i, *pixel, depth);
             }
         }
+        
+
     }
 }
 

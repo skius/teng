@@ -91,6 +91,9 @@ impl<W: Write> DisplayRenderer<W> {
 
     /// Higher depths have higher priority. At same depth, first write wins.
     pub fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32) {
+        if x >= self.width || y >= self.height {
+            return;
+        }
         if depth > self.depth_buffer[(x, y)] {
             self.display[(x, y)] = pixel;
             self.depth_buffer[(x, y)] = depth;

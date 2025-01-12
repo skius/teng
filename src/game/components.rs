@@ -1,5 +1,5 @@
 use crate::game::display::Display;
-use crate::game::{BreakingAction, Component, MouseInfo, Pixel, Render, Renderer, SharedState, UpdateInfo};
+use crate::game::{BreakingAction, Component, MouseInfo, Pixel, Render, Renderer, SharedState, Sprite, UpdateInfo};
 use crossterm::event::{Event, KeyCode, KeyEvent, MouseEvent, MouseEventKind};
 use std::time::{Duration, Instant};
 use smallvec::SmallVec;
@@ -515,7 +515,7 @@ impl DecayComponent {
     pub fn new() -> Self {
         Self {}
     }
-    
+
     fn release(&mut self, physics_board: &mut PhysicsBoard, x: usize, y: usize) {
         physics_board.add_entity(x, y, '░');
     }
@@ -553,7 +553,7 @@ impl Component for DecayComponent {
 
 // This just runs the physics simulation contained in the shared state.
 pub struct PhysicsComponent {
-    
+
 }
 
 impl PhysicsComponent {
@@ -582,5 +582,55 @@ impl Component for PhysicsComponent {
                 }
             }
         }
+    }
+}
+
+pub struct PlayerComponent {
+    x: usize,
+    y: usize,
+    sprite: Sprite<3, 2>,
+}
+
+impl PlayerComponent {
+    pub fn new(x: usize, y: usize) -> Self {
+        Self {
+            x,
+            y,
+            sprite: Sprite::new([
+                ['▁', '▄', '▁'],
+                ['▗', '▀', '▖']
+            ], 1, 1),
+        }
+    }
+}
+
+impl Component for PlayerComponent {
+    fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
+        match event {
+            Event::Key(ke) => {
+                assert_eq!(ke.kind, crossterm::event::KeyEventKind::Press);
+                match ke.code {
+                    KeyCode::Char('w') => {
+                        self.y = self.y.saturating_sub(1);
+                    }
+                    KeyCode::Char('s') => {
+                        self.y = self.y.saturating_add(1);
+                    }
+                    KeyCode::Char('a') => {
+                        self.x = self.x.saturating_sub(1);
+                    }
+                    KeyCode::Char('d') => {
+                        self.x = self.x.saturating_add(1);
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+        None
+    }
+
+    fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+        self.sprite.render(&mut renderer, self.x, self.y, depth_base);
     }
 }

@@ -21,7 +21,7 @@ use std::time::Instant;
 use std::{io, time::Duration};
 use std::ops::Deref;
 use crate::game::{DisplayRenderer, Game, Pixel, Render, Renderer, Sprite, WithColor};
-use crate::game::components::{DebugInfoComponent, DecayComponent, FPSLockerComponent, FloodFillComponent, MouseTrackerComponent, PhysicsComponent, QuitterComponent, SimpleDrawComponent};
+use crate::game::components::{DebugInfoComponent, DecayComponent, FPSLockerComponent, FloodFillComponent, MouseTrackerComponent, PhysicsComponent, PlayerComponent, QuitterComponent, SimpleDrawComponent};
 
 const HELP: &str = r#"Blocking poll() & non-blocking read()
  - Keyboard, mouse and terminal resize events enabled
@@ -180,7 +180,7 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
 
 
     let sprite = [['▁', '▄', '▁'], ['▗', '▀', '▖']];
-    let sprite = Sprite(sprite.map(|row| row.map(|c| Pixel::new(c))));
+    let sprite = Sprite::new(sprite, 0, 0);
 
     let mut debug_messages = vec![];
     let mut debug_line_deletion_timestamps = vec![];
@@ -569,6 +569,7 @@ fn main() -> io::Result<()> {
     game.add_component(Box::new(DecayComponent::new()));
     game.add_component_with(|width, height | Box::new(FloodFillComponent::new(width, height)));
     game.add_component(Box::new(SimpleDrawComponent::new()));
+    game.add_component(Box::new(PlayerComponent::new(1, 1)));
     game.add_component(Box::new(DebugInfoComponent::new()));
     if let Err(e) = game.run() {
         println!("Error: {:?}", e);
