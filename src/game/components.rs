@@ -12,6 +12,7 @@ pub struct DebugInfoComponent {
     min_frametime_ns: u128,
     last_fps_time: Instant,
     fps: f64,
+    target_fps: Option<f64>,
     frames_since_last_fps: u32,
     num_events: u64,
     num_update_calls: u64,
@@ -26,6 +27,7 @@ impl DebugInfoComponent {
             min_frametime_ns: u128::MAX,
             last_fps_time: Instant::now(),
             fps: 0.0,
+            target_fps: None,
             frames_since_last_fps: 0,
             num_events: 0,
             num_update_calls: 0,
@@ -75,6 +77,7 @@ impl Component for DebugInfoComponent {
             self.frames_since_last_fps = 0;
             self.last_fps_time = current_time;
         }
+        self.target_fps = shared_state.target_fps;
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, depth_base: i32) {
@@ -90,13 +93,65 @@ impl Component for DebugInfoComponent {
         y += 1;
         // format!("Min frame time: {} ns", self.min_frametime_ns).render(&mut renderer, 0, y, depth_base);
         // y += 1;
-        format!("FPS: {:.2}", self.fps).render(&mut renderer, 0, y, depth_base);
-        // y += 1;
+        let target_str = if let Some(target_fps) = self.target_fps {
+            format!("{:.0}", target_fps)
+        } else {
+            "Unlocked".to_string()
+        };
+        format!("FPS: {:.2} ({})", self.fps, target_str).render(&mut renderer, 0, y, depth_base);
+        y += 1;
         // format!("Events: {}", self.num_events).render(&mut renderer, 0, y, depth_base);
         // y += 1;
         // format!("Frames since last FPS: {}", self.frames_since_last_fps).render(&mut renderer, 0, y, depth_base);
         // y += 1;
         // format!("Update calls: {}", self.num_update_calls).render(&mut renderer, 0, y, depth_base);
+    }
+}
+
+pub struct FPSLockerComponent {
+    locked: bool,
+    default_fps: f64,
+}
+
+impl FPSLockerComponent {
+    pub fn new(default_fps: f64) -> Self {
+        Self {
+            locked: true,
+            default_fps,
+        }
+    }
+}
+
+impl Component for FPSLockerComponent {
+    fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
+        match event {
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('l'),
+                ..
+            }) => {
+                self.locked = !self.locked;
+            }
+            Event::Mouse(me) => {
+                match me.kind {
+                    MouseEventKind::ScrollDown => {
+                        self.default_fps -= 1.0;
+                        if self.default_fps < 1.0 {
+                            self.default_fps = 1.0;
+                        }
+                    }
+                    MouseEventKind::ScrollUp => {
+                        self.default_fps += 1.0;
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+        None
+    }
+
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        shared_state.target_fps = self.locked.then_some(self.default_fps);
     }
 }
 
@@ -144,6 +199,53 @@ impl MouseTrackerComponent {
             },
             _ => {}
         }
+    }
+
+
+    /// Calls the passed closure with a new mouse info for every interpolated mouse info between
+    /// the two passed mouse infos. Also includes the endpoints.
+    pub fn smooth_two_updates(
+        first: MouseInfo,
+        second: MouseInfo,
+        mut f: impl FnMut(MouseInfo),
+    ) {
+        // linearly interpolate from first to second pixel.
+        // so, rasterize a line connecting the two points
+
+        let start_x = first.last_mouse_pos.0 as i32;
+        let start_y = first.last_mouse_pos.1 as i32;
+        let end_x = second.last_mouse_pos.0 as i32;
+        let end_y = second.last_mouse_pos.1 as i32;
+
+        let dx = (end_x - start_x).abs();
+        let dy = (end_y - start_y).abs();
+        let sx = if start_x < end_x { 1 } else { -1 };
+        let sy = if start_y < end_y { 1 } else { -1 };
+        let mut err = dx - dy;
+        let mut x = start_x;
+        let mut y = start_y;
+
+        while x != end_x || y != end_y {
+            f(MouseInfo {
+                last_mouse_pos: (x as usize, y as usize),
+                left_mouse_down: second.left_mouse_down,
+                right_mouse_down: second.right_mouse_down,
+                middle_mouse_down: second.middle_mouse_down,
+            });
+
+            let e2 = 2 * err;
+            if e2 > -dy {
+                err -= dy;
+                x += sx;
+            }
+            if e2 < dx {
+                err += dx;
+                y += sy;
+            }
+        }
+
+        f(second);
+
     }
 }
 
@@ -274,11 +376,19 @@ impl Component for FloodFillComponent {
                 self.visited.resize_discard(width as usize, height as usize);
             }
             Event::Mouse(event) => {
-                MouseTrackerComponent::fill_mouse_info(event, &mut self.last_mouse_info);
-                if self.last_mouse_info.right_mouse_down {
-                    let (x, y) = self.last_mouse_info.last_mouse_pos;
-                    self.board.set(x, y, true);
-                }
+                let mut new_mouse_info = self.last_mouse_info;
+                MouseTrackerComponent::fill_mouse_info(event, &mut new_mouse_info);
+                MouseTrackerComponent::smooth_two_updates(self.last_mouse_info, new_mouse_info, |mouse_info| {
+                    if mouse_info.right_mouse_down {
+                        let (x, y) = mouse_info.last_mouse_pos;
+                        self.board.set(x, y, true);
+                    }
+                });
+                self.last_mouse_info = new_mouse_info;
+                // if self.last_mouse_info.right_mouse_down {
+                //     let (x, y) = self.last_mouse_info.last_mouse_pos;
+                //     self.board.set(x, y, true);
+                // }
             }
             _ => {}
         }
@@ -312,7 +422,7 @@ impl Component for FloodFillComponent {
         for y in 0..self.board.height() {
             for x in 0..self.board.width() {
                 if self.board[(x, y)] {
-                    "X".render(&mut renderer, x, y, depth_base);
+                    "█".render(&mut renderer, x, y, depth_base);
                 }
             }
         }

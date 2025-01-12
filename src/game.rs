@@ -1,16 +1,17 @@
+use crossterm::event::{Event, MouseEvent, MouseEventKind};
+use crossterm::queue;
 use std::io;
 use std::io::{Stdout, Write};
 use std::ops::{Index, IndexMut};
+use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
-use crossterm::event::{Event, MouseEvent, MouseEventKind};
-use crossterm::queue;
-mod renderer;
-mod render;
 pub mod components;
 mod display;
+mod render;
+mod renderer;
 
-pub use renderer::*;
 pub use render::*;
+pub use renderer::*;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pixel {
@@ -24,13 +25,19 @@ impl Pixel {
     }
 
     pub fn with_color(self, color: [u8; 3]) -> Self {
-        Self { color: Some(color), c: self.c }
+        Self {
+            color: Some(color),
+            c: self.c,
+        }
     }
 }
 
 impl Default for Pixel {
     fn default() -> Self {
-        Self { c: ' ', color: None }
+        Self {
+            c: ' ',
+            color: None,
+        }
     }
 }
 
@@ -45,24 +52,35 @@ pub enum BreakingAction {
 }
 
 #[derive(Clone, Copy, Debug, Default)]
-struct MouseInfo {
+pub struct MouseInfo {
     // x, y
     last_mouse_pos: (usize, usize),
     left_mouse_down: bool,
     right_mouse_down: bool,
-    middle_mouse_down: bool
+    middle_mouse_down: bool,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SharedState {
     mouse_info: MouseInfo,
+    target_fps: Option<f64>,
 }
 
+impl Default for SharedState {
+    fn default() -> Self {
+        Self {
+            mouse_info: MouseInfo::default(),
+            target_fps: Some(150.0),
+        }
+    }
+}
 
 /// A game component that can listen to events, perform logic, and render itself.
 pub trait Component {
     /// Called when an event is received. This could happen multiple times per frame.
-    fn on_event(&mut self, event: Event) -> Option<BreakingAction> { None }
+    fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
+        None
+    }
     /// Called once per frame to update the component's state.
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {}
     /// Called once per frame to render the component. Each component has 100 depth available
@@ -70,31 +88,49 @@ pub trait Component {
     fn render(&self, renderer: &mut dyn Renderer, depth_base: i32) {}
 }
 
-
 pub struct Game<W: Write> {
     display_renderer: DisplayRenderer<W>,
     components: Vec<Box<dyn Component>>,
     shared_state: SharedState,
+    event_read_thread_handle: Option<std::thread::JoinHandle<()>>,
+    event_reader: Receiver<Event>,
+    event_read_stop_signal: std::sync::mpsc::Sender<()>,
 }
 
 impl<W: Write> Game<W> {
-    const TARGET_FPS: f64 = 150.0;
-
     pub fn new(sink: W) -> Self {
         let (width, height) = crossterm::terminal::size().unwrap();
-        let display_renderer = DisplayRenderer::new_with_sink(width as usize, height as usize, sink);
+        let display_renderer =
+            DisplayRenderer::new_with_sink(width as usize, height as usize, sink);
+
+        let (event_writer, event_reader) = std::sync::mpsc::channel();
+        let (event_read_stop_signal, event_read_stop_receiver) = std::sync::mpsc::channel();
+
+        let event_read_thread_handle = std::thread::spawn(move || loop {
+            if crossterm::event::poll(Duration::from_millis(10)).unwrap() {
+                if let Ok(event) = crossterm::event::read() {
+                    event_writer.send(event).unwrap();
+                }
+            }
+            if let Ok(_) = event_read_stop_receiver.try_recv() {
+                break;
+            }
+        });
+
         Self {
             display_renderer,
             components: Vec::new(),
             shared_state: SharedState::default(),
-
+            event_read_thread_handle: Some(event_read_thread_handle),
+            event_reader,
+            event_read_stop_signal,
         }
     }
-    
+
     fn width(&self) -> usize {
         self.display_renderer.width()
     }
-    
+
     fn height(&self) -> usize {
         self.display_renderer.height()
     }
@@ -102,30 +138,32 @@ impl<W: Write> Game<W> {
     pub fn add_component(&mut self, component: Box<dyn Component>) {
         self.components.push(component);
     }
-    
+
     pub fn add_component_init(&mut self, init_fn: impl FnOnce(usize, usize) -> Box<dyn Component>) {
-        self.components.insert(0, init_fn(self.width(), self.height()));
+        self.components
+            .insert(0, init_fn(self.width(), self.height()));
     }
 
     pub fn run(&mut self) -> io::Result<()> {
         // Setup phase
         self.setup()?;
 
-        let nanos_per_frame = (1.0 / Self::TARGET_FPS * 1_000_000_000.0) as u64;
-
         // Game loop
         let mut last_frame = Instant::now();
         let mut now = Instant::now();
         loop {
+            let nanos_per_frame = if let Some(target_fps) = self.shared_state.target_fps {
+                (1.0 / target_fps * 1_000_000_000.0) as u64
+            } else {
+                0
+            };
 
             let update_info = UpdateInfo {
                 last_time: last_frame,
                 current_time: now,
             };
 
-            // Allocate half the time for events, rest for update and render
-            let event_nanos = nanos_per_frame / 2;
-            if let Some(action) = self.consume_events(Duration::from_nanos(event_nanos))? {
+            if let Some(action) = self.consume_events()? {
                 match action {
                     BreakingAction::Quit => break,
                 }
@@ -135,34 +173,41 @@ impl<W: Write> Game<W> {
             self.render()?;
             self.display_renderer.reset_screen();
 
-
             // Sleep until the next frame
 
             let current = Instant::now();
             let this_frame_so_far = current.duration_since(now);
-            let remaining_time = Duration::from_nanos(nanos_per_frame).saturating_sub(this_frame_so_far);
+            let remaining_time =
+                Duration::from_nanos(nanos_per_frame).saturating_sub(this_frame_so_far);
             std::thread::sleep(remaining_time);
             last_frame = now;
             now = Instant::now();
         }
 
+        self.cleanup();
 
         Ok(())
     }
 
-    fn consume_events(&mut self, max_duration: Duration) -> io::Result<Option<BreakingAction>> {
-        let mut timeout = Timeout::new(max_duration);
+    fn consume_events(&mut self) -> io::Result<Option<BreakingAction>> {
+        // let mut timeout = Timeout::new(max_duration);
+        //
+        // let poll_duration = Duration::from_nanos(1);
+        //
+        // while !timeout.is_elapsed() {
+        //     if crossterm::event::poll(timeout.leftover().min(poll_duration))? {
+        //         let event = crossterm::event::read()?;
+        //         if let Some(action) = self.on_event(event) {
+        //             return Ok(Some(action));
+        //         }
+        //     } else {
+        //         break;
+        //     }
+        // }
 
-        let poll_duration = Duration::from_nanos(1);
-
-        while !timeout.is_elapsed() {
-            if crossterm::event::poll(timeout.leftover().min(poll_duration))? {
-                let event = crossterm::event::read()?;
-                if let Some(action) = self.on_event(event) {
-                    return Ok(Some(action));
-                }
-            } else {
-                break;
+        while let Ok(event) = self.event_reader.try_recv() {
+            if let Some(action) = self.on_event(event) {
+                return Ok(Some(action));
             }
         }
 
@@ -184,7 +229,8 @@ impl<W: Write> Game<W> {
     fn on_event_game(&mut self, event: Event) -> Option<BreakingAction> {
         match event {
             Event::Resize(width, height) => {
-                self.display_renderer.resize_discard(width as usize, height as usize);
+                self.display_renderer
+                    .resize_discard(width as usize, height as usize);
             }
             _ => {}
         }
@@ -206,8 +252,12 @@ impl<W: Write> Game<W> {
     }
 
     fn setup(&mut self) -> io::Result<()> {
-
         Ok(())
+    }
+
+    fn cleanup(&mut self) {
+        self.event_read_stop_signal.send(()).unwrap();
+        self.event_read_thread_handle.take().unwrap().join().unwrap();
     }
 }
 
@@ -217,7 +267,9 @@ struct Timeout {
 
 impl Timeout {
     fn new(duration: Duration) -> Self {
-        Self { end: Instant::now() + duration }
+        Self {
+            end: Instant::now() + duration,
+        }
     }
 
     fn leftover(&self) -> Duration {
@@ -228,7 +280,3 @@ impl Timeout {
         self.leftover() == Duration::from_secs(0)
     }
 }
-
-
-
-
