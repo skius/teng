@@ -3,10 +3,21 @@ use std::io::{Stdout, Write};
 use std::ops::{Index, IndexMut};
 use crossterm::queue;
 use crate::game::{Pixel, Render};
+use crate::game::display::Display;
 
 pub trait Renderer {
     fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32);
     fn flush(&mut self) -> io::Result<()>;
+}
+
+impl Renderer for &mut dyn Renderer {
+    fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32) {
+        Renderer::render_pixel(*self, x, y, pixel, depth);
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Renderer::flush(*self)
+    }
 }
 
 impl<W: Write> Renderer for DisplayRenderer<W> {
@@ -16,72 +27,6 @@ impl<W: Write> Renderer for DisplayRenderer<W> {
 
     fn flush(&mut self) -> io::Result<()> {
         DisplayRenderer::flush(self)
-    }
-}
-
-struct Display<T> {
-    width: usize,
-    height: usize,
-    default: T,
-    pixels: Vec<T>,
-}
-
-impl<T: Clone> Display<T> {
-    fn new(width: usize, height: usize, default: T) -> Self {
-        Self {
-            width,
-            height,
-            default: default.clone(),
-            pixels: vec![default; width * height],
-        }
-    }
-
-    fn clear(&mut self) {
-        for pixel in self.pixels.iter_mut() {
-            *pixel = self.default.clone();
-        }
-    }
-
-    fn resize_discard(&mut self, width: usize, height: usize) {
-        self.pixels.resize(width * height, self.default.clone());
-        self.width = width;
-        self.height = height;
-    }
-}
-
-impl<T> Display<T> {
-    fn get_index(&self, x: usize, y: usize) -> usize {
-        y * self.width + x
-    }
-
-    fn get(&self, x: usize, y: usize) -> Option<&T> {
-        self.pixels.get(self.get_index(x, y))
-    }
-
-    fn get_mut(&mut self, x: usize, y: usize) -> Option<&mut T> {
-        let idx = self.get_index(x, y);
-        self.pixels.get_mut(idx)
-    }
-
-    fn set(&mut self, x: usize, y: usize, value: T) {
-        if let Some(pixel) = self.get_mut(x, y) {
-            *pixel = value;
-        }
-    }
-}
-
-impl<T> Index<(usize, usize)> for Display<T> {
-    type Output = T;
-
-    fn index(&self, (x, y): (usize, usize)) -> &Self::Output {
-        &self.pixels[self.get_index(x, y)]
-    }
-}
-
-impl<T> IndexMut<(usize, usize)> for Display<T> {
-    fn index_mut(&mut self, (x, y): (usize, usize)) -> &mut Self::Output {
-        let idx = self.get_index(x, y);
-        &mut self.pixels[idx]
     }
 }
 
@@ -113,6 +58,14 @@ impl<W: Write> DisplayRenderer<W> {
             default_fg_color: [255, 255, 255],
             last_fg_color: [255, 255, 255],
         }
+    }
+
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
+    pub fn height(&self) -> usize {
+        self.height
     }
 
     /// Set the default fg color. Works on next flush.
@@ -154,6 +107,11 @@ impl<W: Write> DisplayRenderer<W> {
         }
     }
 
+    pub fn reset_screen(&mut self) {
+        self.display.clear();
+        self.depth_buffer.clear();
+    }
+
     pub fn flush(&mut self) -> io::Result<()> {
         queue!(self.sink, crossterm::cursor::MoveTo(0, 0))?;
         for y in 0..self.height {
@@ -183,7 +141,7 @@ impl<W: Write> DisplayRenderer<W> {
             g: self.default_fg_color[1],
             b: self.default_fg_color[2],
         }))?;
-        self.depth_buffer.pixels.fill(i32::MIN);
+        self.depth_buffer.clear();
 
         Ok(())
     }

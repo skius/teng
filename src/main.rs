@@ -20,7 +20,8 @@ use std::thread::sleep;
 use std::time::Instant;
 use std::{io, time::Duration};
 use std::ops::Deref;
-use crate::game::{DisplayRenderer, Pixel, Render, Renderer, Sprite, WithColor};
+use crate::game::{DisplayRenderer, Game, Pixel, Render, Renderer, Sprite, WithColor};
+use crate::game::components::{DebugInfoComponent, FloodFillComponent, MouseTrackerComponent, QuitterComponent};
 
 const HELP: &str = r#"Blocking poll() & non-blocking read()
  - Keyboard, mouse and terminal resize events enabled
@@ -558,9 +559,19 @@ fn main() -> io::Result<()> {
     // don't print cursor
     execute!(stdout, cursor::Hide)?;
 
-    if let Err(e) = game_loop(&mut stdout) {
-        println!("Error: {:?}\r", e);
+
+    let sink = CustomBufWriter::new();
+    let mut game = Game::new(sink);
+    game.add_component(Box::new(MouseTrackerComponent::new()));
+    game.add_component(Box::new(QuitterComponent));
+    game.add_component_init(|width, height | Box::new(FloodFillComponent::new(width, height)));
+    game.add_component(Box::new(DebugInfoComponent::new()));
+    if let Err(e) = game.run() {
+        println!("Error: {:?}", e);
     }
+    // if let Err(e) = game_loop(&mut stdout) {
+    //     println!("Error: {:?}\r", e);
+    // }
     // if let Err(e) = render_loop() {
     //     println!("Error: {:?}\r", e);
     // }
@@ -575,6 +586,6 @@ fn main() -> io::Result<()> {
     )?;
 
     disable_raw_mode();
-    
+
     execute!(stdout, crossterm::terminal::LeaveAlternateScreen)
 }
