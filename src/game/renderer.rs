@@ -83,20 +83,10 @@ impl<W: Write> DisplayRenderer<W> {
 
     /// Resizes the display and keeps the existing contents.
     pub fn resize_keep(&mut self, width: usize, height: usize) {
-        let mut new_display = Display::new(width, height, Pixel::default());
-        let mut new_depth_buffer = Display::new(width, height, i32::MIN);
-
-        for y in 0..self.height.min(height) {
-            for x in 0..self.width.min(width) {
-                new_display[(x, y)] = self.display[(x, y)];
-                new_depth_buffer[(x, y)] = self.depth_buffer[(x, y)];
-            }
-        }
-
         self.width = width;
         self.height = height;
-        self.display = new_display;
-        self.depth_buffer = new_depth_buffer;
+        self.display.resize_keep(width, height);
+        self.depth_buffer.resize_keep(width, height);
     }
 
     /// Higher depths have higher priority. At same depth, first write wins.

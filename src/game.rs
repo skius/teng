@@ -10,6 +10,8 @@ mod display;
 mod render;
 mod renderer;
 
+use crate::game::components::DecayElement;
+use crate::game::display::Display;
 pub use render::*;
 pub use renderer::*;
 
@@ -60,18 +62,23 @@ pub struct MouseInfo {
     middle_mouse_down: bool,
 }
 
-#[derive(Debug)]
 pub struct SharedState {
     mouse_info: MouseInfo,
     target_fps: Option<f64>,
+    decay_board: Display<DecayElement>,
 }
 
-impl Default for SharedState {
-    fn default() -> Self {
+impl SharedState {
+    pub fn new(width: usize, height: usize) -> Self {
         Self {
             mouse_info: MouseInfo::default(),
             target_fps: Some(150.0),
+            decay_board: Display::new(width, height, DecayElement::new(' ')),
         }
+    }
+    
+    pub fn resize(&mut self, width: usize, height: usize) {
+        self.decay_board.resize_keep(width, height);
     }
 }
 
@@ -85,7 +92,7 @@ pub trait Component {
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {}
     /// Called once per frame to render the component. Each component has 100 depth available
     /// starting from the base.
-    fn render(&self, renderer: &mut dyn Renderer, depth_base: i32) {}
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {}
 }
 
 pub struct Game<W: Write> {
@@ -100,8 +107,9 @@ pub struct Game<W: Write> {
 impl<W: Write> Game<W> {
     pub fn new(sink: W) -> Self {
         let (width, height) = crossterm::terminal::size().unwrap();
-        let display_renderer =
-            DisplayRenderer::new_with_sink(width as usize, height as usize, sink);
+        let width = width as usize;
+        let height = height as usize;
+        let display_renderer = DisplayRenderer::new_with_sink(width, height, sink);
 
         let (event_writer, event_reader) = std::sync::mpsc::channel();
         let (event_read_stop_signal, event_read_stop_receiver) = std::sync::mpsc::channel();
@@ -120,7 +128,7 @@ impl<W: Write> Game<W> {
         Self {
             display_renderer,
             components: Vec::new(),
-            shared_state: SharedState::default(),
+            shared_state: SharedState::new(width, height),
             event_read_thread_handle: Some(event_read_thread_handle),
             event_reader,
             event_read_stop_signal,
@@ -139,9 +147,8 @@ impl<W: Write> Game<W> {
         self.components.push(component);
     }
 
-    pub fn add_component_init(&mut self, init_fn: impl FnOnce(usize, usize) -> Box<dyn Component>) {
-        self.components
-            .insert(0, init_fn(self.width(), self.height()));
+    pub fn add_component_with(&mut self, init_fn: impl FnOnce(usize, usize) -> Box<dyn Component>) {
+        self.components.push(init_fn(self.width(), self.height()));
     }
 
     pub fn run(&mut self) -> io::Result<()> {
@@ -229,13 +236,17 @@ impl<W: Write> Game<W> {
     fn on_event_game(&mut self, event: Event) -> Option<BreakingAction> {
         match event {
             Event::Resize(width, height) => {
-                self.display_renderer
-                    .resize_discard(width as usize, height as usize);
+                self.on_resize(width as usize, height as usize);
             }
             _ => {}
         }
 
         None
+    }
+
+    fn on_resize(&mut self, width: usize, height: usize) {
+        self.display_renderer.resize_discard(width, height);
+        self.shared_state.resize(width, height);
     }
 
     fn update(&mut self, update_info: UpdateInfo) {
@@ -245,8 +256,8 @@ impl<W: Write> Game<W> {
     }
 
     fn render(&mut self) -> io::Result<()> {
-        for component in self.components.iter() {
-            component.render(&mut self.display_renderer, 10);
+        for (idx, component) in self.components.iter().enumerate() {
+            component.render(&mut self.display_renderer, &self.shared_state, idx as i32 * 100);
         }
         self.display_renderer.flush()
     }
@@ -257,7 +268,11 @@ impl<W: Write> Game<W> {
 
     fn cleanup(&mut self) {
         self.event_read_stop_signal.send(()).unwrap();
-        self.event_read_thread_handle.take().unwrap().join().unwrap();
+        self.event_read_thread_handle
+            .take()
+            .unwrap()
+            .join()
+            .unwrap();
     }
 }
 

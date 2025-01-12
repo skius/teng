@@ -4,6 +4,7 @@ use crate::game::{
 };
 use crossterm::event::{Event, KeyCode, KeyEvent, MouseEvent, MouseEventKind};
 use std::time::{Duration, Instant};
+use smallvec::SmallVec;
 
 pub struct DebugInfoComponent {
     frametime_ns: u128,
@@ -80,7 +81,7 @@ impl Component for DebugInfoComponent {
         self.target_fps = shared_state.target_fps;
     }
 
-    fn render(&self, mut renderer: &mut dyn Renderer, depth_base: i32) {
+    fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let mut y = 0;
         format!("Frame time: {} ns", self.frametime_ns).render(&mut renderer, 0, y, depth_base);
         y += 1;
@@ -217,6 +218,7 @@ impl MouseTrackerComponent {
         let end_x = second.last_mouse_pos.0 as i32;
         let end_y = second.last_mouse_pos.1 as i32;
 
+        // TODO: Understand this code
         let dx = (end_x - start_x).abs();
         let dy = (end_y - start_y).abs();
         let sx = if start_x < end_x { 1 } else { -1 };
@@ -228,9 +230,11 @@ impl MouseTrackerComponent {
         while x != end_x || y != end_y {
             f(MouseInfo {
                 last_mouse_pos: (x as usize, y as usize),
-                left_mouse_down: second.left_mouse_down,
-                right_mouse_down: second.right_mouse_down,
-                middle_mouse_down: second.middle_mouse_down,
+                // important, use first mouse info to determine mouse button state, avoids edge cases
+                // when entering and leaving terminal/process
+                left_mouse_down: first.left_mouse_down,
+                right_mouse_down: first.right_mouse_down,
+                middle_mouse_down: first.middle_mouse_down,
             });
 
             let e2 = 2 * err;
@@ -363,8 +367,17 @@ impl FloodFillComponent {
         flood_fill_happened
     }
 
-    fn on_release(&mut self, shared_state: &mut SharedState) {
+    fn on_release(&mut self, shared_state: &mut SharedState, current_time: Instant) {
         // do what needs to happen after release
+        // move over to decay board
+        for y in 0..self.board.height() {
+            for x in 0..self.board.width() {
+                if self.board[(x, y)] {
+                    shared_state.decay_board[(x, y)] = DecayElement::new_with_time('█', current_time);
+                    self.board[(x, y)] = false;
+                }
+            }
+        }
     }
 }
 
@@ -376,6 +389,8 @@ impl Component for FloodFillComponent {
                 self.visited.resize_discard(width as usize, height as usize);
             }
             Event::Mouse(event) => {
+                // TODO: last_mouse_info could be default initialized if there has been no event previously.
+                // so we should turn it into option and only smooth if there is a previous one (or just take the new info twice)
                 let mut new_mouse_info = self.last_mouse_info;
                 MouseTrackerComponent::fill_mouse_info(event, &mut new_mouse_info);
                 MouseTrackerComponent::smooth_two_updates(self.last_mouse_info, new_mouse_info, |mouse_info| {
@@ -412,18 +427,122 @@ impl Component for FloodFillComponent {
         } else {
             if self.has_content {
                 self.has_content = false;
-                self.board.clear();
-                self.on_release(shared_state);
+                self.on_release(shared_state, update_info.current_time);
             }
         }
     }
 
-    fn render(&self, mut renderer: &mut dyn Renderer, depth_base: i32) {
+    fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         for y in 0..self.board.height() {
             for x in 0..self.board.width() {
                 if self.board[(x, y)] {
                     "█".render(&mut renderer, x, y, depth_base);
                 }
+            }
+        }
+    }
+}
+
+pub struct SimpleDrawComponent {
+    last_mouse_info: MouseInfo,
+    // small queue for multiple events in one frame
+    draw_queue: SmallVec<[(u16, u16); 20]>,
+}
+
+impl SimpleDrawComponent {
+    pub fn new() -> Self {
+        Self {
+            last_mouse_info: MouseInfo::default(),
+            draw_queue: SmallVec::new(),
+        }
+    }
+}
+
+impl Component for SimpleDrawComponent {
+    fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
+        if let Event::Mouse(event) = event {
+            // TODO: same issue as in floodfill
+            let mut new_mouse_info = self.last_mouse_info;
+            MouseTrackerComponent::fill_mouse_info(event, &mut new_mouse_info);
+            MouseTrackerComponent::smooth_two_updates(self.last_mouse_info, new_mouse_info, |mouse_info| {
+                if mouse_info.left_mouse_down {
+                    let x = mouse_info.last_mouse_pos.0 as u16;
+                    let y = mouse_info.last_mouse_pos.1 as u16;
+                    self.draw_queue.push((x, y));
+                }
+            });
+            self.last_mouse_info = new_mouse_info;
+        }
+        None
+    }
+
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        for (x, y) in self.draw_queue.drain(..) {
+            shared_state.decay_board[(x as usize, y as usize)] = DecayElement::new_with_time('█', update_info.current_time);
+        }
+        // also current pixel, in case we're holding the button and not moving
+        if self.last_mouse_info.left_mouse_down {
+            let (x, y) = self.last_mouse_info.last_mouse_pos;
+            shared_state.decay_board[(x, y)] = DecayElement::new_with_time('█', update_info.current_time);
+        }
+    }
+}
+
+
+
+#[derive(Debug, Clone, Copy)]
+pub struct DecayElement {
+    pub c: char,
+    pub inception_time: Option<Instant>,
+}
+
+impl DecayElement {
+    pub fn new(c: char) -> Self {
+        Self { c, inception_time: None }
+    }
+
+    pub fn new_with_time(c: char, inception_time: Instant) -> Self {
+        Self { c, inception_time: Some(inception_time) }
+    }
+}
+
+pub struct DecayComponent {
+
+}
+
+impl DecayComponent {
+    const DECAY_TIME: Duration = Duration::from_millis(500);
+    const DECAY_STAGES: [char; 4] = ['█', '▓', '▒', '░'];
+
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Component for DecayComponent {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        let current = update_info.current_time;
+        let nanos_per_stage = Self::DECAY_TIME.as_nanos() / Self::DECAY_STAGES.len() as u128;
+        for (x, y, element) in shared_state.decay_board.iter_mut() {
+            if let Some(inception_time) = element.inception_time {
+                let elapsed = current.saturating_duration_since(inception_time).as_nanos();
+                let stage = (elapsed / nanos_per_stage) as usize;
+                if stage < Self::DECAY_STAGES.len() {
+                    element.c = Self::DECAY_STAGES[stage];
+                } else {
+                    element.c = ' ';
+                    element.inception_time = None;
+                }
+            }
+
+        }
+    }
+
+    fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+        for (x, y, element) in shared_state.decay_board.iter() {
+            // we generally skip ' '
+            if element.c != ' ' {
+                element.c.render(&mut renderer, x, y, depth_base);
             }
         }
     }

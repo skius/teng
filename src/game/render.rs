@@ -22,6 +22,13 @@ impl Render for String {
     }
 }
 
+impl Render for char {
+    fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
+        let pixel = Pixel::new(*self);
+        renderer.render_pixel(x, y, pixel, depth);
+    }
+}
+
 impl Render for Pixel {
     fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
         renderer.render_pixel(x, y, *self, depth);
