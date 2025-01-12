@@ -5,7 +5,7 @@
 mod physics;
 mod game;
 
-use crossterm::event::{KeyEvent, MouseButton, MouseEventKind};
+use crossterm::event::{KeyEvent, KeyboardEnhancementFlags, MouseButton, MouseEventKind};
 use crossterm::style::{Color, Colored, Colors};
 use crossterm::terminal::size;
 use crossterm::{
@@ -558,6 +558,9 @@ fn main() -> io::Result<()> {
     execute!(stdout, EnableMouseCapture)?;
     // don't print cursor
     execute!(stdout, cursor::Hide)?;
+    // enable keyboard enhancements
+    // actually, doesnt work on windows terminal.
+    // execute!(stdout, crossterm::event::PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::REPORT_EVENT_TYPES | KeyboardEnhancementFlags::REPORT_ALL_KEYS_AS_ESCAPE_CODES))?;
 
 
     let sink = CustomBufWriter::new();
