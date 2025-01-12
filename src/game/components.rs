@@ -622,7 +622,7 @@ impl Component for KeyPressRecorderComponent {
     fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
         match event {
             Event::Key(ke) => {
-                assert_eq!(ke.kind, crossterm::event::KeyEventKind::Press);
+                // assert_eq!(ke.kind, crossterm::event::KeyEventKind::Press);
                 if let Some(count) = self.pressed_keys.get_mut(&ke.code) {
                     *count += 1;
                 } else {
