@@ -1,10 +1,9 @@
 use crate::game::display::Display;
-use crate::game::{
-    BreakingAction, Component, MouseInfo, Render, Renderer, SharedState, UpdateInfo,
-};
+use crate::game::{BreakingAction, Component, MouseInfo, Pixel, Render, Renderer, SharedState, UpdateInfo};
 use crossterm::event::{Event, KeyCode, KeyEvent, MouseEvent, MouseEventKind};
 use std::time::{Duration, Instant};
 use smallvec::SmallVec;
+use crate::physics::PhysicsBoard;
 
 pub struct DebugInfoComponent {
     frametime_ns: u128,
@@ -516,6 +515,10 @@ impl DecayComponent {
     pub fn new() -> Self {
         Self {}
     }
+    
+    fn release(&mut self, physics_board: &mut PhysicsBoard, x: usize, y: usize) {
+        physics_board.add_entity(x, y, '░');
+    }
 }
 
 impl Component for DecayComponent {
@@ -531,6 +534,7 @@ impl Component for DecayComponent {
                 } else {
                     element.c = ' ';
                     element.inception_time = None;
+                    self.release(&mut shared_state.physics_board, x, y);
                 }
             }
 
@@ -542,6 +546,40 @@ impl Component for DecayComponent {
             // we generally skip ' '
             if element.c != ' ' {
                 element.c.render(&mut renderer, x, y, depth_base);
+            }
+        }
+    }
+}
+
+// This just runs the physics simulation contained in the shared state.
+pub struct PhysicsComponent {
+    
+}
+
+impl PhysicsComponent {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Component for PhysicsComponent {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        let dt = update_info.current_time.saturating_duration_since(update_info.last_time).as_secs_f64();
+        shared_state.physics_board.update(dt, shared_state.decay_board.height(), |s| {
+            // TODO: debug print
+        });
+    }
+
+    fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+        let width = shared_state.display_info.width();
+        let height = shared_state.display_info.height();
+        for col in shared_state.physics_board.board.iter() {
+            for entity in col {
+                let x = entity.x.floor() as usize;
+                let y = entity.y.floor() as usize;
+                if x < width && y < height {
+                    renderer.render_pixel(x, y, Pixel::new(entity.c), depth_base);
+                }
             }
         }
     }

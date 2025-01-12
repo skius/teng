@@ -5,9 +5,9 @@ pub struct PhysicsBoard {
 }
 
 impl PhysicsBoard {
-    pub fn new(max_width: usize) -> Self {
+    pub fn new(width: usize) -> Self {
 
-        Self { board: vec![vec![]; max_width] }
+        Self { board: vec![vec![]; width] }
     }
 
     pub fn clear(&mut self) {
@@ -31,6 +31,10 @@ impl PhysicsBoard {
         for col in self.board.iter_mut() {
             update_physics_col(col, dt, height, &mut write_debug);
         }
+    }
+    
+    pub fn resize(&mut self, width: usize) {
+        self.board.resize(width, vec![]);
     }
 }
 

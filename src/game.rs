@@ -14,6 +14,7 @@ use crate::game::components::DecayElement;
 use crate::game::display::Display;
 pub use render::*;
 pub use renderer::*;
+use crate::physics::PhysicsBoard;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pixel {
@@ -62,10 +63,31 @@ pub struct MouseInfo {
     middle_mouse_down: bool,
 }
 
+pub struct DisplayInfo {
+    _height: usize,
+    _width: usize,
+}
+
+impl DisplayInfo {
+    pub(super) fn new(width: usize, height: usize) -> Self {
+        Self { _width: width, _height: height }
+    }
+
+    pub fn width(&self) -> usize {
+        self._width
+    }
+
+    pub fn height(&self) -> usize {
+        self._height
+    }
+}
+
 pub struct SharedState {
     mouse_info: MouseInfo,
     target_fps: Option<f64>,
     decay_board: Display<DecayElement>,
+    physics_board: PhysicsBoard,
+    display_info: DisplayInfo,
 }
 
 impl SharedState {
@@ -74,11 +96,15 @@ impl SharedState {
             mouse_info: MouseInfo::default(),
             target_fps: Some(150.0),
             decay_board: Display::new(width, height, DecayElement::new(' ')),
+            physics_board: PhysicsBoard::new(width),
+            display_info: DisplayInfo::new(width, height),
         }
     }
-    
+
     pub fn resize(&mut self, width: usize, height: usize) {
         self.decay_board.resize_keep(width, height);
+        self.physics_board.resize(width);
+        self.display_info = DisplayInfo::new(width, height);
     }
 }
 
