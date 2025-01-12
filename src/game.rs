@@ -1,4 +1,4 @@
-use crossterm::event::{Event, MouseEvent, MouseEventKind};
+use crossterm::event::{Event, KeyCode, MouseEvent, MouseEventKind};
 use crossterm::queue;
 use std::io;
 use std::io::{Stdout, Write};
@@ -88,6 +88,7 @@ pub struct SharedState {
     decay_board: Display<DecayElement>,
     physics_board: PhysicsBoard,
     display_info: DisplayInfo,
+    pressed_keys: micromap::Map<KeyCode, u8, 16>
 }
 
 impl SharedState {
@@ -98,6 +99,7 @@ impl SharedState {
             decay_board: Display::new(width, height, DecayElement::new(' ')),
             physics_board: PhysicsBoard::new(width),
             display_info: DisplayInfo::new(width, height),
+            pressed_keys: micromap::Map::new()
         }
     }
 

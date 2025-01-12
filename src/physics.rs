@@ -1,13 +1,15 @@
 use std::time::Instant;
 
 pub struct PhysicsBoard {
-    pub board: Vec<Vec<Entity>>
+    // x-indexed lists of entities, one per column
+    pub board: Vec<Vec<Entity>>,
+    x_to_height_to_entities: Vec<Vec<Vec<usize>>>,
 }
 
 impl PhysicsBoard {
     pub fn new(width: usize) -> Self {
 
-        Self { board: vec![vec![]; width] }
+        Self { board: vec![vec![]; width], x_to_height_to_entities: vec![vec![]; width] }
     }
 
     pub fn clear(&mut self) {
@@ -28,13 +30,106 @@ impl PhysicsBoard {
     }
 
     pub fn update(&mut self, dt: f64, height: usize, mut write_debug: impl FnMut(String)) {
-        for col in self.board.iter_mut() {
-            update_physics_col(col, dt, height, &mut write_debug);
+        for col in 0..self.board.len() {
+            self.update_physics_col(col, dt, height, &mut write_debug);
         }
     }
-    
+
     pub fn resize(&mut self, width: usize) {
         self.board.resize(width, vec![]);
+        self.x_to_height_to_entities.resize(width, vec![]);
+    }
+
+    fn update_physics_col(
+        &mut self,
+        col_idx: usize,
+        dt: f64,
+        height: usize,
+        mut write_debug: impl FnMut(String),
+    ) {
+
+        let physics_entities = &mut self.board[col_idx];
+        let height_to_entities = &mut self.x_to_height_to_entities[col_idx];
+        height_to_entities.resize(height, vec![]);
+        height_to_entities.iter_mut().for_each(|entities| entities.clear());
+
+        let earth_accel = 40.0;
+        let damping = 0.8;
+        let max_time_at_bottom = 3.0;
+
+        for  entity in physics_entities.iter_mut() {
+            entity.vel_y += earth_accel * dt;
+            entity.y += entity.vel_y * dt;
+            if entity.y < 0.0 {
+                entity.y = 0.0;
+                entity.vel_y = -entity.vel_y;
+                continue;
+            }
+            if entity.y >= height as f64 {
+                entity.y = height as f64 - 0.01;
+                entity.vel_y = -entity.vel_y;
+                entity.vel_y *= damping;
+            }
+            if entity.y.floor() >= height as f64 - 1.0 {
+                entity.time_at_bottom += dt;
+            } else {
+                entity.time_at_bottom = 0.0;
+            }
+        }
+
+        physics_entities.retain(|entity| entity.time_at_bottom < max_time_at_bottom);
+        let total_physics_entities = physics_entities.len();
+
+        // let mut height_to_entities = vec![vec![]; height];
+
+        for (i, entity) in physics_entities.iter().enumerate() {
+            let height = entity.y.floor() as usize;
+            height_to_entities[height].push(i);
+        }
+
+        for (base_height, window) in height_to_entities.windows(2).enumerate().rev() {
+            let height_a = base_height;
+            let height_b = base_height + 1;
+            // check all collisions of A x B, and A x A.
+            for &idx_a in window[0].iter() {
+                for &idx_b in window[1].iter() {
+                    if physics_entities[idx_a].collides_with(&physics_entities[idx_b]) {
+                        let mut entity_a = physics_entities[idx_a].clone();
+                        let mut entity_b = physics_entities[idx_b].clone();
+                        handle_collision(&mut entity_a, &mut entity_b);
+                        physics_entities[idx_a] = entity_a;
+                        physics_entities[idx_b] = entity_b;
+                    }
+                }
+                for &idx_b in window[0].iter() {
+                    if idx_a == idx_b {
+                        continue;
+                    }
+                    if physics_entities[idx_a].collides_with(&physics_entities[idx_b]) {
+                        let mut entity_a = physics_entities[idx_a].clone();
+                        let mut entity_b = physics_entities[idx_b].clone();
+                        handle_collision(&mut entity_a, &mut entity_b);
+                        physics_entities[idx_a] = entity_a;
+                        physics_entities[idx_b] = entity_b;
+                    }
+                }
+            }
+        }
+        // Check collisions of last row with itself (the remaining B x B)
+        if let Some(last_row) = height_to_entities.last() {
+            for (i, &idx_a) in last_row.iter().enumerate() {
+                for &idx_b in &last_row[i + 1..] {
+                    if physics_entities[idx_a].collides_with(&physics_entities[idx_b]) {
+                        let mut entity_a = physics_entities[idx_a].clone();
+                        let mut entity_b = physics_entities[idx_b].clone();
+                        handle_collision(&mut entity_a, &mut entity_b);
+                        physics_entities[idx_a] = entity_a;
+                        physics_entities[idx_b] = entity_b;
+                    }
+                }
+            }
+        }
+
     }
 }
 
@@ -67,91 +162,5 @@ fn handle_collision(entity_a: &mut Entity, entity_b: &mut Entity) {
     }
     entity_a.y += diff / 2.0;
     entity_b.y -= diff / 2.0;
-
-}
-
-fn update_physics_col(
-    physics_entities: &mut Vec<Entity>,
-    dt: f64,
-    height: usize,
-    mut write_debug: impl FnMut(String),
-) {
-    // 1 px/s/s
-    let earth_accel = 40.0;
-    let damping = 0.8;
-    let max_time_at_bottom = 3.0;
-
-    for  entity in physics_entities.iter_mut() {
-        entity.vel_y += earth_accel * dt;
-        entity.y += entity.vel_y * dt;
-        if entity.y < 0.0 {
-            entity.y = 0.0;
-            entity.vel_y = -entity.vel_y;
-            continue;
-        }
-        if entity.y >= height as f64 {
-            entity.y = height as f64 - 0.01;
-            entity.vel_y = -entity.vel_y;
-            entity.vel_y *= damping;
-        }
-        if entity.y.floor() >= height as f64 - 1.0 {
-            entity.time_at_bottom += dt;
-        } else {
-            entity.time_at_bottom = 0.0;
-        }
-    }
-
-    physics_entities.retain(|entity| entity.time_at_bottom < max_time_at_bottom);
-    let total_physics_entities = physics_entities.len();
-
-    let mut height_to_entities = vec![vec![]; height];
-
-    for (i, entity) in physics_entities.iter().enumerate() {
-        let height = entity.y.floor() as usize;
-        height_to_entities[height].push(i);
-    }
-
-    for (base_height, window) in height_to_entities.windows(2).enumerate().rev() {
-        let height_a = base_height;
-        let height_b = base_height + 1;
-        // check all collisions of A x B, and A x A.
-        for &idx_a in window[0].iter() {
-            for &idx_b in window[1].iter() {
-                if physics_entities[idx_a].collides_with(&physics_entities[idx_b]) {
-                    let mut entity_a = physics_entities[idx_a].clone();
-                    let mut entity_b = physics_entities[idx_b].clone();
-                    handle_collision(&mut entity_a, &mut entity_b);
-                    physics_entities[idx_a] = entity_a;
-                    physics_entities[idx_b] = entity_b;
-                }
-            }
-            for &idx_b in window[0].iter() {
-                if idx_a == idx_b {
-                    continue;
-                }
-                if physics_entities[idx_a].collides_with(&physics_entities[idx_b]) {
-                    let mut entity_a = physics_entities[idx_a].clone();
-                    let mut entity_b = physics_entities[idx_b].clone();
-                    handle_collision(&mut entity_a, &mut entity_b);
-                    physics_entities[idx_a] = entity_a;
-                    physics_entities[idx_b] = entity_b;
-                }
-            }
-        }
-    }
-    // Check collisions of last row with itself (the remaining B x B)
-    if let Some(last_row) = height_to_entities.last() {
-        for (i, &idx_a) in last_row.iter().enumerate() {
-            for &idx_b in &last_row[i + 1..] {
-                if physics_entities[idx_a].collides_with(&physics_entities[idx_b]) {
-                    let mut entity_a = physics_entities[idx_a].clone();
-                    let mut entity_b = physics_entities[idx_b].clone();
-                    handle_collision(&mut entity_a, &mut entity_b);
-                    physics_entities[idx_a] = entity_a;
-                    physics_entities[idx_b] = entity_b;
-                }
-            }
-        }
-    }
 
 }

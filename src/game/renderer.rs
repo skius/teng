@@ -110,15 +110,14 @@ impl<W: Write> DisplayRenderer<W> {
         for y in 0..self.height {
             for x in 0..self.width {
                 let pixel = self.display[(x, y)];
-                if let Some(new_color) = pixel.color {
-                    if new_color != self.last_fg_color {
-                        queue!(self.sink, crossterm::style::SetForegroundColor(crossterm::style::Color::Rgb {
-                            r: new_color[0],
-                            g: new_color[1],
-                            b: new_color[2],
-                        }))?;
-                        self.last_fg_color = new_color;
-                    }
+                let new_color = pixel.color.unwrap_or(self.default_fg_color);
+                if new_color != self.last_fg_color {
+                    queue!(self.sink, crossterm::style::SetForegroundColor(crossterm::style::Color::Rgb {
+                        r: new_color[0],
+                        g: new_color[1],
+                        b: new_color[2],
+                    }))?;
+                    self.last_fg_color = new_color;
                 }
                 queue!(self.sink, crossterm::style::Print(pixel.c))?;
             }

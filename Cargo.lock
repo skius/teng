@@ -84,6 +84,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
+name = "micromap"
+version = "0.0.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c5b72ada413a5bd6bc65d6eef149fdc5138298f3bb89653d1a521f0fea7f9c73"
+
+[[package]]
 name = "mio"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -187,6 +193,7 @@ name = "termgame"
 version = "0.1.0"
 dependencies = [
  "crossterm",
+ "micromap",
  "smallvec",
 ]
 

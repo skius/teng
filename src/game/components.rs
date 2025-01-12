@@ -585,10 +585,66 @@ impl Component for PhysicsComponent {
     }
 }
 
+pub struct KeyPressRecorderComponent {
+    pressed_keys: micromap::Map<KeyCode, u8, 16>
+}
+
+impl KeyPressRecorderComponent {
+    pub fn new() -> Self {
+        Self {
+            pressed_keys: micromap::Map::new(),
+        }
+    }
+}
+
+impl Component for KeyPressRecorderComponent {
+    fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
+        match event {
+            Event::Key(ke) => {
+                assert_eq!(ke.kind, crossterm::event::KeyEventKind::Press);
+                if let Some(count) = self.pressed_keys.get_mut(&ke.code) {
+                    *count += 1;
+                } else {
+                    assert!(self.pressed_keys.len() < 16);
+                    self.pressed_keys.insert(ke.code, 1);
+                }
+            }
+            _ => {}
+        }
+        None
+    }
+
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        std::mem::swap(&mut shared_state.pressed_keys, &mut self.pressed_keys);
+        self.pressed_keys.clear();
+    }
+}
+
+struct Bullet {
+    x: f64,
+    y: f64,
+    vel_x: f64,
+    vel_y: f64,
+}
+
+impl Bullet {
+    // returns whether the bullet should be deleted or not
+    fn update(&mut self, dt: f64, height: usize, width: usize) -> bool {
+        self.x += self.vel_x * dt;
+        self.y += self.vel_y * dt;
+        if self.x < 0.0 || self.x >= width as f64 || self.y < 0.0 || self.y >= height as f64 {
+            return true;
+        }
+        false
+    }
+}
+
 pub struct PlayerComponent {
     x: usize,
     y: usize,
     sprite: Sprite<3, 2>,
+    bullets: Vec<Bullet>,
+    bullet_char: char,
 }
 
 impl PlayerComponent {
@@ -600,7 +656,34 @@ impl PlayerComponent {
                 ['▁', '▄', '▁'],
                 ['▗', '▀', '▖']
             ], 1, 1),
+            bullets: vec![],
+            bullet_char: '●',
         }
+    }
+
+    fn spawn_bullet(&mut self, shared_state: &mut SharedState, vel_x: f64, vel_y: f64) {
+        // Because the aspect ratio of pixels is 2:1, we divide vel_y by 2 to get the same
+        // visual velocity as x.
+        let vel_y = vel_y / 2.0;
+
+        let mut bullet = Bullet {
+            x: self.x as f64,
+            y: self.y as f64 - 1.0, // center is between legs, want to shoot from chest
+            vel_x,
+            vel_y,
+        };
+        if vel_x < 0.0 {
+            bullet.x -= 1.0; // only 1, as we're updating right after spawning, which with floor leads to going down.
+        } else if vel_x > 0.0 {
+            bullet.x += 2.0;
+        }
+        if vel_y < 0.0 {
+            bullet.y -= 0.0;
+        } else if vel_y > 0.0 {
+            bullet.y += 2.0;
+        }
+        self.bullets.push(bullet);
+
     }
 }
 
@@ -630,7 +713,36 @@ impl Component for PlayerComponent {
         None
     }
 
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        let bullet_speed = 12.0;
+        if shared_state.pressed_keys.contains_key(&KeyCode::Left) {
+            self.spawn_bullet(shared_state, -bullet_speed, 0.0);
+        }
+        if shared_state.pressed_keys.contains_key(&KeyCode::Right) {
+            self.spawn_bullet(shared_state, bullet_speed, 0.0);
+        }
+        if shared_state.pressed_keys.contains_key(&KeyCode::Up) {
+            self.spawn_bullet(shared_state, 0.0, -bullet_speed);
+        }
+        if shared_state.pressed_keys.contains_key(&KeyCode::Down) {
+            self.spawn_bullet(shared_state, 0.0, bullet_speed);
+        }
+
+        let dt = update_info.current_time.saturating_duration_since(update_info.last_time).as_secs_f64();
+        self.bullets.retain_mut(|bullet| {
+            let delete = bullet.update(dt, shared_state.display_info.height(), shared_state.display_info.width());
+            !delete
+        });
+    }
+
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         self.sprite.render(&mut renderer, self.x, self.y, depth_base);
+        // render bullets
+        for bullet in &self.bullets {
+            let x = bullet.x.floor() as usize;
+            let y = bullet.y.floor() as usize;
+            let pixel = Pixel::new(self.bullet_char).with_color([200, 200, 100]);
+            renderer.render_pixel(x, y, pixel, depth_base);
+        }
     }
 }
