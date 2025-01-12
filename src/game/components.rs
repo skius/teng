@@ -102,6 +102,8 @@ impl Component for DebugInfoComponent {
         };
         format!("FPS: {:.2} ({})", self.fps, target_str).render(&mut renderer, 0, y, depth_base);
         y += 1;
+        // format!("Pressed keys: {:?}", shared_state.pressed_keys).render(&mut renderer, 0, y, depth_base);
+        y += 1;
         // format!("Events: {}", self.num_events).render(&mut renderer, 0, y, depth_base);
         // y += 1;
         // format!("Frames since last FPS: {}", self.frames_since_last_fps).render(&mut renderer, 0, y, depth_base);
@@ -723,17 +725,17 @@ impl Component for PlayerComponent {
             Event::Key(ke) => {
                 assert_eq!(ke.kind, crossterm::event::KeyEventKind::Press);
                 match ke.code {
-                    KeyCode::Char('w') => {
+                    KeyCode::Char('w' | 'W') => {
                         self.y = self.y.saturating_sub(1);
                     }
-                    KeyCode::Char('s') => {
+                    KeyCode::Char('s' | 'S') => {
                         self.y = self.y.saturating_add(1);
                     }
-                    KeyCode::Char('a') => {
-                        self.x = self.x.saturating_sub(1);
+                    KeyCode::Char(c@('a' | 'A')) => {
+                        self.x = self.x.saturating_sub(1 + c.is_ascii_uppercase() as usize);
                     }
-                    KeyCode::Char('d') => {
-                        self.x = self.x.saturating_add(1);
+                    KeyCode::Char(c@('d' | 'D')) => {
+                        self.x = self.x.saturating_add(1 + c.is_ascii_uppercase() as usize);
                     }
                     _ => {}
                 }
