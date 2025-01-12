@@ -12,9 +12,9 @@ mod renderer;
 
 use crate::game::components::DecayElement;
 use crate::game::display::Display;
+use crate::physics::PhysicsBoard;
 pub use render::*;
 pub use renderer::*;
-use crate::physics::PhysicsBoard;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pixel {
@@ -70,7 +70,10 @@ pub struct DisplayInfo {
 
 impl DisplayInfo {
     pub(super) fn new(width: usize, height: usize) -> Self {
-        Self { _width: width, _height: height }
+        Self {
+            _width: width,
+            _height: height,
+        }
     }
 
     pub fn width(&self) -> usize {
@@ -88,7 +91,7 @@ pub struct SharedState {
     decay_board: Display<DecayElement>,
     physics_board: PhysicsBoard,
     display_info: DisplayInfo,
-    pressed_keys: micromap::Map<KeyCode, u8, 16>
+    pressed_keys: micromap::Map<KeyCode, u8, 16>,
 }
 
 impl SharedState {
@@ -99,7 +102,7 @@ impl SharedState {
             decay_board: Display::new(width, height, DecayElement::new(' ')),
             physics_board: PhysicsBoard::new(width),
             display_info: DisplayInfo::new(width, height),
-            pressed_keys: micromap::Map::new()
+            pressed_keys: micromap::Map::new(),
         }
     }
 
@@ -285,7 +288,11 @@ impl<W: Write> Game<W> {
 
     fn render(&mut self) -> io::Result<()> {
         for (idx, component) in self.components.iter().enumerate() {
-            component.render(&mut self.display_renderer, &self.shared_state, idx as i32 * 100);
+            component.render(
+                &mut self.display_renderer,
+                &self.shared_state,
+                idx as i32 * 100,
+            );
         }
         self.display_renderer.flush()
     }

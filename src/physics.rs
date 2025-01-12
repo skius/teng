@@ -9,8 +9,10 @@ pub struct PhysicsBoard {
 
 impl PhysicsBoard {
     pub fn new(width: usize) -> Self {
-
-        Self { board: vec![vec![]; width], x_to_height_to_entities: vec![vec![]; width] }
+        Self {
+            board: vec![vec![]; width],
+            x_to_height_to_entities: vec![vec![]; width],
+        }
     }
 
     pub fn clear(&mut self) {
@@ -20,17 +22,22 @@ impl PhysicsBoard {
     }
 
     pub fn add_entity(&mut self, x: usize, y: usize, c: char) {
-        let res = self.board[x].binary_search_by(|entity| entity.y.partial_cmp(&(y as f64)).unwrap());
+        let res =
+            self.board[x].binary_search_by(|entity| entity.y.partial_cmp(&(y as f64)).unwrap());
         let insert_idx = res.unwrap_or_else(|idx| idx);
 
-        self.board[x].insert(insert_idx, Entity {
-            x: x as f64,
-            y: y as f64,
-            vel_x: 0.0,
-            vel_y: 0.0,
-            c,
-            time_at_bottom: 0.0,
-        });
+        self.board[x].insert(
+            insert_idx,
+            Entity {
+                x: x as f64,
+                y: y as f64,
+                vel_x: 0.0,
+                vel_y: 0.0,
+                c,
+                time_at_bottom: 0.0,
+                ttl: None,
+            },
+        );
     }
 
     pub fn update(&mut self, dt: f64, height: usize, mut write_debug: impl FnMut(String)) {
@@ -51,12 +58,13 @@ impl PhysicsBoard {
         height: usize,
         mut write_debug: impl FnMut(String),
     ) {
-
         let physics_entities = &mut self.board[col_idx];
         // physics_entities.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap());
         let height_to_entities = &mut self.x_to_height_to_entities[col_idx];
         height_to_entities.resize(height, vec![]);
-        height_to_entities.iter_mut().for_each(|entities| entities.clear());
+        height_to_entities
+            .iter_mut()
+            .for_each(|entities| entities.clear());
 
         let earth_accel = 40.0;
         let damping = 0.5;
@@ -65,8 +73,7 @@ impl PhysicsBoard {
         // let collision_damp_factor = 1.0 - dt * dt * 0.1;
         let collision_damp_factor = 1.0;
 
-
-        for  entity in physics_entities.iter_mut() {
+        for entity in physics_entities.iter_mut() {
             entity.vel_y += earth_accel * dt;
             entity.y += entity.vel_y * dt;
             if entity.y < 0.0 {
@@ -84,10 +91,17 @@ impl PhysicsBoard {
             } else {
                 entity.time_at_bottom = 0.0;
             }
+            if let Some(ttl) = entity.ttl.as_mut() {
+                *ttl -= dt;
+            }
         }
 
-        // physics_entities.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap());
+        physics_entities.retain(|entity| match entity.ttl {
+            Some(ttl) => ttl > 0.0,
+            None => true,
+        });
 
+        // physics_entities.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap());
 
         // Go from bottom to top, check collisions as we go along, and set new 'floors' for collision
         // handling when we have a perfect stack at the bottom.
@@ -97,7 +111,7 @@ impl PhysicsBoard {
         let mut move_next = 0.0;
         let entity_height = 1.0;
         for lower_idx in (0..physics_entities.len()).rev() {
-            let mut  lower_entity = physics_entities[lower_idx].clone();
+            let mut lower_entity = physics_entities[lower_idx].clone();
             // lower_entity.y -= move_next;
             if lower_entity.y >= hard_bottom_y - bottom_check_tol {
                 let new_y = hard_bottom_y;
@@ -117,9 +131,14 @@ impl PhysicsBoard {
             }
 
             // the room the lower entity has to collide.
-            let collide_buffer = hard_bottom_y -  lower_entity.y;
-            assert!(collide_buffer >= 0.0, "collide_buffer: {}, lower_idx: {}, total: {}", collide_buffer, lower_idx, physics_entities.len());
-
+            let collide_buffer = hard_bottom_y - lower_entity.y;
+            assert!(
+                collide_buffer >= 0.0,
+                "collide_buffer: {}, lower_idx: {}, total: {}",
+                collide_buffer,
+                lower_idx,
+                physics_entities.len()
+            );
 
             let upper_idx = lower_idx - 1;
             let mut upper_entity = physics_entities[upper_idx].clone();
@@ -151,7 +170,8 @@ impl PhysicsBoard {
                     // due to collision, it's now touching the bottom
                     let new_y = hard_bottom_y;
 
-                    hard_bottom_y = (hard_bottom_y - entity_height).min(lower_entity.y - entity_height);
+                    hard_bottom_y =
+                        (hard_bottom_y - entity_height).min(lower_entity.y - entity_height);
                     lower_entity.y = new_y;
                     // so velocity needs to be changed again
                     lower_entity.vel_y = -lower_entity.vel_y.abs() * damping;
@@ -159,10 +179,14 @@ impl PhysicsBoard {
                 physics_entities[lower_idx] = lower_entity;
                 physics_entities[upper_idx] = upper_entity;
             }
-
         }
 
-        assert!(physics_entities.is_sorted_by(|a, b| a.y <= b.y), "{:?}, bottom: {}", physics_entities.iter().map(|e| e.y).collect::<Vec<_>>(), hard_bottom_y);
+        assert!(
+            physics_entities.is_sorted_by(|a, b| a.y <= b.y),
+            "{:?}, bottom: {}",
+            physics_entities.iter().map(|e| e.y).collect::<Vec<_>>(),
+            hard_bottom_y
+        );
 
         return;
 
@@ -214,7 +238,6 @@ impl PhysicsBoard {
                 }
             }
         }
-
     }
 }
 
@@ -222,10 +245,11 @@ impl PhysicsBoard {
 pub struct Entity {
     pub x: f64,
     pub y: f64,
-    vel_x: f64,
+    pub vel_x: f64,
     pub vel_y: f64,
     pub c: char,
-    time_at_bottom: f64,
+    pub time_at_bottom: f64,
+    pub ttl: Option<f64>,
 }
 
 impl Entity {
@@ -249,9 +273,8 @@ fn handle_collision(entity_a: &mut Entity, entity_b: &mut Entity) -> f64 {
     //     // relative positions are swapped
     //     diff = -diff;
     // }
-    
+
     diff.abs()
     // entity_a.y += diff / 2.0;
     // entity_b.y -= diff / 2.0;
-
 }

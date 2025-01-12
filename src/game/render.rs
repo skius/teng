@@ -1,6 +1,6 @@
+use crate::game::{renderer::Renderer, Pixel};
 use std::fmt::Display;
 use std::io::Write;
-use crate::game::{Pixel, renderer::Renderer};
 
 pub trait Render {
     /// Render the object at the given position with the given depth
@@ -40,15 +40,15 @@ pub struct Sprite<const WIDTH: usize, const HEIGHT: usize> {
     center_pos: (usize, usize),
 }
 
-impl<const WIDTH: usize, const HEIGHT: usize>  Sprite<WIDTH, HEIGHT> {
+impl<const WIDTH: usize, const HEIGHT: usize> Sprite<WIDTH, HEIGHT> {
     pub fn height(&self) -> usize {
         HEIGHT
     }
-    
+
     pub fn width(&self) -> usize {
         WIDTH
     }
-    
+
     pub fn new(sprite: [[char; WIDTH]; HEIGHT], offset_x: usize, offset_y: usize) -> Self {
         let pixels = sprite.map(|row| row.map(|c| Pixel::new(c)));
         Self {
@@ -63,14 +63,12 @@ impl<const WIDTH: usize, const HEIGHT: usize> Render for Sprite<WIDTH, HEIGHT> {
         let (center_x, center_y) = self.center_pos;
         let x = x.saturating_sub(center_x);
         let y = y.saturating_sub(center_y);
-        
+
         for (i, row) in self.pixels.iter().enumerate() {
             for (j, pixel) in row.iter().enumerate() {
                 renderer.render_pixel(x + j, y + i, *pixel, depth);
             }
         }
-        
-
     }
 }
 
@@ -93,7 +91,8 @@ struct ColorRendererAdapter<'a, R> {
 
 impl<'a, R: Renderer> Renderer for ColorRendererAdapter<'a, R> {
     fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32) {
-        self.renderer.render_pixel(x, y, pixel.with_color(self.color), depth);
+        self.renderer
+            .render_pixel(x, y, pixel.with_color(self.color), depth);
     }
 
     fn flush(&mut self) -> std::io::Result<()> {

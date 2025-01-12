@@ -1,9 +1,11 @@
 use crate::game::display::Display;
-use crate::game::{BreakingAction, Component, MouseInfo, Pixel, Render, Renderer, SharedState, Sprite, UpdateInfo};
+use crate::game::{
+    BreakingAction, Component, MouseInfo, Pixel, Render, Renderer, SharedState, Sprite, UpdateInfo,
+};
+use crate::physics::{Entity, PhysicsBoard};
 use crossterm::event::{Event, KeyCode, KeyEvent, MouseEvent, MouseEventKind};
-use std::time::{Duration, Instant};
 use smallvec::SmallVec;
-use crate::physics::PhysicsBoard;
+use std::time::{Duration, Instant};
 
 pub struct DebugInfoComponent {
     frametime_ns: u128,
@@ -131,20 +133,18 @@ impl Component for FPSLockerComponent {
             }) => {
                 self.locked = !self.locked;
             }
-            Event::Mouse(me) => {
-                match me.kind {
-                    MouseEventKind::ScrollDown => {
-                        self.default_fps -= 1.0;
-                        if self.default_fps < 1.0 {
-                            self.default_fps = 1.0;
-                        }
+            Event::Mouse(me) => match me.kind {
+                MouseEventKind::ScrollDown => {
+                    self.default_fps -= 1.0;
+                    if self.default_fps < 1.0 {
+                        self.default_fps = 1.0;
                     }
-                    MouseEventKind::ScrollUp => {
-                        self.default_fps += 1.0;
-                    }
-                    _ => {}
                 }
-            }
+                MouseEventKind::ScrollUp => {
+                    self.default_fps += 1.0;
+                }
+                _ => {}
+            },
             _ => {}
         }
         None
@@ -201,14 +201,9 @@ impl MouseTrackerComponent {
         }
     }
 
-
     /// Calls the passed closure with a new mouse info for every interpolated mouse info between
     /// the two passed mouse infos. Also includes the endpoints.
-    pub fn smooth_two_updates(
-        first: MouseInfo,
-        second: MouseInfo,
-        mut f: impl FnMut(MouseInfo),
-    ) {
+    pub fn smooth_two_updates(first: MouseInfo, second: MouseInfo, mut f: impl FnMut(MouseInfo)) {
         // linearly interpolate from first to second pixel.
         // so, rasterize a line connecting the two points
 
@@ -248,7 +243,6 @@ impl MouseTrackerComponent {
         }
 
         f(second);
-
     }
 }
 
@@ -374,7 +368,8 @@ impl FloodFillComponent {
         for y in 0..self.board.height() {
             for x in 0..self.board.width() {
                 if self.board[(x, y)] {
-                    shared_state.decay_board[(x, y)] = DecayElement::new_with_time('█', current_time);
+                    shared_state.decay_board[(x, y)] =
+                        DecayElement::new_with_time('█', current_time);
                     self.board[(x, y)] = false;
                 }
             }
@@ -392,12 +387,16 @@ impl Component for FloodFillComponent {
             Event::Mouse(event) => {
                 let mut new_mouse_info = self.last_mouse_info;
                 MouseTrackerComponent::fill_mouse_info(event, &mut new_mouse_info);
-                MouseTrackerComponent::smooth_two_updates(self.last_mouse_info, new_mouse_info, |mouse_info| {
-                    if mouse_info.right_mouse_down {
-                        let (x, y) = mouse_info.last_mouse_pos;
-                        self.board.set(x, y, true);
-                    }
-                });
+                MouseTrackerComponent::smooth_two_updates(
+                    self.last_mouse_info,
+                    new_mouse_info,
+                    |mouse_info| {
+                        if mouse_info.right_mouse_down {
+                            let (x, y) = mouse_info.last_mouse_pos;
+                            self.board.set(x, y, true);
+                        }
+                    },
+                );
                 self.last_mouse_info = new_mouse_info;
                 // if self.last_mouse_info.right_mouse_down {
                 //     let (x, y) = self.last_mouse_info.last_mouse_pos;
@@ -462,13 +461,17 @@ impl Component for SimpleDrawComponent {
         if let Event::Mouse(event) = event {
             let mut new_mouse_info = self.last_mouse_info;
             MouseTrackerComponent::fill_mouse_info(event, &mut new_mouse_info);
-            MouseTrackerComponent::smooth_two_updates(self.last_mouse_info, new_mouse_info, |mouse_info| {
-                if mouse_info.left_mouse_down {
-                    let x = mouse_info.last_mouse_pos.0 as u16;
-                    let y = mouse_info.last_mouse_pos.1 as u16;
-                    self.draw_queue.push((x, y));
-                }
-            });
+            MouseTrackerComponent::smooth_two_updates(
+                self.last_mouse_info,
+                new_mouse_info,
+                |mouse_info| {
+                    if mouse_info.left_mouse_down {
+                        let x = mouse_info.last_mouse_pos.0 as u16;
+                        let y = mouse_info.last_mouse_pos.1 as u16;
+                        self.draw_queue.push((x, y));
+                    }
+                },
+            );
             self.last_mouse_info = new_mouse_info;
         }
         None
@@ -476,17 +479,17 @@ impl Component for SimpleDrawComponent {
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
         for (x, y) in self.draw_queue.drain(..) {
-            shared_state.decay_board[(x as usize, y as usize)] = DecayElement::new_with_time('█', update_info.current_time);
+            shared_state.decay_board[(x as usize, y as usize)] =
+                DecayElement::new_with_time('█', update_info.current_time);
         }
         // also current pixel, in case we're holding the button and not moving
         if self.last_mouse_info.left_mouse_down {
             let (x, y) = self.last_mouse_info.last_mouse_pos;
-            shared_state.decay_board[(x, y)] = DecayElement::new_with_time('█', update_info.current_time);
+            shared_state.decay_board[(x, y)] =
+                DecayElement::new_with_time('█', update_info.current_time);
         }
     }
 }
-
-
 
 #[derive(Debug, Clone, Copy)]
 pub struct DecayElement {
@@ -496,17 +499,21 @@ pub struct DecayElement {
 
 impl DecayElement {
     pub fn new(c: char) -> Self {
-        Self { c, inception_time: None }
+        Self {
+            c,
+            inception_time: None,
+        }
     }
 
     pub fn new_with_time(c: char, inception_time: Instant) -> Self {
-        Self { c, inception_time: Some(inception_time) }
+        Self {
+            c,
+            inception_time: Some(inception_time),
+        }
     }
 }
 
-pub struct DecayComponent {
-
-}
+pub struct DecayComponent {}
 
 impl DecayComponent {
     const DECAY_TIME: Duration = Duration::from_millis(500);
@@ -537,7 +544,6 @@ impl Component for DecayComponent {
                     self.release(&mut shared_state.physics_board, x, y);
                 }
             }
-
         }
     }
 
@@ -552,9 +558,7 @@ impl Component for DecayComponent {
 }
 
 // This just runs the physics simulation contained in the shared state.
-pub struct PhysicsComponent {
-
-}
+pub struct PhysicsComponent {}
 
 impl PhysicsComponent {
     pub fn new() -> Self {
@@ -564,10 +568,15 @@ impl PhysicsComponent {
 
 impl Component for PhysicsComponent {
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
-        let dt = update_info.current_time.saturating_duration_since(update_info.last_time).as_secs_f64();
-        shared_state.physics_board.update(dt, shared_state.decay_board.height(), |s| {
-            // TODO: debug print
-        });
+        let dt = update_info
+            .current_time
+            .saturating_duration_since(update_info.last_time)
+            .as_secs_f64();
+        shared_state
+            .physics_board
+            .update(dt, shared_state.decay_board.height(), |s| {
+                // TODO: debug print
+            });
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
@@ -582,7 +591,12 @@ impl Component for PhysicsComponent {
                     // map vel from 0 to height to 0 to 255
                     let vel = (vel / height as f64 * 255.0) as u8;
                     let color = [255, 255 - vel, 255];
-                    renderer.render_pixel(x, y, Pixel::new(entity.c)/*.with_color(color)*/, depth_base);
+                    renderer.render_pixel(
+                        x,
+                        y,
+                        Pixel::new(entity.c), /*.with_color(color)*/
+                        depth_base,
+                    );
                 }
             }
         }
@@ -591,7 +605,7 @@ impl Component for PhysicsComponent {
 
 /// Must be before any other components that use key presses.
 pub struct KeyPressRecorderComponent {
-    pressed_keys: micromap::Map<KeyCode, u8, 16>
+    pressed_keys: micromap::Map<KeyCode, u8, 16>,
 }
 
 impl KeyPressRecorderComponent {
@@ -634,10 +648,25 @@ struct Bullet {
 
 impl Bullet {
     // returns whether the bullet should be deleted or not
-    fn update(&mut self, dt: f64, height: usize, width: usize) -> bool {
+    fn update(
+        &mut self,
+        dt: f64,
+        height: usize,
+        width: usize,
+        shared_state: &mut SharedState,
+    ) -> bool {
         self.x += self.vel_x * dt;
         self.y += self.vel_y * dt;
         if self.x < 0.0 || self.x >= width as f64 || self.y < 0.0 || self.y >= height as f64 {
+            return true;
+        }
+        if ForceApplyComponent::apply_force(
+            shared_state,
+            self.x.floor() as usize,
+            self.y.floor() as usize,
+            -20.0,
+            1,
+        ) {
             return true;
         }
         false
@@ -657,10 +686,7 @@ impl PlayerComponent {
         Self {
             x,
             y,
-            sprite: Sprite::new([
-                ['▁', '▄', '▁'],
-                ['▗', '▀', '▖']
-            ], 1, 1),
+            sprite: Sprite::new([['▁', '▄', '▁'], ['▗', '▀', '▖']], 1, 1),
             bullets: vec![],
             bullet_char: '●',
         }
@@ -688,7 +714,6 @@ impl PlayerComponent {
             bullet.y += 2.0;
         }
         self.bullets.push(bullet);
-
     }
 }
 
@@ -733,15 +758,24 @@ impl Component for PlayerComponent {
             self.spawn_bullet(shared_state, 0.0, bullet_speed);
         }
 
-        let dt = update_info.current_time.saturating_duration_since(update_info.last_time).as_secs_f64();
+        let dt = update_info
+            .current_time
+            .saturating_duration_since(update_info.last_time)
+            .as_secs_f64();
         self.bullets.retain_mut(|bullet| {
-            let delete = bullet.update(dt, shared_state.display_info.height(), shared_state.display_info.width());
+            let delete = bullet.update(
+                dt,
+                shared_state.display_info.height(),
+                shared_state.display_info.width(),
+                shared_state,
+            );
             !delete
         });
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
-        self.sprite.render(&mut renderer, self.x, self.y, depth_base);
+        self.sprite
+            .render(&mut renderer, self.x, self.y, depth_base);
         // render bullets
         for bullet in &self.bullets {
             let x = bullet.x.floor() as usize;
@@ -759,6 +793,54 @@ impl Component for ClearComponent {
         if shared_state.pressed_keys.contains_key(&KeyCode::Char('c')) {
             shared_state.decay_board.clear();
             shared_state.physics_board.clear();
+        }
+    }
+}
+
+pub struct ForceApplyComponent;
+
+impl ForceApplyComponent {
+    /// Returns whether an explosion happened or not.
+    fn apply_force(
+        shared_state: &mut SharedState,
+        x: usize,
+        y: usize,
+        vel_change_y: f64,
+        count: usize,
+    ) -> bool {
+        if let Ok(base_idx) = shared_state.physics_board.board[x]
+            .binary_search_by(|entity| (entity.y.floor() as usize).cmp(&y))
+        {
+            let first_entity = &mut shared_state.physics_board.board[x][base_idx];
+            first_entity.vel_y += vel_change_y;
+            let first_y = first_entity.y;
+
+            // all other ones must be above, and smaller indices
+            for i in 1..count {
+                if i > base_idx {
+                    // reached the end.
+                    break;
+                }
+                let idx = base_idx - i;
+                // must check that it is within the expected range of first_entity (only stacked entities should experience the same explosion)
+                let entity = &mut shared_state.physics_board.board[x][idx];
+                if entity.y < first_y - i as f64 {
+                    break;
+                }
+                entity.vel_y += vel_change_y;
+            }
+            true
+        } else {
+            false
+        }
+    }
+}
+
+impl Component for ForceApplyComponent {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        if shared_state.pressed_keys.contains_key(&KeyCode::Char('f')) {
+            let (x, y) = shared_state.mouse_info.last_mouse_pos;
+            ForceApplyComponent::apply_force(shared_state, x, y, -100.0, 10);
         }
     }
 }

@@ -2,9 +2,15 @@
 //!
 //! cargo run --example event-poll-read
 
-mod physics;
 mod game;
+mod physics;
 
+use crate::game::components::{
+    ClearComponent, DebugInfoComponent, DecayComponent, FPSLockerComponent, FloodFillComponent,
+    ForceApplyComponent, KeyPressRecorderComponent, MouseTrackerComponent, PhysicsComponent,
+    PlayerComponent, QuitterComponent, SimpleDrawComponent,
+};
+use crate::game::{DisplayRenderer, Game, Pixel, Render, Renderer, Sprite, WithColor};
 use crossterm::event::{KeyEvent, KeyboardEnhancementFlags, MouseButton, MouseEventKind};
 use crossterm::style::{Color, Colored, Colors};
 use crossterm::terminal::size;
@@ -16,12 +22,10 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode},
 };
 use std::io::{stdout, Stdout, Write};
+use std::ops::Deref;
 use std::thread::sleep;
 use std::time::Instant;
 use std::{io, time::Duration};
-use std::ops::Deref;
-use crate::game::{DisplayRenderer, Game, Pixel, Render, Renderer, Sprite, WithColor};
-use crate::game::components::{ClearComponent, DebugInfoComponent, DecayComponent, FPSLockerComponent, FloodFillComponent, KeyPressRecorderComponent, MouseTrackerComponent, PhysicsComponent, PlayerComponent, QuitterComponent, SimpleDrawComponent};
 
 const HELP: &str = r#"Blocking poll() & non-blocking read()
  - Keyboard, mouse and terminal resize events enabled
@@ -178,7 +182,6 @@ fn max_color(a: char, b: char) -> char {
 fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
     let mut stdout = CustomBufWriter::new();
 
-
     let sprite = [['▁', '▄', '▁'], ['▗', '▀', '▖']];
     let sprite = Sprite::new(sprite, 0, 0);
 
@@ -191,7 +194,6 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
     let mut height = t_height as usize;
 
     let mut renderer = DisplayRenderer::new_with_sink(width, height, stdout);
-
 
     let mut physics_board = physics::PhysicsBoard::new(MAX_WIDTH);
     let mut start_drag_height = height;
@@ -468,7 +470,6 @@ fn game_loop(stdout: &mut Stdout) -> io::Result<()> {
         let mut render_y = 0;
         let frame_info_depth = 20;
         if write_frame_info {
-
             frametime_string.render(&mut renderer, 0, render_y, frame_info_depth);
             render_y += 1;
 
@@ -529,7 +530,7 @@ fn render_loop() -> io::Result<()> {
             renderer.render_pixel(width as usize - 1, y, game::Pixel::new('█'), 1);
         }
         for x in 0..width as usize {
-            renderer.render_pixel(x, 0, game::Pixel::new('█').with_color([100,200,100]), 1);
+            renderer.render_pixel(x, 0, game::Pixel::new('█').with_color([100, 200, 100]), 1);
             renderer.render_pixel(x, height as usize - 1, game::Pixel::new('█'), 1);
         }
 
@@ -562,7 +563,6 @@ fn main() -> io::Result<()> {
     // actually, doesnt work on windows terminal.
     // execute!(stdout, crossterm::event::PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::REPORT_EVENT_TYPES | KeyboardEnhancementFlags::REPORT_ALL_KEYS_AS_ESCAPE_CODES))?;
 
-
     let sink = CustomBufWriter::new();
     let mut game = Game::new(sink);
     game.add_component(Box::new(FPSLockerComponent::new(150.0)));
@@ -570,9 +570,10 @@ fn main() -> io::Result<()> {
     game.add_component(Box::new(ClearComponent));
     game.add_component(Box::new(MouseTrackerComponent::new()));
     game.add_component(Box::new(QuitterComponent));
+    game.add_component(Box::new(ForceApplyComponent));
     game.add_component(Box::new(PhysicsComponent::new()));
     game.add_component(Box::new(DecayComponent::new()));
-    game.add_component_with(|width, height | Box::new(FloodFillComponent::new(width, height)));
+    game.add_component_with(|width, height| Box::new(FloodFillComponent::new(width, height)));
     game.add_component(Box::new(SimpleDrawComponent::new()));
     game.add_component(Box::new(PlayerComponent::new(1, 1)));
     game.add_component(Box::new(DebugInfoComponent::new()));

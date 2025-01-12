@@ -1,9 +1,9 @@
+use crate::game::display::Display;
+use crate::game::{Pixel, Render};
+use crossterm::queue;
 use std::io;
 use std::io::{Stdout, Write};
 use std::ops::{Index, IndexMut};
-use crossterm::queue;
-use crate::game::{Pixel, Render};
-use crate::game::display::Display;
 
 pub trait Renderer {
     fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32);
@@ -112,11 +112,14 @@ impl<W: Write> DisplayRenderer<W> {
                 let pixel = self.display[(x, y)];
                 let new_color = pixel.color.unwrap_or(self.default_fg_color);
                 if new_color != self.last_fg_color {
-                    queue!(self.sink, crossterm::style::SetForegroundColor(crossterm::style::Color::Rgb {
-                        r: new_color[0],
-                        g: new_color[1],
-                        b: new_color[2],
-                    }))?;
+                    queue!(
+                        self.sink,
+                        crossterm::style::SetForegroundColor(crossterm::style::Color::Rgb {
+                            r: new_color[0],
+                            g: new_color[1],
+                            b: new_color[2],
+                        })
+                    )?;
                     self.last_fg_color = new_color;
                 }
                 queue!(self.sink, crossterm::style::Print(pixel.c))?;
@@ -128,11 +131,14 @@ impl<W: Write> DisplayRenderer<W> {
 
         self.sink.flush()?;
         self.last_fg_color = self.default_fg_color;
-        queue!(self.sink, crossterm::style::SetForegroundColor(crossterm::style::Color::Rgb {
-            r: self.default_fg_color[0],
-            g: self.default_fg_color[1],
-            b: self.default_fg_color[2],
-        }))?;
+        queue!(
+            self.sink,
+            crossterm::style::SetForegroundColor(crossterm::style::Color::Rgb {
+                r: self.default_fg_color[0],
+                g: self.default_fg_color[1],
+                b: self.default_fg_color[2],
+            })
+        )?;
         self.depth_buffer.clear();
 
         Ok(())
