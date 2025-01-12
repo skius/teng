@@ -290,6 +290,7 @@ pub struct FloodFillComponent {
     visited: Display<bool>,
     stack: Vec<(i32, i32)>,
     last_mouse_info: MouseInfo,
+    received_down_event_this_frame: bool,
 }
 
 impl FloodFillComponent {
@@ -300,6 +301,7 @@ impl FloodFillComponent {
             visited: Display::new(width, height, false),
             stack: vec![],
             last_mouse_info: MouseInfo::default(),
+            received_down_event_this_frame: false,
         }
     }
 
@@ -389,8 +391,6 @@ impl Component for FloodFillComponent {
                 self.visited.resize_discard(width as usize, height as usize);
             }
             Event::Mouse(event) => {
-                // TODO: last_mouse_info could be default initialized if there has been no event previously.
-                // so we should turn it into option and only smooth if there is a previous one (or just take the new info twice)
                 let mut new_mouse_info = self.last_mouse_info;
                 MouseTrackerComponent::fill_mouse_info(event, &mut new_mouse_info);
                 MouseTrackerComponent::smooth_two_updates(self.last_mouse_info, new_mouse_info, |mouse_info| {
@@ -404,6 +404,9 @@ impl Component for FloodFillComponent {
                 //     let (x, y) = self.last_mouse_info.last_mouse_pos;
                 //     self.board.set(x, y, true);
                 // }
+                if self.last_mouse_info.right_mouse_down {
+                    self.received_down_event_this_frame = true;
+                }
             }
             _ => {}
         }
@@ -411,25 +414,22 @@ impl Component for FloodFillComponent {
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
-        // TODO: if we start a frame with no_content, then receive a mouse down, then mouse up event, and only then call update(),
-        // we will not process. Instead we should start each frame with "received event: false" and set it to true when we receive an event.
-        // then in update() we can check if we received an event since last update and if so, process the board.
-        // in particular it should be "received mouse down event" or something, because we want to on_release() if we received ONLY a mouse up event.
-        if shared_state.mouse_info.right_mouse_down {
+        if shared_state.mouse_info.right_mouse_down || self.received_down_event_this_frame {
             // We must have received some mouse events since last release.
             self.has_content = true;
             // Tracking and updating of board state happens on event handling as to not skip any
             // pixels at low frame rates (i.e., being able to update more than one pixel per frame).
             // For performance reasons, flood fill still only happens once per frame.
             if self.flood_fill() {
-                // Print debug message
-            }
-        } else {
-            if self.has_content {
-                self.has_content = false;
-                self.on_release(shared_state, update_info.current_time);
+                // TODO: Print debug message
             }
         }
+        // if we are in released state and have unprocessed content, process
+        if !shared_state.mouse_info.right_mouse_down && self.has_content {
+            self.has_content = false;
+            self.on_release(shared_state, update_info.current_time);
+        }
+        self.received_down_event_this_frame = false;
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
@@ -461,7 +461,6 @@ impl SimpleDrawComponent {
 impl Component for SimpleDrawComponent {
     fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
         if let Event::Mouse(event) = event {
-            // TODO: same issue as in floodfill
             let mut new_mouse_info = self.last_mouse_info;
             MouseTrackerComponent::fill_mouse_info(event, &mut new_mouse_info);
             MouseTrackerComponent::smooth_two_updates(self.last_mouse_info, new_mouse_info, |mouse_info| {
