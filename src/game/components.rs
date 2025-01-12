@@ -676,8 +676,10 @@ impl Bullet {
 }
 
 pub struct PlayerComponent {
-    x: usize,
-    y: usize,
+    x: f64,
+    y: f64,
+    x_vel: f64,
+    y_vel: f64,
     sprite: Sprite<3, 2>,
     bullets: Vec<Bullet>,
     bullet_char: char,
@@ -686,8 +688,10 @@ pub struct PlayerComponent {
 impl PlayerComponent {
     pub fn new(x: usize, y: usize) -> Self {
         Self {
-            x,
-            y,
+            x: x as f64,
+            y: y as f64,
+            x_vel: 0.0,
+            y_vel: 0.0,
             sprite: Sprite::new([['▁', '▄', '▁'], ['▗', '▀', '▖']], 1, 1),
             bullets: vec![],
             bullet_char: '●',
@@ -720,32 +724,33 @@ impl PlayerComponent {
 }
 
 impl Component for PlayerComponent {
-    fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
-        match event {
-            Event::Key(ke) => {
-                assert_eq!(ke.kind, crossterm::event::KeyEventKind::Press);
-                match ke.code {
-                    KeyCode::Char('w' | 'W') => {
-                        self.y = self.y.saturating_sub(1);
-                    }
-                    KeyCode::Char('s' | 'S') => {
-                        self.y = self.y.saturating_add(1);
-                    }
-                    KeyCode::Char(c@('a' | 'A')) => {
-                        self.x = self.x.saturating_sub(1 + c.is_ascii_uppercase() as usize);
-                    }
-                    KeyCode::Char(c@('d' | 'D')) => {
-                        self.x = self.x.saturating_add(1 + c.is_ascii_uppercase() as usize);
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-        None
-    }
+    // fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
+    //     match event {
+    //         Event::Key(ke) => {
+    //             assert_eq!(ke.kind, crossterm::event::KeyEventKind::Press);
+    //             match ke.code {
+    //                 KeyCode::Char('w' | 'W') => {
+    //                     self.y = self.y.saturating_sub(1);
+    //                 }
+    //                 KeyCode::Char('s' | 'S') => {
+    //                     self.y = self.y.saturating_add(1);
+    //                 }
+    //                 KeyCode::Char(c@('a' | 'A')) => {
+    //                     self.x = self.x.saturating_sub(1 + c.is_ascii_uppercase() as usize);
+    //                 }
+    //                 KeyCode::Char(c@('d' | 'D')) => {
+    //                     self.x = self.x.saturating_add(1 + c.is_ascii_uppercase() as usize);
+    //                 }
+    //                 _ => {}
+    //             }
+    //         }
+    //         _ => {}
+    //     }
+    //     None
+    // }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        // Bullet spawning
         let bullet_speed = 12.0;
         if shared_state.pressed_keys.contains_key(&KeyCode::Left) {
             self.spawn_bullet(shared_state, -bullet_speed, 0.0);
@@ -773,11 +778,56 @@ impl Component for PlayerComponent {
             );
             !delete
         });
+
+        // Player inputs
+        if shared_state.pressed_keys.contains_key(&KeyCode::Char(' ')) {
+            let grounded = self.y >= shared_state.display_info.height() as f64 - 1.1;
+            if grounded {
+                self.y_vel = -20.0;
+            }
+        }
+
+        if shared_state.pressed_keys.contains_key(&KeyCode::Char('a')) {
+            self.x_vel = -10.0;
+        } else if shared_state.pressed_keys.contains_key(&KeyCode::Char('d')) {
+            self.x_vel = 10.0;
+        }
+        if shared_state.pressed_keys.contains_key(&KeyCode::Char('A')) {
+            self.x_vel = -20.0;
+        } else if shared_state.pressed_keys.contains_key(&KeyCode::Char('D')) {
+            self.x_vel = 20.0;
+        }
+
+        // Player physics
+        let height = shared_state.display_info.height() as f64;
+        let width = shared_state.display_info.width() as f64;
+
+        let gravity = 40.0;
+
+        self.y_vel += gravity * dt;
+        self.x += self.x_vel * dt;
+        self.y += self.y_vel * dt;
+
+        if self.x < 0.0 {
+            self.x = 0.0;
+            self.x_vel = 0.0;
+        } else if self.x >= width {
+            self.x = width - 1.0;
+            self.x_vel = 0.0;
+        }
+
+        if self.y < 0.0 {
+            self.y = 0.0;
+            self.y_vel = 0.0;
+        } else if self.y >= height {
+            self.y = height - 1.0;
+            self.y_vel = 0.0;
+        }
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         self.sprite
-            .render(&mut renderer, self.x, self.y, depth_base);
+            .render(&mut renderer, self.x.floor() as usize, self.y.floor() as usize, depth_base);
         // render bullets
         for bullet in &self.bullets {
             let x = bullet.x.floor() as usize;

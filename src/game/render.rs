@@ -61,12 +61,17 @@ impl<const WIDTH: usize, const HEIGHT: usize> Sprite<WIDTH, HEIGHT> {
 impl<const WIDTH: usize, const HEIGHT: usize> Render for Sprite<WIDTH, HEIGHT> {
     fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
         let (center_x, center_y) = self.center_pos;
-        let x = x.saturating_sub(center_x);
-        let y = y.saturating_sub(center_y);
+        let x = x as i32 - center_x as i32;
+        let y = y as i32 - center_y as i32;
 
         for (i, row) in self.pixels.iter().enumerate() {
             for (j, pixel) in row.iter().enumerate() {
-                renderer.render_pixel(x + j, y + i, *pixel, depth);
+                let render_x = x + j as i32;
+                let render_y = y + i as i32;
+                if render_x < 0 || render_y < 0 {
+                    continue;
+                }
+                renderer.render_pixel(render_x as usize, render_y as usize, *pixel, depth);
             }
         }
     }
