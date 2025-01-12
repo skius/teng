@@ -21,7 +21,7 @@ use std::time::Instant;
 use std::{io, time::Duration};
 use std::ops::Deref;
 use crate::game::{DisplayRenderer, Game, Pixel, Render, Renderer, Sprite, WithColor};
-use crate::game::components::{DebugInfoComponent, DecayComponent, FPSLockerComponent, FloodFillComponent, KeyPressRecorderComponent, MouseTrackerComponent, PhysicsComponent, PlayerComponent, QuitterComponent, SimpleDrawComponent};
+use crate::game::components::{ClearComponent, DebugInfoComponent, DecayComponent, FPSLockerComponent, FloodFillComponent, KeyPressRecorderComponent, MouseTrackerComponent, PhysicsComponent, PlayerComponent, QuitterComponent, SimpleDrawComponent};
 
 const HELP: &str = r#"Blocking poll() & non-blocking read()
  - Keyboard, mouse and terminal resize events enabled
@@ -567,6 +567,7 @@ fn main() -> io::Result<()> {
     let mut game = Game::new(sink);
     game.add_component(Box::new(FPSLockerComponent::new(150.0)));
     game.add_component(Box::new(KeyPressRecorderComponent::new()));
+    game.add_component(Box::new(ClearComponent));
     game.add_component(Box::new(MouseTrackerComponent::new()));
     game.add_component(Box::new(QuitterComponent));
     game.add_component(Box::new(PhysicsComponent::new()));

@@ -585,6 +585,7 @@ impl Component for PhysicsComponent {
     }
 }
 
+/// Must be before any other components that use key presses.
 pub struct KeyPressRecorderComponent {
     pressed_keys: micromap::Map<KeyCode, u8, 16>
 }
@@ -743,6 +744,17 @@ impl Component for PlayerComponent {
             let y = bullet.y.floor() as usize;
             let pixel = Pixel::new(self.bullet_char).with_color([200, 200, 100]);
             renderer.render_pixel(x, y, pixel, depth_base);
+        }
+    }
+}
+
+pub struct ClearComponent;
+
+impl Component for ClearComponent {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        if shared_state.pressed_keys.contains_key(&KeyCode::Char('c')) {
+            shared_state.decay_board.clear();
+            shared_state.physics_board.clear();
         }
     }
 }

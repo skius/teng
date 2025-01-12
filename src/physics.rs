@@ -77,11 +77,7 @@ impl PhysicsBoard {
             }
         }
 
-        physics_entities.retain(|entity| entity.time_at_bottom < max_time_at_bottom);
-        let total_physics_entities = physics_entities.len();
-
-        // let mut height_to_entities = vec![vec![]; height];
-
+        // physics_entities.retain(|entity| entity.time_at_bottom < max_time_at_bottom);
         for (i, entity) in physics_entities.iter().enumerate() {
             let height = entity.y.floor() as usize;
             height_to_entities[height].push(i);
@@ -153,6 +149,9 @@ fn handle_collision(entity_a: &mut Entity, entity_b: &mut Entity) {
     let (vel_y_a, vel_y_b) = (entity_a.vel_y, entity_b.vel_y);
     entity_a.vel_y = vel_y_b;
     entity_b.vel_y = vel_y_a;
+    let collision_damp_factor = 0.8;
+    entity_a.vel_y *= collision_damp_factor;
+    entity_b.vel_y *= collision_damp_factor;
 
     let mut diff = 1.0 - (entity_a.y - entity_b.y).abs();
     if entity_a.y < entity_b.y {
