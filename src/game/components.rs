@@ -578,7 +578,11 @@ impl Component for PhysicsComponent {
                 let x = entity.x.floor() as usize;
                 let y = entity.y.floor() as usize;
                 if x < width && y < height {
-                    renderer.render_pixel(x, y, Pixel::new(entity.c), depth_base);
+                    let vel = entity.vel_y.abs();
+                    // map vel from 0 to height to 0 to 255
+                    let vel = (vel / height as f64 * 255.0) as u8;
+                    let color = [255, 255 - vel, 255];
+                    renderer.render_pixel(x, y, Pixel::new(entity.c)/*.with_color(color)*/, depth_base);
                 }
             }
         }
