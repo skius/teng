@@ -12,6 +12,8 @@ pub struct DebugInfo {
     player_y: f64,
     player_x: f64,
     left_wall: f64,
+    bottom_wall: f64,
+    y_vel: f64,
 }
 
 impl DebugInfo {
@@ -115,7 +117,11 @@ impl Component for DebugInfoComponent {
         };
         format!("FPS: {:.2} ({})", self.fps, target_str).render(&mut renderer, 0, y, depth_base);
         y += 1;
-        format!("DebugInfo: {:?}", shared_state.debug_info).render(&mut renderer, 0, y, depth_base);
+        let debug_string = format!("DebugInfo: {:#?}", shared_state.debug_info);
+        for line in debug_string.lines() {
+            line.render(&mut renderer, 0, y, depth_base);
+            y += 1;
+        }
         y += 1;
         format!("Display size: {}x{}", shared_state.display_info.width(), shared_state.display_info.height()).render(&mut renderer, 0, y, depth_base);
         // format!("Pressed keys: {:?}", shared_state.pressed_keys).render(&mut renderer, 0, y, depth_base);
@@ -790,16 +796,32 @@ impl Component for PlayerComponent {
         // Bullet spawning
         let bullet_speed = 12.0;
         if shared_state.pressed_keys.contains_key(&KeyCode::Left) {
-            self.spawn_bullet(shared_state, -bullet_speed, 0.0);
+            let mut speed_mod = 0.0;
+            if self.x_vel < 0.0 {
+                speed_mod = self.x_vel;
+            }
+            self.spawn_bullet(shared_state, -bullet_speed + speed_mod, 0.0);
         }
         if shared_state.pressed_keys.contains_key(&KeyCode::Right) {
-            self.spawn_bullet(shared_state, bullet_speed, 0.0);
+            let mut speed_mod = 0.0;
+            if self.x_vel > 0.0 {
+                speed_mod = self.x_vel;
+            }
+            self.spawn_bullet(shared_state, bullet_speed + speed_mod, 0.0);
         }
         if shared_state.pressed_keys.contains_key(&KeyCode::Up) {
-            self.spawn_bullet(shared_state, 0.0, -bullet_speed);
+            let mut speed_mod = 0.0;
+            if self.y_vel < 0.0 {
+                speed_mod = self.y_vel;
+            }
+            self.spawn_bullet(shared_state, 0.0, -bullet_speed + speed_mod);
         }
         if shared_state.pressed_keys.contains_key(&KeyCode::Down) {
-            self.spawn_bullet(shared_state, 0.0, bullet_speed);
+            let mut speed_mod = 0.0;
+            if self.y_vel > 0.0 {
+                speed_mod = self.y_vel;
+            }
+            self.spawn_bullet(shared_state, 0.0, bullet_speed + speed_mod);
         }
 
         let dt = update_info
@@ -1005,7 +1027,7 @@ impl Component for PlayerComponent {
         } else if self.y >= bottom_wall {
             self.y = bottom_wall - 1.0;
             // if we're going up, don't douch the jump velocity.
-            if self.y_vel < 0.0 {
+            if self.y_vel >= 0.0 {
                 self.y_vel = 0.0;
             }
 
@@ -1021,6 +1043,8 @@ impl Component for PlayerComponent {
         shared_state.debug_info.player_y = self.y;
         shared_state.debug_info.player_x = self.x;
         shared_state.debug_info.left_wall = left_wall;
+        shared_state.debug_info.bottom_wall = bottom_wall;
+        shared_state.debug_info.y_vel = self.y_vel;
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
