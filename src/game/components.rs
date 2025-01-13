@@ -835,7 +835,6 @@ impl Component for PlayerComponent {
 
         self.y_vel += gravity * dt;
         self.x += self.x_vel * dt;
-        self.y += self.y_vel * dt;
 
         let mut bottom_wall = height;
         let mut left_wall = 0.0f64;
@@ -848,27 +847,6 @@ impl Component for PlayerComponent {
             y_u = height as usize - 1;
         }
 
-        // TODO: the left_wall check and collision handling is not good yet - the player character
-        // seems to jump quickly up when it hits a wall to the left and then falls again.
-        // some forces are fighting.
-        {
-            // Check below
-            let x = x_u as i32;
-            let y = y_u;
-
-            // TODO: should be dynamic due to sprite size
-            for x in (x-1)..=(x+1) {
-                if x < 0 || x >= width as i32 {
-                    continue;
-                }
-                for y in y..(height as usize).min(y + 4) as usize {
-                    if shared_state.collision_board[(x as usize, y)] {
-                        bottom_wall = bottom_wall.min(y as f64);
-                        break;
-                    }
-                }
-            }
-        }
 
         {
             // Check left
@@ -895,6 +873,37 @@ impl Component for PlayerComponent {
         } else if self.x >= width {
             self.x = width - 1.0;
             self.x_vel = 0.0;
+        }
+
+        // need to update for bottom checking, since x checking can clamp x and change the bottom check result
+        let mut x_u = self.x.floor() as usize;
+        // and only update y here, because otherwise x checking will think we're inside the floor block
+        self.y += self.y_vel * dt;
+        let mut y_u = self.y.floor() as usize;
+        if y_u >= height as usize {
+            y_u = height as usize - 1;
+        }
+
+        // TODO: the left_wall check and collision handling is not good yet - the player character
+        // seems to jump quickly up when it hits a wall to the left and then falls again.
+        // some forces are fighting.
+        {
+            // Check below
+            let x = x_u as i32;
+            let y = y_u;
+
+            // TODO: should be dynamic due to sprite size
+            for x in (x-1)..=(x+1) {
+                if x < 0 || x >= width as i32 {
+                    continue;
+                }
+                for y in y..(height as usize).min(y + 4) as usize {
+                    if shared_state.collision_board[(x as usize, y)] {
+                        bottom_wall = bottom_wall.min(y as f64);
+                        break;
+                    }
+                }
+            }
         }
 
         if self.y < 0.0 {
