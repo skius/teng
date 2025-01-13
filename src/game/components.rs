@@ -661,8 +661,10 @@ impl Component for KeyPressRecorderComponent {
                 if let Some(count) = self.pressed_keys.get_mut(&ke.code) {
                     *count += 1;
                 } else {
-                    assert!(self.pressed_keys.len() < 16);
-                    self.pressed_keys.insert(ke.code, 1);
+                    // UB if we insert more than 16 keys
+                    if self.pressed_keys.len() < 16 {
+                        self.pressed_keys.insert(ke.code, 1);
+                    }
                 }
             }
             _ => {}
@@ -815,16 +817,40 @@ impl Component for PlayerComponent {
         });
 
         // Player inputs
-
         if shared_state.pressed_keys.contains_key(&KeyCode::Char('a')) {
-            self.x_vel = -10.0;
+            if self.x_vel > 0.0 {
+                self.x_vel = 0.0;
+            } else if self.x_vel == 0.0 {
+                self.x_vel = -10.0;
+            } else {
+                self.x_vel = -10.0;
+            }
         } else if shared_state.pressed_keys.contains_key(&KeyCode::Char('d')) {
-            self.x_vel = 10.0;
+            if self.x_vel < 0.0 {
+                self.x_vel = 0.0;
+            } else if self.x_vel == 0.0 {
+                self.x_vel = 10.0;
+            } else {
+                self.x_vel = 10.0;
+            }
         }
         if shared_state.pressed_keys.contains_key(&KeyCode::Char('A')) {
-            self.x_vel = -20.0;
+            if self.x_vel > 0.0 {
+                self.x_vel = 0.0;
+            } else if self.x_vel == 0.0 {
+                self.x_vel = -20.0;
+            } else {
+                self .x_vel = -20.0
+            }
+
         } else if shared_state.pressed_keys.contains_key(&KeyCode::Char('D')) {
-            self.x_vel = 20.0;
+            if self.x_vel < 0.0 {
+                self.x_vel = 0.0;
+            } else if self.x_vel == 0.0 {
+                self.x_vel = 20.0;
+            } else {
+                self.x_vel = 20.0;
+            }
         }
 
         // Player physics
@@ -839,6 +865,9 @@ impl Component for PlayerComponent {
         let mut bottom_wall = height;
         let mut left_wall = 0.0f64;
         let mut right_wall = width;
+        let mut left_idx = None;
+        let mut right_idx = None;
+        let step_size = 1;
 
         // find a physics entity below us
         let mut x_u = self.x.floor() as usize;
@@ -857,7 +886,10 @@ impl Component for PlayerComponent {
                         break;
                     }
                     if shared_state.collision_board[(x as usize, y)] {
-                        left_wall = left_wall.max(x as f64 + 1.0); // plus 1.0 because we define collision on <x differently?
+                        if left_wall < x as f64 + 1.0 {
+                            left_idx = Some(x as usize);
+                            left_wall = x as f64 + 1.0;// plus 1.0 because we define collision on <x differently?
+                        }
                         break;
                     }
                 }
@@ -873,7 +905,10 @@ impl Component for PlayerComponent {
                         break;
                     }
                     if shared_state.collision_board[(x as usize, y)] {
-                        right_wall = right_wall.min(x as f64);
+                        if right_wall > x as f64 {
+                            right_idx = Some(x as usize);
+                            right_wall = x as f64;
+                        }
                         break;
                     }
                 }
@@ -882,10 +917,54 @@ impl Component for PlayerComponent {
 
         // -1.0 etc to account for size of sprite
         if self.x-1.0 < left_wall {
-            self.x = left_wall+1.0;
+            // Check if we can do a step
+            // initialize false because if there is no left_idx, we can't do a step
+            let mut do_step = false;
+            if let Some(left_idx) = left_idx {
+                for base_check in 0..step_size {
+                    // if there is one, we assume true
+                    do_step = true;
+                    let check_y = self.y.floor() as usize - 1 - base_check;
+                    // TODO: saturation
+                    for y in (check_y - 1)..=check_y {
+                        if shared_state.collision_board[(left_idx, y)] {
+                            do_step = false;
+                            break;
+                        }
+                    }
+                    if do_step {
+                        break;
+                    }
+                }
+
+            }
+            if !do_step {
+                self.x = left_wall+1.0;
+            }
             // self.x_vel = 0.0;
         } else if self.x+1.0 >= right_wall {
-            self.x = right_wall - 2.0;
+            // Check if we can do a step
+            let mut do_step = false;
+            if let Some(right_idx) = right_idx {
+                for base_check in 0..step_size {
+                    do_step = true;
+                    let check_y = self.y.floor() as usize - 1 - base_check;
+                    for y in (check_y - 1)..=check_y {
+                        if shared_state.collision_board[(right_idx, y)] {
+                            do_step = false;
+                            break;
+                        }
+                    }
+                    if do_step {
+                        break;
+                    }
+                }
+
+            }
+            if !do_step {
+                self.x = right_wall - 2.0;
+            }
+
             // self.x_vel = 0.0;
         }
 
