@@ -863,16 +863,30 @@ impl Component for PlayerComponent {
                 }
 
             }
-
+        }
+        {
+            // Check right
+            let x = x_u as i32 + 1;
+            for y in (y_u-1)..=y_u {
+                for x in x..=(x+4) {
+                    if x < 0 || x >= width as i32 {
+                        break;
+                    }
+                    if shared_state.collision_board[(x as usize, y)] {
+                        right_wall = right_wall.min(x as f64);
+                        break;
+                    }
+                }
+            }
         }
 
         // -1.0 etc to account for size of sprite
         if self.x-1.0 < left_wall {
             self.x = left_wall+1.0;
-            self.x_vel = 0.0;
-        } else if self.x >= width {
-            self.x = width - 1.0;
-            self.x_vel = 0.0;
+            // self.x_vel = 0.0;
+        } else if self.x+1.0 >= right_wall {
+            self.x = right_wall - 2.0;
+            // self.x_vel = 0.0;
         }
 
         // need to update for bottom checking, since x checking can clamp x and change the bottom check result
