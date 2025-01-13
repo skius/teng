@@ -550,10 +550,10 @@ fn render_loop() -> io::Result<()> {
 
 fn main() -> io::Result<()> {
     execute!(stdout(), crossterm::terminal::EnterAlternateScreen)?;
-    println!("{}", HELP);
-    println!("{:?}", size()?);
-    println!("{}", char::default());
-    sleep(Duration::from_secs(1));
+    // println!("{}", HELP);
+    // println!("{:?}", size()?);
+    // println!("{}", char::default());
+    // sleep(Duration::from_secs(1));
 
     enable_raw_mode()?;
 
