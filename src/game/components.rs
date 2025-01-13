@@ -1004,7 +1004,11 @@ impl Component for PlayerComponent {
             self.y_vel = 0.0;
         } else if self.y >= bottom_wall {
             self.y = bottom_wall - 1.0;
-            self.y_vel = 0.0;
+            // if we're going up, don't douch the jump velocity.
+            if self.y_vel < 0.0 {
+                self.y_vel = 0.0;
+            }
+
         }
 
         // Now jump input since we need grounded information
