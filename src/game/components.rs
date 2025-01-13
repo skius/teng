@@ -1021,6 +1021,7 @@ impl Component for PlayerComponent {
             }
         }
 
+        // TODO: sprite size should be taken into account for top wall checking
         if self.y < 0.0 {
             self.y = 0.0;
             self.y_vel = 0.0;
