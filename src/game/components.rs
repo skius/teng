@@ -99,6 +99,14 @@ impl Component for DebugInfoComponent {
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let mut y = 0;
+        format!("Help: q to quit, l to lock/unlock FPS, scroll to change FPS, LMB for drawing, RMB for flood fill, c to clear, WASD to walk, arrow keys to shoot, space to jump, f to apply force").render(
+            &mut renderer,
+            0,
+            y,
+            depth_base,
+        );
+        y += 1;
+
         format!("Frame time: {} ns", self.frametime_ns).render(&mut renderer, 0, y, depth_base);
         y += 1;
         format!("Max frame time: {} ns", self.max_frametime_ns).render(
