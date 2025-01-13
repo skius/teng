@@ -10,7 +10,7 @@ mod display;
 mod render;
 mod renderer;
 
-use crate::game::components::DecayElement;
+use crate::game::components::{DebugInfo, DecayElement};
 use crate::game::display::Display;
 use crate::physics::PhysicsBoard;
 pub use render::*;
@@ -89,9 +89,11 @@ pub struct SharedState {
     mouse_info: MouseInfo,
     target_fps: Option<f64>,
     decay_board: Display<DecayElement>,
+    collision_board: Display<bool>,
     physics_board: PhysicsBoard,
     display_info: DisplayInfo,
     pressed_keys: micromap::Map<KeyCode, u8, 16>,
+    debug_info: DebugInfo,
 }
 
 impl SharedState {
@@ -103,6 +105,8 @@ impl SharedState {
             physics_board: PhysicsBoard::new(width),
             display_info: DisplayInfo::new(width, height),
             pressed_keys: micromap::Map::new(),
+            collision_board: Display::new(width, height, false),
+            debug_info: DebugInfo::new(),
         }
     }
 
@@ -110,6 +114,7 @@ impl SharedState {
         self.decay_board.resize_keep(width, height);
         self.physics_board.resize(width);
         self.display_info = DisplayInfo::new(width, height);
+        self.collision_board.resize_keep(width, height);
     }
 }
 

@@ -1,3 +1,5 @@
+use std::fmt;
+use std::fmt::{Debug, Formatter};
 use std::ops::{Index, IndexMut};
 
 pub struct Display<T> {
@@ -5,6 +7,12 @@ pub struct Display<T> {
     height: usize,
     default: T,
     pixels: Vec<T>,
+}
+
+impl<T: Debug> Debug for Display<T> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "Display {{ width: {}, height: {}, pixels: {:?} }}", self.width, self.height, self.pixels)
+    }
 }
 
 impl<T: Clone> Display<T> {

@@ -7,6 +7,19 @@ use crossterm::event::{Event, KeyCode, KeyEvent, MouseEvent, MouseEventKind};
 use smallvec::SmallVec;
 use std::time::{Duration, Instant};
 
+#[derive(Debug, Default)]
+pub struct DebugInfo {
+    player_y: f64,
+    player_x: f64,
+    left_wall: f64,
+}
+
+impl DebugInfo {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 pub struct DebugInfoComponent {
     frametime_ns: u128,
     max_frametime_time: Instant,
@@ -102,8 +115,11 @@ impl Component for DebugInfoComponent {
         };
         format!("FPS: {:.2} ({})", self.fps, target_str).render(&mut renderer, 0, y, depth_base);
         y += 1;
-        // format!("Pressed keys: {:?}", shared_state.pressed_keys).render(&mut renderer, 0, y, depth_base);
+        format!("DebugInfo: {:?}", shared_state.debug_info).render(&mut renderer, 0, y, depth_base);
         y += 1;
+        format!("Display size: {}x{}", shared_state.display_info.width(), shared_state.display_info.height()).render(&mut renderer, 0, y, depth_base);
+        // format!("Pressed keys: {:?}", shared_state.pressed_keys).render(&mut renderer, 0, y, depth_base);
+        // y += 1;
         // format!("Events: {}", self.num_events).render(&mut renderer, 0, y, depth_base);
         // y += 1;
         // format!("Frames since last FPS: {}", self.frames_since_last_fps).render(&mut renderer, 0, y, depth_base);
@@ -570,6 +586,7 @@ impl PhysicsComponent {
 
 impl Component for PhysicsComponent {
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        shared_state.collision_board.clear();
         let dt = update_info
             .current_time
             .saturating_duration_since(update_info.last_time)
@@ -579,6 +596,18 @@ impl Component for PhysicsComponent {
             .update(dt, shared_state.decay_board.height(), |s| {
                 // TODO: debug print
             });
+
+        for col in shared_state.physics_board.board.iter() {
+            for entity in col {
+                let x = entity.x.floor() as usize;
+                let y = entity.y.floor() as usize;
+                if x >= shared_state.display_info.width() || y >= shared_state.display_info.height() {
+                    // TODO: debug error
+                    continue;
+                }
+                shared_state.collision_board[(x, y)] = true;
+            }
+        }
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
@@ -602,6 +631,12 @@ impl Component for PhysicsComponent {
                 }
             }
         }
+
+        // for (x, y, element) in shared_state.collision_board.iter() {
+        //     if *element {
+        //         ".".render(&mut renderer, x, y, 100000);
+        //     }
+        // }
     }
 }
 
@@ -780,12 +815,6 @@ impl Component for PlayerComponent {
         });
 
         // Player inputs
-        if shared_state.pressed_keys.contains_key(&KeyCode::Char(' ')) {
-            let grounded = self.y >= shared_state.display_info.height() as f64 - 1.1;
-            if grounded {
-                self.y_vel = -20.0;
-            }
-        }
 
         if shared_state.pressed_keys.contains_key(&KeyCode::Char('a')) {
             self.x_vel = -10.0;
@@ -808,8 +837,60 @@ impl Component for PlayerComponent {
         self.x += self.x_vel * dt;
         self.y += self.y_vel * dt;
 
-        if self.x < 0.0 {
-            self.x = 0.0;
+        let mut bottom_wall = height;
+        let mut left_wall = 0.0f64;
+        let mut right_wall = width;
+
+        // find a physics entity below us
+        let mut x_u = self.x.floor() as usize;
+        let mut y_u = self.y.floor() as usize;
+        if y_u >= height as usize {
+            y_u = height as usize - 1;
+        }
+
+        // TODO: the left_wall check and collision handling is not good yet - the player character
+        // seems to jump quickly up when it hits a wall to the left and then falls again.
+        // some forces are fighting.
+        {
+            // Check below
+            let x = x_u as i32;
+            let y = y_u;
+
+            // TODO: should be dynamic due to sprite size
+            for x in (x-1)..=(x+1) {
+                if x < 0 || x >= width as i32 {
+                    continue;
+                }
+                for y in y..(height as usize).min(y + 4) as usize {
+                    if shared_state.collision_board[(x as usize, y)] {
+                        bottom_wall = bottom_wall.min(y as f64);
+                        break;
+                    }
+                }
+            }
+        }
+
+        {
+            // Check left
+            let x = x_u as i32 - 1;
+            for y in (y_u-1)..=y_u {
+                for x in ((x-4)..=x).rev() {
+                    if x < 0 || x >= width as i32 {
+                        break;
+                    }
+                    if shared_state.collision_board[(x as usize, y)] {
+                        left_wall = left_wall.max(x as f64 + 1.0); // plus 1.0 because we define collision on <x differently?
+                        break;
+                    }
+                }
+
+            }
+
+        }
+
+        // -1.0 etc to account for size of sprite
+        if self.x-1.0 < left_wall {
+            self.x = left_wall+1.0;
             self.x_vel = 0.0;
         } else if self.x >= width {
             self.x = width - 1.0;
@@ -819,10 +900,21 @@ impl Component for PlayerComponent {
         if self.y < 0.0 {
             self.y = 0.0;
             self.y_vel = 0.0;
-        } else if self.y >= height {
-            self.y = height - 1.0;
+        } else if self.y >= bottom_wall {
+            self.y = bottom_wall - 1.0;
             self.y_vel = 0.0;
         }
+
+        // Now jump input since we need grounded information
+        if shared_state.pressed_keys.contains_key(&KeyCode::Char(' ')) {
+            let grounded = self.y >= bottom_wall - 1.2;
+            if grounded {
+                self.y_vel = -20.0;
+            }
+        }
+        shared_state.debug_info.player_y = self.y;
+        shared_state.debug_info.player_x = self.x;
+        shared_state.debug_info.left_wall = left_wall;
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
