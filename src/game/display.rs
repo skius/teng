@@ -15,6 +15,17 @@ impl<T: Debug> Debug for Display<T> {
     }
 }
 
+impl<T: Clone> Clone for Display<T> {
+    fn clone(&self) -> Self {
+        Self {
+            width: self.width,
+            height: self.height,
+            default: self.default.clone(),
+            pixels: self.pixels.clone(),
+        }
+    }
+}
+
 impl<T: Clone> Display<T> {
     pub fn new(width: usize, height: usize, default: T) -> Self {
         Self {

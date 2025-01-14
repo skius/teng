@@ -34,6 +34,7 @@ pub struct DisplayRenderer<W: Write> {
     width: usize,
     height: usize,
     display: Display<Pixel>,
+    prev_display: Display<Pixel>,
     // larger values are closer and get preference
     depth_buffer: Display<i32>,
     default_fg_color: [u8; 3],
@@ -53,6 +54,7 @@ impl<W: Write> DisplayRenderer<W> {
             width,
             height,
             display: Display::new(width, height, Pixel::default()),
+            prev_display: Display::new(width, height, Pixel::default()),
             depth_buffer: Display::new(width, height, i32::MIN),
             sink,
             default_fg_color: [255, 255, 255],
@@ -78,6 +80,7 @@ impl<W: Write> DisplayRenderer<W> {
         self.width = width;
         self.height = height;
         self.display.resize_discard(width, height);
+        self.prev_display.resize_discard(width, height);
         self.depth_buffer.resize_discard(width, height);
     }
 
@@ -86,6 +89,7 @@ impl<W: Write> DisplayRenderer<W> {
         self.width = width;
         self.height = height;
         self.display.resize_keep(width, height);
+        self.prev_display.resize_keep(width, height);
         self.depth_buffer.resize_keep(width, height);
     }
 
@@ -107,9 +111,16 @@ impl<W: Write> DisplayRenderer<W> {
 
     pub fn flush(&mut self) -> io::Result<()> {
         queue!(self.sink, crossterm::cursor::MoveTo(0, 0))?;
+        let mut curr_pos = (0, 0);
         for y in 0..self.height {
             for x in 0..self.width {
                 let pixel = self.display[(x, y)];
+                if pixel == self.prev_display[(x, y)] {
+                    continue;
+                }
+                if curr_pos != (x, y) {
+                    queue!(self.sink, crossterm::cursor::MoveTo(x as u16, y as u16))?;
+                }
                 let new_color = pixel.color.unwrap_or(self.default_fg_color);
                 if new_color != self.last_fg_color {
                     queue!(
@@ -123,13 +134,17 @@ impl<W: Write> DisplayRenderer<W> {
                     self.last_fg_color = new_color;
                 }
                 queue!(self.sink, crossterm::style::Print(pixel.c))?;
+                curr_pos = (x, y);
             }
             if y < self.height - 1 {
                 queue!(self.sink, crossterm::cursor::MoveToNextLine(1))?;
+                curr_pos = (0, y + 1);
             }
         }
 
         self.sink.flush()?;
+        std::mem::swap(&mut self.display, &mut self.prev_display);
+        // self.display.clear();
         self.last_fg_color = self.default_fg_color;
         queue!(
             self.sink,
