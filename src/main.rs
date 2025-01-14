@@ -26,6 +26,8 @@ use std::ops::Deref;
 use std::thread::sleep;
 use std::time::Instant;
 use std::{io, time::Duration};
+use std::any::Any;
+use crate::game::components::elevator::ElevatorComponent;
 
 const HELP: &str = r#"Blocking poll() & non-blocking read()
  - Keyboard, mouse and terminal resize events enabled
@@ -577,11 +579,15 @@ fn main() -> io::Result<()> {
     game.add_component(Box::new(DecayComponent::new()));
     game.add_component_with(|width, height| Box::new(FloodFillComponent::new(width, height)));
     game.add_component(Box::new(SimpleDrawComponent::new()));
-    game.add_component(Box::new(PlayerComponent::new(1, 1)));
+    game.add_component_with(|width, height| Box::new(PlayerComponent::new(1, height)));
     game.add_component(Box::new(DebugInfoComponent::new()));
+    // game.add_component_with(|width, height| Box::new(ElevatorComponent::new(width, height)));
+
     if let Err(e) = game.run() {
         println!("Error: {:?}", e);
     }
+
+
     // if let Err(e) = game_loop(&mut stdout) {
     //     println!("Error: {:?}\r", e);
     // }
@@ -600,5 +606,11 @@ fn main() -> io::Result<()> {
 
     disable_raw_mode()?;
 
-    execute!(stdout, crossterm::terminal::LeaveAlternateScreen)
+    execute!(stdout, crossterm::terminal::LeaveAlternateScreen)?;
+    // println!("{:?}", (&*Box::new(ElevatorComponent::new(0, 0))).type_id());
+    // println!("{:?}", std::any::TypeId::of::<ElevatorComponent>());
+    // println!("eq: {}", std::any::TypeId::of::<ElevatorComponent>() == (&*Box::new(ElevatorComponent::new(0, 0))).type_id());
+    // 
+
+    Ok(())
 }

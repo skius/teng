@@ -1,3 +1,5 @@
+pub mod elevator;
+
 use crate::game::display::Display;
 use crate::game::{
     BreakingAction, Component, MouseInfo, Pixel, Render, Renderer, SharedState, Sprite, UpdateInfo,
@@ -8,12 +10,27 @@ use smallvec::SmallVec;
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Default)]
+pub struct ElevatorInfo {
+    total: usize,
+    total_finished: usize,
+    total_in_elevator_now: usize,
+    total_waiting_now: usize,
+    avg_wait_time_finished: f64,
+    avg_wait_time_overall: f64,
+    max_wait_time: f64,
+    spawn_rate: f64,
+    avg_wait_time_overall_per_spawn_rate: f64,
+}
+
+#[derive(Debug, Default)]
 pub struct DebugInfo {
     player_y: f64,
     player_x: f64,
     left_wall: f64,
     bottom_wall: f64,
     y_vel: f64,
+    elevator_info: ElevatorInfo,
+    target_queue: Vec<u16>,
 }
 
 impl DebugInfo {
@@ -732,11 +749,16 @@ pub struct PlayerComponent {
     x_vel: f64,
     y_vel: f64,
     sprite: Sprite<3, 2>,
+    dead_sprite: Sprite<5, 1>,
     bullets: Vec<Bullet>,
     bullet_char: char,
+    dead: bool,
+    max_height_since_last_ground_touch: f64,
 }
 
 impl PlayerComponent {
+    const DEATH_HEIGHT: f64 = 25.0;
+
     pub fn new(x: usize, y: usize) -> Self {
         Self {
             x: x as f64,
@@ -744,8 +766,11 @@ impl PlayerComponent {
             x_vel: 0.0,
             y_vel: 0.0,
             sprite: Sprite::new([['▁', '▄', '▁'], ['▗', '▀', '▖']], 1, 1),
+            dead_sprite: Sprite::new([['▂', '▆', '▆', ' ', '▖']], 2, 0),
             bullets: vec![],
             bullet_char: '●',
+            dead: false,
+            max_height_since_last_ground_touch: y as f64,
         }
     }
 
@@ -831,6 +856,9 @@ impl Component for PlayerComponent {
             }
             self.spawn_bullet(shared_state, 0.0, bullet_speed + speed_mod);
         }
+        // if shared_state.pressed_keys.contains_key(&KeyCode::Char('k')) {
+        //     self.dead = true;
+        // }
 
         let dt = update_info
             .current_time
@@ -1042,9 +1070,18 @@ impl Component for PlayerComponent {
 
         }
 
+        let grounded = self.y >= bottom_wall - 1.2;
+        if !grounded {
+            self.max_height_since_last_ground_touch = self.max_height_since_last_ground_touch.min(self.y);
+        } else {
+            if self.y - self.max_height_since_last_ground_touch > Self::DEATH_HEIGHT {
+                self.dead = true;
+            }
+            self.max_height_since_last_ground_touch = self.y;
+        }
+
         // Now jump input since we need grounded information
         if shared_state.pressed_keys.contains_key(&KeyCode::Char(' ')) {
-            let grounded = self.y >= bottom_wall - 1.2;
             if grounded {
                 self.y_vel = -20.0;
             }
@@ -1057,8 +1094,15 @@ impl Component for PlayerComponent {
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
-        self.sprite
-            .render(&mut renderer, self.x.floor() as usize, self.y.floor() as usize, depth_base);
+        if self.dead {
+            self.dead_sprite
+                .render(&mut renderer, self.x.floor() as usize, self.y.floor() as usize, depth_base);
+        } else {
+            self.sprite
+                .render(&mut renderer, self.x.floor() as usize, self.y.floor() as usize, depth_base);
+        }
+
+
         // render bullets
         for bullet in &self.bullets {
             let x = bullet.x.floor() as usize;

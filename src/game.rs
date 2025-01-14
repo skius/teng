@@ -1,3 +1,4 @@
+use std::any::Any;
 use crossterm::event::{Event, KeyCode, MouseEvent, MouseEventKind};
 use crossterm::queue;
 use std::io;
@@ -15,6 +16,7 @@ use crate::game::display::Display;
 use crate::physics::PhysicsBoard;
 pub use render::*;
 pub use renderer::*;
+use crate::game::components::elevator::ElevatorComponent;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pixel {
@@ -94,6 +96,8 @@ pub struct SharedState {
     display_info: DisplayInfo,
     pressed_keys: micromap::Map<KeyCode, u8, 16>,
     debug_info: DebugInfo,
+    // Hacky way for components to add new components. only once per frame due to this hack.
+    component_to_add: Option<Box<dyn Component>>,
 }
 
 impl SharedState {
@@ -107,6 +111,7 @@ impl SharedState {
             pressed_keys: micromap::Map::new(),
             collision_board: Display::new(width, height, false),
             debug_info: DebugInfo::new(),
+            component_to_add: None,
         }
     }
 
@@ -119,7 +124,7 @@ impl SharedState {
 }
 
 /// A game component that can listen to events, perform logic, and render itself.
-pub trait Component {
+pub trait Component: Any {
     /// Called when an event is received. This could happen multiple times per frame.
     fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
         None
@@ -306,6 +311,24 @@ impl<W: Write> Game<W> {
     fn update(&mut self, update_info: UpdateInfo) {
         for component in self.components.iter_mut() {
             component.update(update_info, &mut self.shared_state);
+        }
+        self.update_game(update_info);
+    }
+
+    fn update_game(&mut self, update_info: UpdateInfo) {
+        if self.shared_state.pressed_keys.contains_key(&KeyCode::Char('e')) {
+            // remove the ElevatorComponent if it exists, otherwise add it
+            let mut found = false;
+            for idx in 0..self.components.len() {
+                if (&*self.components[idx]).type_id() == std::any::TypeId::of::<ElevatorComponent>() {
+                    self.components.remove(idx);
+                    found = true;
+                    break;
+                }
+            }
+            if !found {
+                self.add_component(Box::new(ElevatorComponent::new(self.width(), self.height())));
+            }
         }
     }
 

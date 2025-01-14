@@ -41,7 +41,7 @@ impl Render for Pixel {
 }
 
 pub struct Sprite<const WIDTH: usize, const HEIGHT: usize> {
-    pixels: [[Pixel; WIDTH]; HEIGHT],
+    pub pixels: [[Pixel; WIDTH]; HEIGHT],
     center_pos: (usize, usize),
 }
 
