@@ -8,3 +8,8 @@ crossterm = "0.28.1"
 smallvec = "1.13.2"
 micromap = "0.0.15"
 rand = "0.8.5"
+
+[profile.release]
+#strip = true
+lto = true
+codegen-units = 1
