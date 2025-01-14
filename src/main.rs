@@ -610,7 +610,7 @@ fn main() -> io::Result<()> {
     // println!("{:?}", (&*Box::new(ElevatorComponent::new(0, 0))).type_id());
     // println!("{:?}", std::any::TypeId::of::<ElevatorComponent>());
     // println!("eq: {}", std::any::TypeId::of::<ElevatorComponent>() == (&*Box::new(ElevatorComponent::new(0, 0))).type_id());
-    // 
+    //
 
     Ok(())
 }

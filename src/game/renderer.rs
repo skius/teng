@@ -80,7 +80,15 @@ impl<W: Write> DisplayRenderer<W> {
         self.width = width;
         self.height = height;
         self.display.resize_discard(width, height);
-        self.prev_display.resize_discard(width, height);
+        if self.prev_display.height() > height {
+            self.prev_display.resize_discard(width, height);
+            // need to fill with something that is most likely different from the display, because
+            // sometimes when resizing height the actual printed chars get mangled
+            self.prev_display.fill(Pixel::default().with_color([1, 2, 3]));
+        } else {
+            // need to keep this because we're not rewriting it in this coming frame.
+            self.prev_display.resize_keep(width, height);
+        }
         self.depth_buffer.resize_discard(width, height);
     }
 
