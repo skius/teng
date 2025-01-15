@@ -98,6 +98,18 @@ impl<T: Render> Render for WithColor<T> {
     }
 }
 
+pub struct WithBgColor<T>(pub [u8; 3], pub T);
+
+impl<T: Render> Render for WithBgColor<T> {
+    fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
+        let mut adapter = BgColorRendererAdapter {
+            renderer,
+            bg_color: self.0,
+        };
+        self.1.render(&mut adapter, x, y, depth);
+    }
+}
+
 struct ColorRendererAdapter<'a, R> {
     renderer: &'a mut R,
     color: [u8; 3],
@@ -107,6 +119,22 @@ impl<'a, R: Renderer> Renderer for ColorRendererAdapter<'a, R> {
     fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32) {
         self.renderer
             .render_pixel(x, y, pixel.with_color(self.color), depth);
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.renderer.flush()
+    }
+}
+
+struct BgColorRendererAdapter<'a, R> {
+    renderer: &'a mut R,
+    bg_color: [u8; 3],
+}
+
+impl<'a, R: Renderer> Renderer for BgColorRendererAdapter<'a, R> {
+    fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32) {
+        self.renderer
+            .render_pixel(x, y, pixel.with_bg_color(self.bg_color), depth);
     }
 
     fn flush(&mut self) -> std::io::Result<()> {

@@ -230,12 +230,18 @@ impl Component for FPSLockerComponent {
 
 pub struct MouseTrackerComponent {
     last_mouse_info: MouseInfo,
+    did_press_left: bool,
+    did_press_right: bool,
+    did_press_middle: bool,
 }
 
 impl MouseTrackerComponent {
     pub fn new() -> Self {
         Self {
             last_mouse_info: MouseInfo::default(),
+            did_press_left: false,
+            did_press_right: false,
+            did_press_middle: false,
         }
     }
 
@@ -323,6 +329,23 @@ impl Component for MouseTrackerComponent {
     fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         if let Event::Mouse(event) = event {
             Self::fill_mouse_info(event, &mut self.last_mouse_info);
+            match event {
+                MouseEvent {
+                    kind: MouseEventKind::Down(button),
+                    ..
+                } => match button {
+                    crossterm::event::MouseButton::Left => {
+                        self.did_press_left = true;
+                    }
+                    crossterm::event::MouseButton::Right => {
+                        self.did_press_right = true;
+                    }
+                    crossterm::event::MouseButton::Middle => {
+                        self.did_press_middle = true;
+                    }
+                },
+                _ => {}
+            }
         }
         None
     }
@@ -335,6 +358,12 @@ impl Component for MouseTrackerComponent {
         //     ));
         // }
         shared_state.mouse_info = self.last_mouse_info;
+        shared_state.mouse_pressed.right = self.did_press_right;
+        shared_state.mouse_pressed.left = self.did_press_left;
+        shared_state.mouse_pressed.middle = self.did_press_middle;
+        self.did_press_left = false;
+        self.did_press_right = false;
+        self.did_press_middle = false;
     }
 }
 

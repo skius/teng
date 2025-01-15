@@ -42,7 +42,15 @@ impl Pixel {
         Self {
             color: Some(color),
             c: self.c,
-            bg_color: None,
+            bg_color: self.bg_color,
+        }
+    }
+
+    pub fn with_bg_color(self, bg_color: [u8; 3]) -> Self {
+        Self {
+            bg_color: Some(bg_color),
+            c: self.c,
+            color: self.color,
         }
     }
 }
@@ -112,8 +120,16 @@ impl DebugMessage {
     }
 }
 
+#[derive(Default, Debug, PartialEq)]
+pub struct MousePressedInfo {
+    left: bool,
+    right: bool,
+    middle: bool,
+}
+
 pub struct SharedState {
     mouse_info: MouseInfo,
+    mouse_pressed: MousePressedInfo,
     target_fps: Option<f64>,
     decay_board: Display<DecayElement>,
     collision_board: Display<bool>,
@@ -130,6 +146,7 @@ impl SharedState {
     pub fn new(width: usize, height: usize) -> Self {
         Self {
             mouse_info: MouseInfo::default(),
+            mouse_pressed: MousePressedInfo::default(),
             target_fps: Some(150.0),
             decay_board: Display::new(
                 width,

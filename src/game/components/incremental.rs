@@ -12,7 +12,7 @@
 use crate::game::components::{Bullet, DecayElement, MouseTrackerComponent};
 use crate::game::{
     BreakingAction, Component, DebugMessage, MouseInfo, Pixel, Render, Renderer, SetupInfo,
-    SharedState, Sprite, UpdateInfo, WithColor,
+    SharedState, Sprite, UpdateInfo, WithBgColor, WithColor,
 };
 use crossterm::event::{Event, KeyCode};
 use smallvec::SmallVec;
@@ -674,7 +674,41 @@ impl Component for BuildingDrawComponent {
     }
 }
 
-pub struct UiBarComponent {}
+struct UiButton {
+    x: usize,
+    y: usize,
+    width: usize,
+    height: usize,
+    text: String,
+    on_click: Box<dyn Fn(&mut SharedState) -> ()>,
+}
+
+impl UiButton {
+    fn new(
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        text: String,
+        on_click: Box<dyn Fn(&mut SharedState) -> ()>,
+    ) -> Self {
+        assert!(width >= text.len());
+        Self {
+            x,
+            y,
+            width,
+            height,
+            text,
+            on_click,
+        }
+    }
+}
+
+pub struct UiBarComponent {
+    buttons: Vec<UiButton>,
+    button_labels: Vec<String>,
+    hover_button: Option<usize>,
+}
 
 impl UiBarComponent {
     pub const HEIGHT: usize = 7;
@@ -682,11 +716,58 @@ impl UiBarComponent {
     const MOVING_PHASE_COLOR: [u8; 3] = [200, 0, 0];
 
     pub fn new() -> Self {
-        Self {}
+        Self {
+            buttons: vec![],
+            button_labels: vec![],
+            hover_button: None,
+        }
     }
 }
 
 impl Component for UiBarComponent {
+    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
+        let text = "Buy";
+        self.buttons.push(UiButton::new(
+            setup_info.width - 1 - text.len(),
+            setup_info.height - Self::HEIGHT + 1,
+            text.len(),
+            1,
+            text.to_string(),
+            Box::new(|shared_state| {
+                let mut game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
+                game_state.max_blocks += 1;
+            }),
+        ));
+        self.button_labels.push("Player Ghosts (0) ".to_string());
+    }
+
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        let last_mouse_info = shared_state.mouse_info;
+        // Check if we're hovering a button
+        let (x, y) = last_mouse_info.last_mouse_pos;
+        let mut hovering = false;
+        for (i, button) in self.buttons.iter().enumerate() {
+            if x >= button.x
+                && x < button.x + button.width
+                && y >= button.y
+                && y < button.y + button.height
+            {
+                self.hover_button = Some(i);
+                hovering = true;
+                break;
+            }
+        }
+        if !hovering {
+            self.hover_button = None;
+        }
+        if shared_state.mouse_pressed.left {
+            // we pressed a button, if we're hovering
+            if let Some(hover_button) = self.hover_button {
+                (self.buttons[hover_button].on_click)(shared_state);
+            }
+        }
+    }
+
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let game_state = shared_state.extensions.get::<GameState>().unwrap();
         let blocks = game_state.blocks;
@@ -770,5 +851,28 @@ impl Component for UiBarComponent {
             }
         };
         controls_str.render(&mut renderer, x, y, depth_base);
+
+        // render buttons
+        for (i, button) in self.buttons.iter().enumerate() {
+            let is_hover = self.hover_button == Some(i);
+            let fg_color = [0, 0, 0];
+            let lmb_down = shared_state.mouse_info.left_mouse_down;
+            let bg_color = match (is_hover, lmb_down) {
+                (true, true) => [200, 200, 255],
+                (true, false) => [255, 255, 255],
+                (false, _) => [200, 200, 200],
+            };
+            let text = &button.text;
+            WithColor(fg_color, WithBgColor(bg_color, text.as_str())).render(
+                &mut renderer,
+                button.x,
+                button.y,
+                depth_base,
+            );
+            let left_text = format!("{}", self.button_labels[i]);
+            // render to the left
+            let len = left_text.len();
+            left_text.render(&mut renderer, button.x - len as usize, button.y, depth_base);
+        }
     }
 }
