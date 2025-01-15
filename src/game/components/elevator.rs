@@ -1,9 +1,9 @@
-use std::time::Instant;
+use crate::game::{BreakingAction, Component, Render, Renderer, SharedState, Sprite, UpdateInfo};
 use crossterm::event::Event;
 use crossterm::event::MouseEventKind::{ScrollDown, ScrollUp};
 use rand::prelude::ThreadRng;
 use rand::Rng;
-use crate::game::{BreakingAction, Component, Render, Renderer, SharedState, Sprite, UpdateInfo};
+use std::time::Instant;
 
 pub struct ElevatorComponent {
     elevator: Elevator,
@@ -37,13 +37,18 @@ impl Component for ElevatorComponent {
     fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         match event {
             Event::Mouse(me) => {
-                if me.kind == crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) {
+                if me.kind
+                    == crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left)
+                {
                     let (width, height) = (me.column, me.row);
                     let height_from_floor = self.elevator.base_height - height as f64;
-                    let level = ((height_from_floor as f64 + 1.0) / Elevator::HEIGHT_OF_FLOOR).floor() as Level;
+                    let level = ((height_from_floor as f64 + 1.0) / Elevator::HEIGHT_OF_FLOOR)
+                        .floor() as Level;
                     self.elevator.exit_target = Some(level);
                 }
-                if me.kind == crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Right) {
+                if me.kind
+                    == crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Right)
+                {
                     self.elevator.exit_target = None;
                 }
                 if me.kind == ScrollUp {
@@ -58,7 +63,6 @@ impl Component for ElevatorComponent {
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
-
         let height = shared_state.display_info.height();
         // TODO: this needs more changes for resizing to work properly
         let dt = update_info.current_time - update_info.last_time;
@@ -68,21 +72,46 @@ impl Component for ElevatorComponent {
 
         {
             shared_state.debug_info.elevator_info.total = self.elevator.total_members;
-            shared_state.debug_info.elevator_info.total_finished = self.elevator.finished_waiting_times.len();
-            shared_state.debug_info.elevator_info.total_in_elevator_now = self.elevator.members.len();
-            shared_state.debug_info.elevator_info.total_waiting_now = self.elevator.waiting_members.len();
-            let avg_wait_time_finished = self.elevator.finished_waiting_times.iter().sum::<f64>() / self.elevator.finished_waiting_times.len() as f64;
+            shared_state.debug_info.elevator_info.total_finished =
+                self.elevator.finished_waiting_times.len();
+            shared_state.debug_info.elevator_info.total_in_elevator_now =
+                self.elevator.members.len();
+            shared_state.debug_info.elevator_info.total_waiting_now =
+                self.elevator.waiting_members.len();
+            let avg_wait_time_finished = self.elevator.finished_waiting_times.iter().sum::<f64>()
+                / self.elevator.finished_waiting_times.len() as f64;
             shared_state.debug_info.elevator_info.avg_wait_time_finished = avg_wait_time_finished;
-            let avg_wait_time_overall = (self.elevator.finished_waiting_times.iter().sum::<f64>() + self.elevator.members.iter().map(|member| member.start_time.elapsed().as_secs_f64()).sum::<f64>() + self.elevator.waiting_members.iter().map(|member| member.start_time.elapsed().as_secs_f64()).sum::<f64>() ) / self.elevator.total_members as f64;
+            let avg_wait_time_overall = (self.elevator.finished_waiting_times.iter().sum::<f64>()
+                + self
+                    .elevator
+                    .members
+                    .iter()
+                    .map(|member| member.start_time.elapsed().as_secs_f64())
+                    .sum::<f64>()
+                + self
+                    .elevator
+                    .waiting_members
+                    .iter()
+                    .map(|member| member.start_time.elapsed().as_secs_f64())
+                    .sum::<f64>())
+                / self.elevator.total_members as f64;
             shared_state.debug_info.elevator_info.avg_wait_time_overall = avg_wait_time_overall;
             let mut max_wait_time = self.elevator.max_wait_time;
-            for member in self.elevator.members.iter().chain(self.elevator.waiting_members.iter()) {
+            for member in self
+                .elevator
+                .members
+                .iter()
+                .chain(self.elevator.waiting_members.iter())
+            {
                 let wait_time = member.start_time.elapsed().as_secs_f64();
                 max_wait_time = max_wait_time.max(wait_time);
             }
             shared_state.debug_info.elevator_info.max_wait_time = max_wait_time;
             shared_state.debug_info.elevator_info.spawn_rate = self.spawn_rate;
-            shared_state.debug_info.elevator_info.avg_wait_time_overall_per_spawn_rate = avg_wait_time_overall / self.spawn_rate;
+            shared_state
+                .debug_info
+                .elevator_info
+                .avg_wait_time_overall_per_spawn_rate = avg_wait_time_overall / self.spawn_rate;
         }
 
         // assert!(self.elevator.members.iter().all(|member| self.elevator.target_queue.contains(&member.to)), "{:?}", self.elevator);
@@ -93,7 +122,8 @@ impl Component for ElevatorComponent {
 
         // if shared_state.pressed_keys.contains_key(&crossterm::event::KeyCode::Char('s')) {
         if Instant::now() > self.next_spawn {
-            self.next_spawn = Instant::now() + std::time::Duration::from_secs_f64(1.0 / self.spawn_rate);
+            self.next_spawn =
+                Instant::now() + std::time::Duration::from_secs_f64(1.0 / self.spawn_rate);
 
             let mut from = self.rng.gen_range(0..self.elevator.max_level);
             let mut to = self.rng.gen_range(0..self.elevator.max_level);
@@ -110,7 +140,10 @@ impl Component for ElevatorComponent {
             // self.elevator.add_target_level(to);
         }
 
-        if shared_state.pressed_keys.contains_key(&crossterm::event::KeyCode::Char('c')) {
+        if shared_state
+            .pressed_keys
+            .contains_key(&crossterm::event::KeyCode::Char('c'))
+        {
             // clear stats
             self.elevator.max_wait_time = 0.0;
             self.elevator.finished_waiting_times.clear();
@@ -125,11 +158,15 @@ impl Component for ElevatorComponent {
         // compute door opacity
         let door_opacity = match self.elevator.state {
             ElevatorState::OpeningDoors { secs_until_opened } => {
-                let opacity = (secs_until_opened / Elevator::DOOR_TIME * opacity_levels.len() as f64).floor() as usize;
+                let opacity = (secs_until_opened / Elevator::DOOR_TIME
+                    * opacity_levels.len() as f64)
+                    .floor() as usize;
                 opacity_levels[opacity.min(4)]
             }
             ElevatorState::ClosingDoors { secs_until_closed } => {
-                let opacity = (secs_until_closed / Elevator::DOOR_TIME * opacity_levels.len() as f64).floor() as usize;
+                let opacity = (secs_until_closed / Elevator::DOOR_TIME
+                    * opacity_levels.len() as f64)
+                    .floor() as usize;
                 let opacity = opacity.min(4);
                 opacity_levels[4 - opacity]
             }
@@ -155,8 +192,8 @@ impl Component for ElevatorComponent {
             } else {
                 '█'.render(&mut renderer, self.x + 6, y, depth_base);
             }
-            '█'.render(&mut renderer, self.x, y-1, depth_base);
-            '█'.render(&mut renderer, self.x + 6, y-1, depth_base);
+            '█'.render(&mut renderer, self.x, y - 1, depth_base);
+            '█'.render(&mut renderer, self.x + 6, y - 1, depth_base);
             // draw the above floor
             "██████".render(&mut renderer, self.x + 7, y - 1, depth_base);
             // draw waiting members
@@ -171,25 +208,28 @@ impl Component for ElevatorComponent {
                     member_str.push(c);
                 }
             }
-            member_str.render(&mut renderer, self.x + 7, y, depth_base+100);
+            member_str.render(&mut renderer, self.x + 7, y, depth_base + 100);
             y -= height_of_levels;
             curr_floor += 1;
         }
         // draw elevator
-        let elevator_depth = depth_base+1;
+        let elevator_depth = depth_base + 1;
 
-        let elevator_sprite = Sprite::new([
-            ['█', '█', '█', '█', '█'],
-            ['█', ' ', ' ', ' ', door_opacity],
-            ['█', '█', '█', '█', '█'],
-        ], 0, 0);
-
+        let elevator_sprite = Sprite::new(
+            [
+                ['█', '█', '█', '█', '█'],
+                ['█', ' ', ' ', ' ', door_opacity],
+                ['█', '█', '█', '█', '█'],
+            ],
+            0,
+            0,
+        );
 
         let elevator_y = self.elevator.current_pos.floor() as usize;
-        elevator_sprite.render(&mut renderer, self.x+1, elevator_y-1, elevator_depth);
+        elevator_sprite.render(&mut renderer, self.x + 1, elevator_y - 1, elevator_depth);
 
         // draw members
-        let member_depth = elevator_depth+1;
+        let member_depth = elevator_depth + 1;
         let member_s = if self.elevator.members.is_empty() {
             format!("   ")
         } else {
@@ -198,7 +238,6 @@ impl Component for ElevatorComponent {
         member_s.render(&mut renderer, self.x + 2, elevator_y, member_depth);
     }
 }
-
 
 #[derive(Debug, Default)]
 struct Elevator {
@@ -311,7 +350,6 @@ impl Elevator {
         } else {
             self.target_queue.push(level);
         }
-
     }
 
     fn update(&mut self, dt: f64) {
@@ -325,7 +363,10 @@ impl Elevator {
                         // Now that we're moving up, we can decide to stop at any floor that has a member
                         // waiting to go up.
                         for i in 0..self.waiting_members.len() {
-                            if self.waiting_members[i].from > self.compute_current_level() && self.waiting_members[i].from < target_level && self.waiting_members[i].to > self.waiting_members[i].from {
+                            if self.waiting_members[i].from > self.compute_current_level()
+                                && self.waiting_members[i].from < target_level
+                                && self.waiting_members[i].to > self.waiting_members[i].from
+                            {
                                 self.add_target_level(self.waiting_members[i].from);
                             }
                         }
@@ -334,7 +375,10 @@ impl Elevator {
                         // Now that we're moving down, we can decide to stop at any floor that has a member
                         // waiting to go down.
                         for i in 0..self.waiting_members.len() {
-                            if self.waiting_members[i].from < self.compute_current_level() && self.waiting_members[i].from > target_level && self.waiting_members[i].to < self.waiting_members[i].from {
+                            if self.waiting_members[i].from < self.compute_current_level()
+                                && self.waiting_members[i].from > target_level
+                                && self.waiting_members[i].to < self.waiting_members[i].from
+                            {
                                 self.add_target_level(self.waiting_members[i].from);
                             }
                         }
@@ -369,7 +413,9 @@ impl Elevator {
                     // reached target.
                     self.current_level = Some(*next_target);
                     self.target_queue.remove(0);
-                    self.state = ElevatorState::OpeningDoors { secs_until_opened: Self::DOOR_TIME };
+                    self.state = ElevatorState::OpeningDoors {
+                        secs_until_opened: Self::DOOR_TIME,
+                    };
                 }
             }
             ElevatorState::MovingDown => {
@@ -393,10 +439,14 @@ impl Elevator {
                     // reached target.
                     self.current_level = Some(*next_target);
                     self.target_queue.remove(0);
-                    self.state = ElevatorState::OpeningDoors { secs_until_opened: Self::DOOR_TIME };
+                    self.state = ElevatorState::OpeningDoors {
+                        secs_until_opened: Self::DOOR_TIME,
+                    };
                 }
             }
-            ElevatorState::OpeningDoors { ref mut secs_until_opened } => {
+            ElevatorState::OpeningDoors {
+                ref mut secs_until_opened,
+            } => {
                 if *secs_until_opened <= 0.0 {
                     // remove any members that have reached their destination
                     let current_level = self.compute_current_level();
@@ -414,18 +464,17 @@ impl Elevator {
                     });
                     // collect all members that are on this floor and going in the same direction as our next movement
                     let mut check_idx = 0;
-                    while !self.waiting_members.is_empty() && check_idx < self.waiting_members.len() {
+                    while !self.waiting_members.is_empty() && check_idx < self.waiting_members.len()
+                    {
                         if self.waiting_members[check_idx].from != current_level {
                             check_idx += 1;
                             continue;
                         }
-                        let direction = self.target_queue.first().map(|target| {
-                            if *target > current_level {
-                                1
-                            } else {
-                                -1
-                            }
-                        }).unwrap_or(0);
+                        let direction = self
+                            .target_queue
+                            .first()
+                            .map(|target| if *target > current_level { 1 } else { -1 })
+                            .unwrap_or(0);
                         if direction == 0 {
                             // we're not moving, so any member is fine.
                             let member_to_add = self.waiting_members.remove(check_idx);
@@ -460,12 +509,16 @@ impl Elevator {
                             self.add_target_level(exit_target);
                         }
                     }
-                    self.state = ElevatorState::ClosingDoors { secs_until_closed: Self::DOOR_TIME };
+                    self.state = ElevatorState::ClosingDoors {
+                        secs_until_closed: Self::DOOR_TIME,
+                    };
                 } else {
                     *secs_until_opened -= dt;
                 }
             }
-            ElevatorState::ClosingDoors { ref mut secs_until_closed } => {
+            ElevatorState::ClosingDoors {
+                ref mut secs_until_closed,
+            } => {
                 if *secs_until_closed <= 0.0 {
                     self.state = ElevatorState::Stopped;
                 } else {

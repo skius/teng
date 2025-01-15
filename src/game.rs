@@ -1,26 +1,26 @@
-use std::any::Any;
+use anymap::AnyMap;
 use crossterm::event::{Event, KeyCode, MouseEvent, MouseEventKind};
 use crossterm::queue;
+use smallvec::SmallVec;
+use std::any::Any;
 use std::io;
 use std::io::{Stdout, Write};
 use std::ops::{Index, IndexMut};
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
-use anymap::AnyMap;
-use smallvec::SmallVec;
 
 pub mod components;
 mod display;
 mod render;
 mod renderer;
 
+use crate::game::components::elevator::ElevatorComponent;
+use crate::game::components::incremental::UiBarComponent;
 use crate::game::components::{DebugInfo, DebugInfoComponent, DecayElement};
 use crate::game::display::Display;
 use crate::physics::PhysicsBoard;
 pub use render::*;
 pub use renderer::*;
-use crate::game::components::elevator::ElevatorComponent;
-use crate::game::components::incremental::UiBarComponent;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pixel {
@@ -31,7 +31,11 @@ pub struct Pixel {
 
 impl Pixel {
     pub fn new(c: char) -> Self {
-        Self { c, color: None, bg_color: None }
+        Self {
+            c,
+            color: None,
+            bg_color: None,
+        }
     }
 
     pub fn with_color(self, color: [u8; 3]) -> Self {
@@ -127,7 +131,11 @@ impl SharedState {
         Self {
             mouse_info: MouseInfo::default(),
             target_fps: Some(150.0),
-            decay_board: Display::new(width, height-UiBarComponent::HEIGHT, DecayElement::new(' ')),
+            decay_board: Display::new(
+                width,
+                height - UiBarComponent::HEIGHT,
+                DecayElement::new(' '),
+            ),
             physics_board: PhysicsBoard::new(width),
             display_info: DisplayInfo::new(width, height),
             pressed_keys: micromap::Map::new(),
@@ -140,10 +148,12 @@ impl SharedState {
     }
 
     pub fn resize(&mut self, width: usize, height: usize) {
-        self.decay_board.resize_keep(width, height-UiBarComponent::HEIGHT);
+        self.decay_board
+            .resize_keep(width, height - UiBarComponent::HEIGHT);
         self.physics_board.resize(width);
         self.display_info = DisplayInfo::new(width, height);
-        self.collision_board.resize_keep(width, height-UiBarComponent::HEIGHT);
+        self.collision_board
+            .resize_keep(width, height - UiBarComponent::HEIGHT);
     }
 }
 
@@ -356,7 +366,10 @@ impl<W: Write> Game<W> {
         self.update_game(update_info);
     }
 
-    fn swap_component<C: Component>(&mut self, new: impl FnOnce(usize, usize) -> Box<dyn Component>) {
+    fn swap_component<C: Component>(
+        &mut self,
+        new: impl FnOnce(usize, usize) -> Box<dyn Component>,
+    ) {
         let mut found = false;
         for idx in 0..self.components.len() {
             if (&*self.components[idx]).type_id() == std::any::TypeId::of::<C>() {
@@ -385,12 +398,20 @@ impl<W: Write> Game<W> {
     // }
 
     fn update_game(&mut self, update_info: UpdateInfo) {
-        if self.shared_state.pressed_keys.contains_key(&KeyCode::Char('e')) {
+        if self
+            .shared_state
+            .pressed_keys
+            .contains_key(&KeyCode::Char('e'))
+        {
             self.swap_component::<ElevatorComponent>(|width, height| {
                 Box::new(ElevatorComponent::new(width, height))
             });
         }
-        if self.shared_state.pressed_keys.contains_key(&KeyCode::Char('i')) {
+        if self
+            .shared_state
+            .pressed_keys
+            .contains_key(&KeyCode::Char('i'))
+        {
             self.swap_component::<DebugInfoComponent>(|width, height| {
                 Box::new(DebugInfoComponent::new())
             });

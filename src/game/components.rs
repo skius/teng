@@ -2,7 +2,10 @@ pub mod elevator;
 pub mod incremental;
 
 use crate::game::display::Display;
-use crate::game::{BreakingAction, Component, DebugMessage, MouseInfo, Pixel, Render, Renderer, SharedState, Sprite, UpdateInfo};
+use crate::game::{
+    BreakingAction, Component, DebugMessage, MouseInfo, Pixel, Render, Renderer, SharedState,
+    Sprite, UpdateInfo,
+};
 use crate::physics::{Entity, PhysicsBoard};
 use crossterm::event::{Event, KeyCode, KeyEvent, MouseEvent, MouseEventKind};
 use smallvec::SmallVec;
@@ -113,12 +116,14 @@ impl Component for DebugInfoComponent {
         self.target_fps = shared_state.target_fps;
 
         // expire debug messages
-        shared_state.debug_messages.retain(|msg| {
-            msg.expiry_time > current_time
-        });
+        shared_state
+            .debug_messages
+            .retain(|msg| msg.expiry_time > current_time);
         // only keep the 10 most recent messages
         if shared_state.debug_messages.len() > 10 {
-            shared_state.debug_messages.drain(0..shared_state.debug_messages.len() - 10);
+            shared_state
+                .debug_messages
+                .drain(0..shared_state.debug_messages.len() - 10);
         }
     }
 
@@ -155,7 +160,12 @@ impl Component for DebugInfoComponent {
         //     line.render(&mut renderer, 0, y, depth_base);
         //     y += 1;
         // }
-        format!("Display size: {}x{}", shared_state.display_info.width(), shared_state.display_info.height()).render(&mut renderer, 0, y, depth_base);
+        format!(
+            "Display size: {}x{}",
+            shared_state.display_info.width(),
+            shared_state.display_info.height()
+        )
+        .render(&mut renderer, 0, y, depth_base);
         y += 1;
         // format!("Pressed keys: {:?}", shared_state.pressed_keys).render(&mut renderer, 0, y, depth_base);
         // y += 1;
@@ -652,7 +662,8 @@ impl Component for PhysicsComponent {
             for entity in col {
                 let x = entity.x.floor() as usize;
                 let y = entity.y.floor() as usize;
-                if x >= shared_state.display_info.width() || y >= shared_state.display_info.height() {
+                if x >= shared_state.display_info.width() || y >= shared_state.display_info.height()
+                {
                     // TODO: debug error
                     continue;
                 }
@@ -918,9 +929,8 @@ impl Component for PlayerComponent {
             } else if self.x_vel == 0.0 {
                 self.x_vel = -20.0;
             } else {
-                self .x_vel = -20.0
+                self.x_vel = -20.0
             }
-
         } else if shared_state.pressed_keys.contains_key(&KeyCode::Char('D')) {
             if self.x_vel < 0.0 {
                 self.x_vel = 0.0;
@@ -954,31 +964,29 @@ impl Component for PlayerComponent {
             y_u = height as usize - 1;
         }
 
-
         {
             // Check left
             let x = x_u as i32 - 1;
-            for y in (y_u-1)..=y_u {
-                for x in ((x-4)..=x).rev() {
+            for y in (y_u - 1)..=y_u {
+                for x in ((x - 4)..=x).rev() {
                     if x < 0 || x >= width as i32 {
                         break;
                     }
                     if shared_state.collision_board[(x as usize, y)] {
                         if left_wall < x as f64 + 1.0 {
                             left_idx = Some(x as usize);
-                            left_wall = x as f64 + 1.0;// plus 1.0 because we define collision on <x differently?
+                            left_wall = x as f64 + 1.0; // plus 1.0 because we define collision on <x differently?
                         }
                         break;
                     }
                 }
-
             }
         }
         {
             // Check right
             let x = x_u as i32 + 1;
-            for y in (y_u-1)..=y_u {
-                for x in x..=(x+4) {
+            for y in (y_u - 1)..=y_u {
+                for x in x..=(x + 4) {
                     if x < 0 || x >= width as i32 {
                         break;
                     }
@@ -994,7 +1002,7 @@ impl Component for PlayerComponent {
         }
 
         // -1.0 etc to account for size of sprite
-        if self.x-1.0 < left_wall {
+        if self.x - 1.0 < left_wall {
             // Check if we can do a step
             // initialize false because if there is no left_idx, we can't do a step
             let mut do_step = false;
@@ -1014,13 +1022,12 @@ impl Component for PlayerComponent {
                         break;
                     }
                 }
-
             }
             if !do_step {
-                self.x = left_wall+1.0;
+                self.x = left_wall + 1.0;
             }
             // self.x_vel = 0.0;
-        } else if self.x+1.0 >= right_wall {
+        } else if self.x + 1.0 >= right_wall {
             // Check if we can do a step
             let mut do_step = false;
             if let Some(right_idx) = right_idx {
@@ -1037,7 +1044,6 @@ impl Component for PlayerComponent {
                         break;
                     }
                 }
-
             }
             if !do_step {
                 self.x = right_wall - 2.0;
@@ -1061,7 +1067,7 @@ impl Component for PlayerComponent {
             let y = y_u;
 
             // TODO: should be dynamic due to sprite size
-            for x in (x-1)..=(x+1) {
+            for x in (x - 1)..=(x + 1) {
                 if x < 0 || x >= width as i32 {
                     continue;
                 }
@@ -1084,12 +1090,12 @@ impl Component for PlayerComponent {
             if self.y_vel >= 0.0 {
                 self.y_vel = 0.0;
             }
-
         }
 
         let grounded = self.y >= bottom_wall - 1.2;
         if !grounded {
-            self.max_height_since_last_ground_touch = self.max_height_since_last_ground_touch.min(self.y);
+            self.max_height_since_last_ground_touch =
+                self.max_height_since_last_ground_touch.min(self.y);
         } else {
             if self.y - self.max_height_since_last_ground_touch > Self::DEATH_HEIGHT {
                 self.dead = true;
@@ -1112,13 +1118,20 @@ impl Component for PlayerComponent {
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         if self.dead {
-            self.dead_sprite
-                .render(&mut renderer, self.x.floor() as usize, self.y.floor() as usize, depth_base);
+            self.dead_sprite.render(
+                &mut renderer,
+                self.x.floor() as usize,
+                self.y.floor() as usize,
+                depth_base,
+            );
         } else {
-            self.sprite
-                .render(&mut renderer, self.x.floor() as usize, self.y.floor() as usize, depth_base);
+            self.sprite.render(
+                &mut renderer,
+                self.x.floor() as usize,
+                self.y.floor() as usize,
+                depth_base,
+            );
         }
-
 
         // render bullets
         for bullet in &self.bullets {

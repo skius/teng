@@ -5,7 +5,12 @@
 mod game;
 mod physics;
 
-use crate::game::components::{incremental, ClearComponent, DebugInfoComponent, DecayComponent, FPSLockerComponent, FloodFillComponent, ForceApplyComponent, KeyPressRecorderComponent, MouseTrackerComponent, PhysicsComponent, PlayerComponent, QuitterComponent, SimpleDrawComponent};
+use crate::game::components::elevator::ElevatorComponent;
+use crate::game::components::{
+    incremental, ClearComponent, DebugInfoComponent, DecayComponent, FPSLockerComponent,
+    FloodFillComponent, ForceApplyComponent, KeyPressRecorderComponent, MouseTrackerComponent,
+    PhysicsComponent, PlayerComponent, QuitterComponent, SimpleDrawComponent,
+};
 use crate::game::{DisplayRenderer, Game, Pixel, Render, Renderer, Sprite, WithColor};
 use crossterm::event::{KeyEvent, KeyboardEnhancementFlags, MouseButton, MouseEventKind};
 use crossterm::style::{Color, Colored, Colors};
@@ -17,13 +22,12 @@ use crossterm::{
     execute, queue, style,
     terminal::{disable_raw_mode, enable_raw_mode},
 };
+use std::any::Any;
 use std::io::{stdout, Stdout, Write};
 use std::ops::Deref;
 use std::thread::sleep;
 use std::time::Instant;
 use std::{io, time::Duration};
-use std::any::Any;
-use crate::game::components::elevator::ElevatorComponent;
 
 const HELP: &str = r#"Blocking poll() & non-blocking read()
  - Keyboard, mouse and terminal resize events enabled
@@ -584,7 +588,6 @@ fn main() -> io::Result<()> {
     if let Err(e) = game.run() {
         println!("Error: {:?}", e);
     }
-
 
     // if let Err(e) = game_loop(&mut stdout) {
     //     println!("Error: {:?}\r", e);

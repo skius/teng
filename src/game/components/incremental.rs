@@ -9,11 +9,14 @@
 //!
 //! You start with no blocks, and the player's death height is barely enough to die when jumping.
 
-use std::time::{Duration, Instant};
+use crate::game::components::{Bullet, DecayElement, MouseTrackerComponent};
+use crate::game::{
+    BreakingAction, Component, DebugMessage, MouseInfo, Pixel, Render, Renderer, SetupInfo,
+    SharedState, Sprite, UpdateInfo, WithColor,
+};
 use crossterm::event::{Event, KeyCode};
 use smallvec::SmallVec;
-use crate::game::components::{Bullet, DecayElement, MouseTrackerComponent};
-use crate::game::{BreakingAction, Component, DebugMessage, MouseInfo, Pixel, Render, Renderer, SetupInfo, SharedState, Sprite, UpdateInfo, WithColor};
+use std::time::{Duration, Instant};
 
 #[derive(Default, Debug, PartialEq)]
 enum GamePhase {
@@ -25,13 +28,24 @@ enum GamePhase {
 }
 
 #[derive(Debug)]
+struct PlayerHistoryElement {
+    x: usize,
+    y: usize,
+    dead: bool,
+}
+
+#[derive(Debug)]
 struct GameState {
     phase: GamePhase,
     blocks: usize,
     max_blocks: usize,
     received_blocks: usize,
+    // The amount of blocks the main player received, ignoring ghosts.
+    received_blocks_base: usize,
     max_blocks_per_round: usize,
     player_state: PlayerState,
+    player_history: Vec<PlayerHistoryElement>,
+    player_ghosts: Vec<PlayerGhost>,
 }
 
 impl GameState {
@@ -41,15 +55,16 @@ impl GameState {
             blocks: 0,
             max_blocks: 0,
             received_blocks: 0,
+            received_blocks_base: 0,
             max_blocks_per_round: 0,
-            player_state: PlayerState::new(1, height-UiBarComponent::HEIGHT),
+            player_state: PlayerState::new(1, height - UiBarComponent::HEIGHT),
+            player_history: Vec::new(),
+            player_ghosts: vec![PlayerGhost::new(0.6)],
         }
     }
 }
 
-pub struct GameComponent {
-
-}
+pub struct GameComponent {}
 
 impl GameComponent {
     pub fn new() -> Self {
@@ -59,10 +74,18 @@ impl GameComponent {
 
 impl Component for GameComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
-        shared_state.components_to_add.push(Box::new(PlayerComponent::new()));
-        shared_state.components_to_add.push(Box::new(BuildingDrawComponent::new()));
-        shared_state.components_to_add.push(Box::new(UiBarComponent::new()));
-        shared_state.extensions.insert(GameState::new(setup_info.width, setup_info.height));
+        shared_state
+            .components_to_add
+            .push(Box::new(PlayerComponent::new()));
+        shared_state
+            .components_to_add
+            .push(Box::new(BuildingDrawComponent::new()));
+        shared_state
+            .components_to_add
+            .push(Box::new(UiBarComponent::new()));
+        shared_state
+            .extensions
+            .insert(GameState::new(setup_info.width, setup_info.height));
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
@@ -71,8 +94,11 @@ impl Component for GameComponent {
             GamePhase::MoveToBuilding => {
                 game_state.phase = GamePhase::Building;
                 game_state.max_blocks += game_state.received_blocks;
-                game_state.max_blocks_per_round = game_state.max_blocks_per_round.max(game_state.received_blocks);
+                game_state.max_blocks_per_round = game_state
+                    .max_blocks_per_round
+                    .max(game_state.received_blocks);
                 game_state.received_blocks = 0;
+                game_state.received_blocks_base = 0;
                 game_state.blocks = game_state.max_blocks;
                 shared_state.physics_board.clear();
             }
@@ -84,12 +110,16 @@ impl Component for GameComponent {
             }
             GamePhase::BuildingToMoving => {
                 game_state.phase = GamePhase::Moving;
-                game_state.player_state.y = shared_state.display_info.height() as f64 - 1.0 - UiBarComponent::HEIGHT as f64;
+                game_state.player_state.y =
+                    shared_state.display_info.height() as f64 - 1.0 - UiBarComponent::HEIGHT as f64;
                 game_state.player_state.x = 1.0;
+                game_state.player_history.clear();
+                for ghost in &mut game_state.player_ghosts {
+                    ghost.death_time = None;
+                    ghost.was_dead = false;
+                }
             }
-            GamePhase::Moving => {
-
-            }
+            GamePhase::Moving => {}
         }
     }
 }
@@ -103,7 +133,8 @@ pub struct PlayerState {
     sprite: Sprite<3, 2>,
     dead_sprite: Sprite<5, 1>,
     dead_time: Option<Instant>,
-    max_height_since_last_ground_touch: f64
+    max_height_since_last_ground_touch: f64,
+    next_sample_time: Instant,
 }
 
 impl PlayerState {
@@ -117,6 +148,7 @@ impl PlayerState {
             dead_sprite: Sprite::new([['▂', '▆', '▆', ' ', '▖']], 2, 0),
             dead_time: None,
             max_height_since_last_ground_touch: y as f64,
+            next_sample_time: Instant::now(),
         }
     }
 }
@@ -131,8 +163,7 @@ impl PlayerComponent {
     const DEATH_STOP_X_MOVE_TIME: f64 = 0.5;
 
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 }
 
@@ -227,31 +258,29 @@ impl Component for PlayerComponent {
             y_u = height as usize - 1;
         }
 
-
         {
             // Check left
             let x = x_u as i32 - 1;
-            for y in (y_u-1)..=y_u {
-                for x in ((x-4)..=x).rev() {
+            for y in (y_u - 1)..=y_u {
+                for x in ((x - 4)..=x).rev() {
                     if x < 0 || x >= width as i32 {
                         break;
                     }
                     if shared_state.collision_board[(x as usize, y)] {
                         if left_wall < x as f64 + 1.0 {
                             left_idx = Some(x as usize);
-                            left_wall = x as f64 + 1.0;// plus 1.0 because we define collision on <x differently?
+                            left_wall = x as f64 + 1.0; // plus 1.0 because we define collision on <x differently?
                         }
                         break;
                     }
                 }
-
             }
         }
         {
             // Check right
             let x = x_u as i32 + 1;
-            for y in (y_u-1)..=y_u {
-                for x in x..=(x+4) {
+            for y in (y_u - 1)..=y_u {
+                for x in x..=(x + 4) {
                     if x < 0 || x >= width as i32 {
                         break;
                     }
@@ -267,7 +296,7 @@ impl Component for PlayerComponent {
         }
 
         // -1.0 etc to account for size of sprite
-        if game_state.player_state.x-1.0 < left_wall {
+        if game_state.player_state.x - 1.0 < left_wall {
             // Check if we can do a step
             // initialize false because if there is no left_idx, we can't do a step
             let mut do_step = false;
@@ -287,13 +316,12 @@ impl Component for PlayerComponent {
                         break;
                     }
                 }
-
             }
             if !do_step {
-                game_state.player_state.x = left_wall+1.0;
+                game_state.player_state.x = left_wall + 1.0;
             }
             // game_state.x_vel = 0.0;
-        } else if game_state.player_state.x+1.0 >= right_wall {
+        } else if game_state.player_state.x + 1.0 >= right_wall {
             // Check if we can do a step
             let mut do_step = false;
             if let Some(right_idx) = right_idx {
@@ -310,7 +338,6 @@ impl Component for PlayerComponent {
                         break;
                     }
                 }
-
             }
             if !do_step {
                 game_state.player_state.x = right_wall - 2.0;
@@ -334,7 +361,7 @@ impl Component for PlayerComponent {
             let y = y_u;
 
             // TODO: should be dynamic due to sprite size
-            for x in (x-1)..=(x+1) {
+            for x in (x - 1)..=(x + 1) {
                 if x < 0 || x >= width as i32 {
                     continue;
                 }
@@ -357,22 +384,35 @@ impl Component for PlayerComponent {
             if game_state.player_state.y_vel >= 0.0 {
                 game_state.player_state.y_vel = 0.0;
             }
-
         }
 
         let grounded = game_state.player_state.y >= bottom_wall - 1.2;
         if !grounded {
-            game_state.player_state.max_height_since_last_ground_touch = game_state.player_state.max_height_since_last_ground_touch.min(game_state.player_state.y);
-            game_state.player_state.max_height_since_last_ground_touch = game_state.player_state.max_height_since_last_ground_touch.floor();
+            game_state.player_state.max_height_since_last_ground_touch = game_state
+                .player_state
+                .max_height_since_last_ground_touch
+                .min(game_state.player_state.y);
+            game_state.player_state.max_height_since_last_ground_touch = game_state
+                .player_state
+                .max_height_since_last_ground_touch
+                .floor();
         } else {
-            let fall_distance = game_state.player_state.y.floor() - game_state.player_state.max_height_since_last_ground_touch;
+            let fall_distance = game_state.player_state.y.floor()
+                - game_state.player_state.max_height_since_last_ground_touch;
             if fall_distance >= Self::DEATH_HEIGHT {
                 // Player died
                 game_state.player_state.dead_time = Some(current_time);
                 // add blocks proportional to fall distance
                 let blocks = (fall_distance).abs().ceil() as usize;
-                shared_state.debug_messages.push(DebugMessage::new(format!("You fell from {} blocks high and earned {} blocks", fall_distance, blocks), current_time + Duration::from_secs(5)));
+                shared_state.debug_messages.push(DebugMessage::new(
+                    format!(
+                        "You fell from {} blocks high and earned {} blocks",
+                        fall_distance, blocks
+                    ),
+                    current_time + Duration::from_secs(5),
+                ));
                 game_state.received_blocks += blocks;
+                game_state.received_blocks_base += blocks;
             }
             game_state.player_state.max_height_since_last_ground_touch = game_state.player_state.y;
         }
@@ -381,6 +421,8 @@ impl Component for PlayerComponent {
             // Now jump input since we need grounded information
             if shared_state.pressed_keys.contains_key(&KeyCode::Char(' ')) {
                 if grounded {
+                    // set y pos to be exactly the bottom wall so we have consistent jump heights hopefully
+                    game_state.player_state.y = bottom_wall - 1.0;
                     game_state.player_state.y_vel = -20.0;
                 }
             }
@@ -390,13 +432,50 @@ impl Component for PlayerComponent {
         shared_state.debug_info.left_wall = left_wall;
         shared_state.debug_info.bottom_wall = bottom_wall;
         shared_state.debug_info.y_vel = game_state.player_state.y_vel;
+
+        // Sample player
+        if current_time >= game_state.player_state.next_sample_time {
+            let player_history_element = PlayerHistoryElement {
+                x: game_state.player_state.x.floor() as usize,
+                y: game_state.player_state.y.floor() as usize,
+                dead: game_state.player_state.dead_time.is_some(),
+            };
+            game_state.player_history.push(player_history_element);
+            game_state.player_state.next_sample_time = game_state.player_state.next_sample_time
+                + Duration::from_secs_f64(1.0 / PlayerGhost::SAMPLE_RATE);
+            if game_state.player_history.len() as f64 / PlayerGhost::SAMPLE_RATE
+                > PlayerGhost::HISTORY_SIZE_SECS
+            {
+                game_state.player_history.remove(0);
+            }
+            // NOTE: expiry check is not really necessary, as right now ghosts cannot expire:
+            // their death time will come after the player's, at which point we're not in the moving phase
+            // anymore so this code is not run.
+            // A game mechanic could be making the ghosts faster or maybe change the death respawn time
+            // so that all ghosts have time to die. because if the player dies before all ghosts are dead,
+            // the ghosts won't give the player any points.
+            // another way to solve this is  to reduce the delay between individual ghosts.
+            // basically, we just want to reduce the offset from the player to the slowest ghost.
+            for ghost in &mut game_state.player_ghosts {
+                let (just_died, _expired) = ghost.update(&game_state.player_history);
+                if just_died {
+                    game_state.received_blocks += game_state.received_blocks_base;
+                }
+            }
+        }
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+        let ghost_depth = depth_base;
+        let player_base_depth = ghost_depth + 1;
+
         let game_state = shared_state.extensions.get::<GameState>().unwrap();
         // Set bg color depending on positive y velocity
         let max_bg_color = 100;
-        let bg_color = match (game_state.player_state.dead_time, game_state.player_state.y_vel) {
+        let bg_color = match (
+            game_state.player_state.dead_time,
+            game_state.player_state.y_vel,
+        ) {
             (Some(dead_time), _) => {
                 let time_since_death = (Instant::now() - dead_time).as_secs_f64();
                 if time_since_death < 0.05 {
@@ -405,23 +484,111 @@ impl Component for PlayerComponent {
                     [0, 0, 0]
                 }
             }
-            (None, y_vel) => {
-                [y_vel.min(max_bg_color as f64) as u8, 0, 0]
-            }
+            (None, y_vel) => [y_vel.min(max_bg_color as f64) as u8, 0, 0],
         };
 
         renderer.set_default_bg_color(bg_color);
 
         if game_state.player_state.dead_time.is_some() {
-            game_state.player_state.dead_sprite
-                .render(&mut renderer, game_state.player_state.x.floor() as usize, game_state.player_state.y.floor() as usize, depth_base);
+            game_state.player_state.dead_sprite.render(
+                &mut renderer,
+                game_state.player_state.x.floor() as usize,
+                game_state.player_state.y.floor() as usize,
+                player_base_depth,
+            );
         } else {
-            game_state.player_state.sprite
-                .render(&mut renderer, game_state.player_state.x.floor() as usize, game_state.player_state.y.floor() as usize, depth_base);
+            game_state.player_state.sprite.render(
+                &mut renderer,
+                game_state.player_state.x.floor() as usize,
+                game_state.player_state.y.floor() as usize,
+                player_base_depth,
+            );
+        }
+
+        for player_ghost in &game_state.player_ghosts {
+            player_ghost.render(
+                &mut renderer,
+                shared_state,
+                ghost_depth,
+                &game_state.player_state.sprite,
+                &game_state.player_state.dead_sprite,
+            );
         }
     }
 }
 
+#[derive(Debug)]
+struct PlayerGhost {
+    offset_secs: f64,
+    was_dead: bool,
+    death_time: Option<Instant>,
+}
+
+impl PlayerGhost {
+    const SAMPLE_RATE: f64 = 60.0;
+    const HISTORY_SIZE_SECS: f64 = 10.0;
+
+    fn new(offset_secs: f64) -> Self {
+        Self {
+            offset_secs,
+            was_dead: false,
+            death_time: None,
+        }
+    }
+
+    fn offset_as_samples(&self) -> usize {
+        (self.offset_secs * Self::SAMPLE_RATE) as usize
+    }
+
+    // returns true if it just died, and if it expired
+    fn update(&mut self, history: &[PlayerHistoryElement]) -> (bool, bool) {
+        let current_time = Instant::now();
+        let history_size = history.len();
+        let offset_samples = self.offset_as_samples();
+        if history_size <= offset_samples {
+            // doesn't exist yet
+            return (false, false);
+        }
+        let render_state = &history[history_size - offset_samples - 1];
+        let dead = render_state.dead;
+        let just_died = dead && !self.was_dead;
+        self.was_dead = dead;
+        if just_died {
+            self.death_time = Some(current_time);
+        }
+
+        let expired = if let Some(death_time) = self.death_time {
+            let time_since_death = (current_time - death_time).as_secs_f64();
+            time_since_death >= PlayerComponent::DEATH_RESPAWN_TIME
+        } else { false };
+
+        (just_died, expired)
+    }
+
+    fn render(
+        &self,
+        mut renderer: &mut dyn Renderer,
+        shared_state: &SharedState,
+        depth_base: i32,
+        player_sprite: &Sprite<3, 2>,
+        death_sprite: &Sprite<5, 1>,
+    ) {
+        let game_state = shared_state.extensions.get::<GameState>().unwrap();
+        let current_time = Instant::now();
+        let history = &game_state.player_history;
+        let history_size = history.len();
+        let offset_samples = self.offset_as_samples();
+        if history_size <= offset_samples {
+            return;
+        }
+        let render_state = &history[history_size - offset_samples - 1];
+        if render_state.dead {
+            death_sprite.render(&mut renderer, render_state.x, render_state.y, depth_base);
+        } else {
+            player_sprite.render(&mut renderer, render_state.x, render_state.y, depth_base);
+        }
+    }
+}
 
 struct BuildingDrawComponent {
     last_mouse_info: MouseInfo,
@@ -454,18 +621,27 @@ impl Component for BuildingDrawComponent {
                     if mouse_info.left_mouse_down {
                         let x = mouse_info.last_mouse_pos.0 as u16;
                         let y = mouse_info.last_mouse_pos.1 as u16;
-                        if y >= shared_state.display_info.height() as u16 - UiBarComponent::HEIGHT as u16 {
+                        if y >= shared_state.display_info.height() as u16
+                            - UiBarComponent::HEIGHT as u16
+                        {
                             return;
                         }
                         if self.draw_queue.contains(&(x, y)) {
                             return;
                         }
                         // if decay board already has this pixel, we don't need to count it towards our blocks
-                        let exists_already = shared_state.decay_board[(x as usize, y as usize)].c != ' ';
+                        let exists_already =
+                            shared_state.decay_board[(x as usize, y as usize)].c != ' ';
                         // draw only if it either exists, or we have enough blocks
-                        if exists_already || shared_state.extensions.get::<GameState>().unwrap().blocks > 0 {
+                        if exists_already
+                            || shared_state.extensions.get::<GameState>().unwrap().blocks > 0
+                        {
                             if !exists_already {
-                                shared_state.extensions.get_mut::<GameState>().unwrap().blocks -= 1;
+                                shared_state
+                                    .extensions
+                                    .get_mut::<GameState>()
+                                    .unwrap()
+                                    .blocks -= 1;
                             }
                             self.draw_queue.push((x, y));
                         }
@@ -485,7 +661,9 @@ impl Component for BuildingDrawComponent {
         // also current pixel, in case we're holding the button and not moving
         if self.last_mouse_info.left_mouse_down {
             let (x, y) = self.last_mouse_info.last_mouse_pos;
-            if y < (shared_state.display_info.height() - UiBarComponent::HEIGHT) && shared_state.decay_board[(x, y)].c != ' ' {
+            if y < (shared_state.display_info.height() - UiBarComponent::HEIGHT)
+                && shared_state.decay_board[(x, y)].c != ' '
+            {
                 // refresh the decay time
                 shared_state.decay_board[(x, y)] =
                     DecayElement::new_with_time('█', update_info.current_time);
@@ -494,9 +672,7 @@ impl Component for BuildingDrawComponent {
     }
 }
 
-pub struct UiBarComponent {
-
-}
+pub struct UiBarComponent {}
 
 impl UiBarComponent {
     pub const HEIGHT: usize = 7;
@@ -523,7 +699,6 @@ impl Component for UiBarComponent {
             GamePhase::Moving => ("Moving", Self::MOVING_PHASE_COLOR),
         };
 
-
         // Draw outline of UI
         let top_y = shared_state.display_info.height() - Self::HEIGHT;
         let width = shared_state.display_info.width();
@@ -531,16 +706,24 @@ impl Component for UiBarComponent {
         renderer.render_pixel(0, top_y, Pixel::new('┌'), depth_base);
         renderer.render_pixel(width - 1, top_y, Pixel::new('┐'), depth_base);
         // draw top line
-        "─".repeat(width - 2).chars().enumerate().for_each(|(i, c)| {
-            renderer.render_pixel(i + 1, top_y, Pixel::new(c), depth_base);
-        });
+        "─"
+            .repeat(width - 2)
+            .chars()
+            .enumerate()
+            .for_each(|(i, c)| {
+                renderer.render_pixel(i + 1, top_y, Pixel::new(c), depth_base);
+            });
         let bottom_y = top_y + Self::HEIGHT - 1;
         renderer.render_pixel(0, bottom_y, Pixel::new('└'), depth_base);
         renderer.render_pixel(width - 1, bottom_y, Pixel::new('┘'), depth_base);
         // draw bottom line
-        "─".repeat(width - 2).chars().enumerate().for_each(|(i, c)| {
-            renderer.render_pixel(i + 1, bottom_y, Pixel::new(c), depth_base);
-        });
+        "─"
+            .repeat(width - 2)
+            .chars()
+            .enumerate()
+            .for_each(|(i, c)| {
+                renderer.render_pixel(i + 1, bottom_y, Pixel::new(c), depth_base);
+            });
         // Draw connecting lines
         for y in (top_y + 1)..bottom_y {
             renderer.render_pixel(0, y, Pixel::new('│'), depth_base);
@@ -560,7 +743,10 @@ impl Component for UiBarComponent {
         let max_blocks_str = format!("{}", max_blocks);
         let width = max_blocks_str.len();
         let block_s = if received_blocks > 0 {
-            format!("Blocks: {:width$}/{} + {received_blocks}", blocks, max_blocks)
+            format!(
+                "Blocks: {:width$}/{} + {received_blocks}",
+                blocks, max_blocks
+            )
         } else {
             format!("Blocks: {:width$}/{}", blocks, max_blocks)
         };
@@ -572,12 +758,15 @@ impl Component for UiBarComponent {
         y += 1;
         x = 1;
         let controls_str = match phase {
-            GamePhase::Building | GamePhase::MoveToBuilding => "Controls: LMB to place blocks, Space to start round\n\
-            Goal: Build a map for the character to die from falling from increasing heights",
-            GamePhase::Moving | GamePhase::BuildingToMoving  => "Controls: A/D to move, Space to jump\n\
-            Goal: Die from falling from increasing heights to earn more blocks",
+            GamePhase::Building | GamePhase::MoveToBuilding => {
+                "Controls: LMB to place blocks, Space to start round\n\
+            Goal: Build a map for the character to die from falling from increasing heights"
+            }
+            GamePhase::Moving | GamePhase::BuildingToMoving => {
+                "Controls: A/D to move, Space to jump\n\
+            Goal: Die from falling from increasing heights to earn more blocks"
+            }
         };
         controls_str.render(&mut renderer, x, y, depth_base);
-
     }
 }

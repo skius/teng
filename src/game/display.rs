@@ -11,7 +11,11 @@ pub struct Display<T> {
 
 impl<T: Debug> Debug for Display<T> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Display {{ width: {}, height: {}, pixels: {:?} }}", self.width, self.height, self.pixels)
+        write!(
+            f,
+            "Display {{ width: {}, height: {}, pixels: {:?} }}",
+            self.width, self.height, self.pixels
+        )
     }
 }
 

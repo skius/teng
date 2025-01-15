@@ -107,7 +107,8 @@ impl<W: Write> DisplayRenderer<W> {
             self.prev_display.resize_discard(width, height);
             // need to fill with something that is most likely different from the display, because
             // sometimes when resizing height the actual printed chars get mangled
-            self.prev_display.fill(Pixel::default().with_color([1, 2, 3]));
+            self.prev_display
+                .fill(Pixel::default().with_color([1, 2, 3]));
         } else {
             // need to keep this because we're not rewriting it in this coming frame.
             self.prev_display.resize_keep(width, height);
@@ -143,7 +144,8 @@ impl<W: Write> DisplayRenderer<W> {
     pub fn flush(&mut self) -> io::Result<()> {
         queue!(self.sink, crossterm::cursor::MoveTo(0, 0))?;
 
-        let render_everyting = self.last_bg_color != self.default_bg_color || self.last_fg_color != self.default_fg_color;
+        let render_everyting = self.last_bg_color != self.default_bg_color
+            || self.last_fg_color != self.default_fg_color;
 
         self.last_fg_color = self.default_fg_color;
         self.last_bg_color = self.default_bg_color;
@@ -209,25 +211,25 @@ impl<W: Write> DisplayRenderer<W> {
                     let new_color = pixel.color.unwrap_or(self.default_fg_color);
                     if new_color != self.last_fg_color {
                         queue!(
-                        self.sink,
-                        crossterm::style::SetForegroundColor(crossterm::style::Color::Rgb {
-                            r: new_color[0],
-                            g: new_color[1],
-                            b: new_color[2],
-                        })
-                    )?;
+                            self.sink,
+                            crossterm::style::SetForegroundColor(crossterm::style::Color::Rgb {
+                                r: new_color[0],
+                                g: new_color[1],
+                                b: new_color[2],
+                            })
+                        )?;
                         self.last_fg_color = new_color;
                     }
                     let new_bg_color = pixel.bg_color.unwrap_or(self.default_bg_color);
                     if new_bg_color != self.last_bg_color {
                         queue!(
-                        self.sink,
-                        crossterm::style::SetBackgroundColor(crossterm::style::Color::Rgb {
-                            r: new_bg_color[0],
-                            g: new_bg_color[1],
-                            b: new_bg_color[2],
-                        })
-                    )?;
+                            self.sink,
+                            crossterm::style::SetBackgroundColor(crossterm::style::Color::Rgb {
+                                r: new_bg_color[0],
+                                g: new_bg_color[1],
+                                b: new_bg_color[2],
+                            })
+                        )?;
                         self.last_bg_color = new_bg_color;
                     }
                     queue!(self.sink, crossterm::style::Print(pixel.c))?;
@@ -239,7 +241,6 @@ impl<W: Write> DisplayRenderer<W> {
                 }
             }
         }
-
 
         self.sink.flush()?;
         std::mem::swap(&mut self.display, &mut self.prev_display);
