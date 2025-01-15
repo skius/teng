@@ -1,9 +1,7 @@
 pub mod elevator;
 
 use crate::game::display::Display;
-use crate::game::{
-    BreakingAction, Component, MouseInfo, Pixel, Render, Renderer, SharedState, Sprite, UpdateInfo,
-};
+use crate::game::{BreakingAction, Component, DebugMessage, MouseInfo, Pixel, Render, Renderer, SharedState, Sprite, UpdateInfo};
 use crate::physics::{Entity, PhysicsBoard};
 use crossterm::event::{Event, KeyCode, KeyEvent, MouseEvent, MouseEventKind};
 use smallvec::SmallVec;
@@ -112,6 +110,15 @@ impl Component for DebugInfoComponent {
             self.last_fps_time = current_time;
         }
         self.target_fps = shared_state.target_fps;
+
+        // expire debug messages
+        shared_state.debug_messages.retain(|msg| {
+            msg.expiry_time > current_time
+        });
+        // only keep the 10 most recent messages
+        if shared_state.debug_messages.len() > 10 {
+            shared_state.debug_messages.drain(0..shared_state.debug_messages.len() - 10);
+        }
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
@@ -148,6 +155,7 @@ impl Component for DebugInfoComponent {
             y += 1;
         }
         format!("Display size: {}x{}", shared_state.display_info.width(), shared_state.display_info.height()).render(&mut renderer, 0, y, depth_base);
+        y += 1;
         // format!("Pressed keys: {:?}", shared_state.pressed_keys).render(&mut renderer, 0, y, depth_base);
         // y += 1;
         // format!("Events: {}", self.num_events).render(&mut renderer, 0, y, depth_base);
@@ -155,6 +163,12 @@ impl Component for DebugInfoComponent {
         // format!("Frames since last FPS: {}", self.frames_since_last_fps).render(&mut renderer, 0, y, depth_base);
         // y += 1;
         // format!("Update calls: {}", self.num_update_calls).render(&mut renderer, 0, y, depth_base);
+        for dbg_msg in shared_state.debug_messages.iter() {
+            for line in dbg_msg.message.as_str().lines() {
+                line.render(&mut renderer, 0, y, depth_base);
+                y += 1;
+            }
+        }
     }
 }
 
@@ -303,6 +317,12 @@ impl Component for MouseTrackerComponent {
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        // if shared_state.mouse_info != self.last_mouse_info {
+        //     shared_state.debug_messages.push(DebugMessage::new(
+        //         format!("Mouse: {:?}", self.last_mouse_info),
+        //         update_info.current_time + Duration::from_secs(5),
+        //     ));
+        // }
         shared_state.mouse_info = self.last_mouse_info;
     }
 }

@@ -7,6 +7,7 @@ use std::ops::{Index, IndexMut};
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 use anymap::AnyMap;
+use smallvec::SmallVec;
 
 pub mod components;
 mod display;
@@ -58,7 +59,7 @@ pub enum BreakingAction {
     Quit,
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct MouseInfo {
     // x, y
     last_mouse_pos: (usize, usize),
@@ -89,6 +90,20 @@ impl DisplayInfo {
     }
 }
 
+pub struct DebugMessage {
+    message: String,
+    expiry_time: Instant,
+}
+
+impl DebugMessage {
+    pub fn new(message: String, expiry_time: Instant) -> Self {
+        Self {
+            message,
+            expiry_time,
+        }
+    }
+}
+
 pub struct SharedState {
     mouse_info: MouseInfo,
     target_fps: Option<f64>,
@@ -98,6 +113,7 @@ pub struct SharedState {
     display_info: DisplayInfo,
     pressed_keys: micromap::Map<KeyCode, u8, 16>,
     debug_info: DebugInfo,
+    debug_messages: SmallVec<[DebugMessage; 16]>,
     // Hacky way for components to add new components. only once per frame due to this hack.
     component_to_add: Option<Box<dyn Component>>,
     extensions: AnyMap,
@@ -114,6 +130,7 @@ impl SharedState {
             pressed_keys: micromap::Map::new(),
             collision_board: Display::new(width, height, false),
             debug_info: DebugInfo::new(),
+            debug_messages: SmallVec::new(),
             component_to_add: None,
             extensions: AnyMap::new(),
         }
