@@ -9,7 +9,7 @@ use crossterm::event::{Event, KeyCode, KeyEvent, MouseEvent, MouseEventKind};
 use smallvec::SmallVec;
 use std::time::{Duration, Instant};
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct ElevatorInfo {
     total: usize,
     total_finished: usize,
@@ -22,7 +22,7 @@ pub struct ElevatorInfo {
     avg_wait_time_overall_per_spawn_rate: f64,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct DebugInfo {
     player_y: f64,
     player_x: f64,
@@ -147,7 +147,6 @@ impl Component for DebugInfoComponent {
             line.render(&mut renderer, 0, y, depth_base);
             y += 1;
         }
-        y += 1;
         format!("Display size: {}x{}", shared_state.display_info.width(), shared_state.display_info.height()).render(&mut renderer, 0, y, depth_base);
         // format!("Pressed keys: {:?}", shared_state.pressed_keys).render(&mut renderer, 0, y, depth_base);
         // y += 1;

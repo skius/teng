@@ -6,12 +6,14 @@ use std::io::{Stdout, Write};
 use std::ops::{Index, IndexMut};
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
+use anymap::AnyMap;
+
 pub mod components;
 mod display;
 mod render;
 mod renderer;
 
-use crate::game::components::{DebugInfo, DecayElement};
+use crate::game::components::{DebugInfo, DebugInfoComponent, DecayElement};
 use crate::game::display::Display;
 use crate::physics::PhysicsBoard;
 pub use render::*;
@@ -98,6 +100,7 @@ pub struct SharedState {
     debug_info: DebugInfo,
     // Hacky way for components to add new components. only once per frame due to this hack.
     component_to_add: Option<Box<dyn Component>>,
+    extensions: AnyMap,
 }
 
 impl SharedState {
@@ -112,6 +115,7 @@ impl SharedState {
             collision_board: Display::new(width, height, false),
             debug_info: DebugInfo::new(),
             component_to_add: None,
+            extensions: AnyMap::new(),
         }
     }
 
@@ -315,20 +319,30 @@ impl<W: Write> Game<W> {
         self.update_game(update_info);
     }
 
+    fn swap_component<C: Component>(&mut self, new: impl FnOnce(usize, usize) -> Box<dyn Component>) {
+        let mut found = false;
+        for idx in 0..self.components.len() {
+            if (&*self.components[idx]).type_id() == std::any::TypeId::of::<C>() {
+                self.components.remove(idx);
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            self.add_component(new(self.width(), self.height()));
+        }
+    }
+
     fn update_game(&mut self, update_info: UpdateInfo) {
         if self.shared_state.pressed_keys.contains_key(&KeyCode::Char('e')) {
-            // remove the ElevatorComponent if it exists, otherwise add it
-            let mut found = false;
-            for idx in 0..self.components.len() {
-                if (&*self.components[idx]).type_id() == std::any::TypeId::of::<ElevatorComponent>() {
-                    self.components.remove(idx);
-                    found = true;
-                    break;
-                }
-            }
-            if !found {
-                self.add_component(Box::new(ElevatorComponent::new(self.width(), self.height())));
-            }
+            self.swap_component::<ElevatorComponent>(|width, height| {
+                Box::new(ElevatorComponent::new(width, height))
+            });
+        }
+        if self.shared_state.pressed_keys.contains_key(&KeyCode::Char('i')) {
+            self.swap_component::<DebugInfoComponent>(|width, height| {
+                Box::new(DebugInfoComponent::new())
+            });
         }
     }
 
