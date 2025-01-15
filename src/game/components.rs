@@ -1,4 +1,5 @@
 pub mod elevator;
+pub mod incremental;
 
 use crate::game::display::Display;
 use crate::game::{BreakingAction, Component, DebugMessage, MouseInfo, Pixel, Render, Renderer, SharedState, Sprite, UpdateInfo};

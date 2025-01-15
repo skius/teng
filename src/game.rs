@@ -114,8 +114,6 @@ pub struct SharedState {
     pressed_keys: micromap::Map<KeyCode, u8, 16>,
     debug_info: DebugInfo,
     debug_messages: SmallVec<[DebugMessage; 16]>,
-    // Hacky way for components to add new components. only once per frame due to this hack.
-    component_to_add: Option<Box<dyn Component>>,
     extensions: AnyMap,
 }
 
@@ -131,7 +129,6 @@ impl SharedState {
             collision_board: Display::new(width, height, false),
             debug_info: DebugInfo::new(),
             debug_messages: SmallVec::new(),
-            component_to_add: None,
             extensions: AnyMap::new(),
         }
     }
