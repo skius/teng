@@ -1054,9 +1054,6 @@ impl Component for PlayerComponent {
             y_u = height as usize - 1;
         }
 
-        // TODO: the left_wall check and collision handling is not good yet - the player character
-        // seems to jump quickly up when it hits a wall to the left and then falls again.
-        // some forces are fighting.
         {
             // Check below
             let x = x_u as i32;
