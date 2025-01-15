@@ -560,7 +560,9 @@ impl PlayerGhost {
         let expired = if let Some(death_time) = self.death_time {
             let time_since_death = (current_time - death_time).as_secs_f64();
             time_since_death >= PlayerComponent::DEATH_RESPAWN_TIME
-        } else { false };
+        } else {
+            false
+        };
 
         (just_died, expired)
     }
