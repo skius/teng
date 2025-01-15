@@ -16,6 +16,14 @@
 //! - Option to buy permanent blocks that don't get reset when you die
 //! - Every round there could be random events, for example special entities that fall from the top
 //! on top of your world
+//! - Upgrade that lets you redraw the world as it was last time
+//! - Upgrade that lets you place blocks in the moving phase
+//! - Upgrade that makes the game autoplay and the player jump immediately
+//! - Upgrade that allows the player to record themselves, which can then be autoplayed.
+//!    (-- how? do we just treat the player as a ghost? or replay inputs somehow? inputs seem hard.
+//!    (-- ghost would only work if the world hasn't changed since last time, which would need a specific upgrade.
+//! - Obvious upgrades like blocks per block fallen you receive, ghost block multipliers, blocks per alive ghost, etc.
+//! - Maybe a way to make ghosts die before you?
 
 use crate::game::components::{Bullet, DecayElement, MouseTrackerComponent};
 use crate::game::{
@@ -27,7 +35,7 @@ use crossterm::event::{Event, KeyCode};
 use smallvec::SmallVec;
 use std::time::{Duration, Instant};
 
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, Clone, Copy)]
 enum GamePhase {
     #[default]
     MoveToBuilding,
@@ -44,6 +52,21 @@ struct PlayerHistoryElement {
 }
 
 #[derive(Debug)]
+struct Upgrades {
+    auto_play: Option<bool>,
+    block_height: usize,
+    player_weight: usize,
+    player_jump_boost_factor: f64,
+    ghost_cuteness: usize,
+}
+
+impl Upgrades {
+    fn new() -> Self {
+        Self { auto_play: None, block_height: 1, player_weight: 1, player_jump_boost_factor: 1.0, ghost_cuteness: 1 }
+    }
+}
+
+#[derive(Debug)]
 struct GameState {
     phase: GamePhase,
     blocks: usize,
@@ -52,10 +75,12 @@ struct GameState {
     // The amount of blocks the main player received, ignoring ghosts.
     received_blocks_base: usize,
     max_blocks_per_round: usize,
+    last_received_blocks: usize,
     player_state: PlayerState,
     player_history: Vec<PlayerHistoryElement>,
     player_ghosts: Vec<PlayerGhost>,
     curr_ghost_delay: f64,
+    upgrades: Upgrades,
 }
 
 impl GameState {
@@ -67,10 +92,12 @@ impl GameState {
             received_blocks: 0,
             received_blocks_base: 0,
             max_blocks_per_round: 0,
+            last_received_blocks: 0,
             player_state: PlayerState::new(1, height - UiBarComponent::HEIGHT),
             player_history: Vec::new(),
             player_ghosts: vec![],
             curr_ghost_delay: 1.0,
+            upgrades: Upgrades::new(),
         }
     }
 }
@@ -105,6 +132,7 @@ impl Component for GameComponent {
             GamePhase::MoveToBuilding => {
                 game_state.phase = GamePhase::Building;
                 game_state.max_blocks += game_state.received_blocks;
+                game_state.last_received_blocks = game_state.received_blocks;
                 game_state.max_blocks_per_round = game_state
                     .max_blocks_per_round
                     .max(game_state.received_blocks);
@@ -114,7 +142,7 @@ impl Component for GameComponent {
                 shared_state.physics_board.clear();
             }
             GamePhase::Building => {
-                if shared_state.pressed_keys.contains_key(&KeyCode::Char(' ')) {
+                if shared_state.pressed_keys.contains_key(&KeyCode::Char(' ')) || game_state.upgrades.auto_play == Some(true) {
                     // hack to have a frame of delay, so that we don't immediately jump due to the space bar press
                     game_state.phase = GamePhase::BuildingToMoving;
                 }
@@ -129,8 +157,14 @@ impl Component for GameComponent {
                     ghost.death_time = None;
                     ghost.was_dead = false;
                 }
+                if let Some(true) = game_state.upgrades.auto_play {
+                    shared_state.pressed_keys.insert(KeyCode::Char(' '), 1);
+                    shared_state.pressed_keys.insert(KeyCode::Char('d'), 1);
+                }
             }
-            GamePhase::Moving => {}
+            GamePhase::Moving => {
+
+            }
         }
     }
 }
@@ -203,7 +237,7 @@ impl Component for PlayerComponent {
                 // for all ghosts that did not die, add 1 block
                 for ghost in &game_state.player_ghosts {
                     if ghost.death_time.is_none() {
-                        game_state.received_blocks += 1;
+                        game_state.received_blocks += game_state.upgrades.ghost_cuteness;
                     }
                 }
             }
@@ -420,7 +454,7 @@ impl Component for PlayerComponent {
                 // Player died
                 game_state.player_state.dead_time = Some(current_time);
                 // add blocks proportional to fall distance
-                let blocks = (fall_distance).abs().ceil() as usize;
+                let blocks = fall_distance.abs().ceil() as usize * game_state.upgrades.block_height * game_state.upgrades.player_weight;
                 shared_state.debug_messages.push(DebugMessage::new(
                     format!(
                         "You fell from {} blocks high and earned {} blocks",
@@ -440,7 +474,7 @@ impl Component for PlayerComponent {
                 if grounded {
                     // set y pos to be exactly the bottom wall so we have consistent jump heights hopefully
                     game_state.player_state.y = bottom_wall - 1.0;
-                    game_state.player_state.y_vel = -20.0;
+                    game_state.player_state.y_vel = -20.0 * game_state.upgrades.player_jump_boost_factor;
                 }
             }
         }
@@ -495,7 +529,7 @@ impl Component for PlayerComponent {
         ) {
             (Some(dead_time), _) => {
                 let time_since_death = (Instant::now() - dead_time).as_secs_f64();
-                if time_since_death < 0.05 {
+                if time_since_death < 0.05 && game_state.upgrades.auto_play != Some(true) {
                     [200, 150, 150]
                 } else {
                     [0, 0, 0]
@@ -601,6 +635,7 @@ impl PlayerGhost {
             return;
         }
         let render_state = &history[history_size - offset_samples - 1];
+        let cuteness = game_state.upgrades.ghost_cuteness;
         if render_state.dead {
             WithColor([130, 130, 130], death_sprite).render(
                 &mut renderer,
@@ -609,7 +644,7 @@ impl PlayerGhost {
                 depth_base,
             );
         } else {
-            WithColor([130, 130, 130], player_sprite).render(
+            WithColor([130+cuteness as u8, 130, 130], player_sprite).render(
                 &mut renderer,
                 render_state.x,
                 render_state.y,
@@ -683,6 +718,11 @@ impl Component for BuildingDrawComponent {
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        // our mouse info gets outdated because we're not active all the time.
+        // so we copy it from the shared state where the responsible component is hopefully active all the time.
+        // another fix would be to never deactivate this component, and just have it check in update()
+        // if it should draw or not.
+        self.last_mouse_info = shared_state.mouse_info;
         for (x, y) in self.draw_queue.drain(..) {
             shared_state.decay_board[(x as usize, y as usize)] =
                 DecayElement::new_with_time('█', update_info.current_time);
@@ -704,6 +744,8 @@ impl Component for BuildingDrawComponent {
 // TODO: resize ui button should move the x of ui buttons. Maybe just handle that in render?
 // could have an enum for offset types, like Bottom(usize), Top(usize), Left(usize), Right(usize)
 trait UiButton: Any {
+    fn help_text(&self) -> &'static str;
+
     fn bbox(&self) -> (usize, usize, usize, usize) {
         panic!("Need to implement mouse_hover is bbox is not provided")
     }
@@ -719,9 +761,32 @@ trait UiButton: Any {
 }
 
 macro_rules! new_button {
+   (
+        $name:ident,
+        cost_growth: $cost_growth:literal,
+        help_text: $help_text:literal,
+        allow_in_moving: $allow_in_moving:literal,
+        on_click: |$self:ident, $game_state:ident| $on_click:block,
+        render: |$self2:ident, $game_state2:ident| $render:block,
+        $( $field:ident: $field_type:ty = $field_default:expr ),*
+    ) => {
+        new_button!(
+            $name,
+            cost_growth: $cost_growth,
+            cost_start: 1,
+            help_text: $help_text,
+            allow_in_moving: $allow_in_moving,
+            on_click: |$self, $game_state| $on_click,
+            render: |$self2, $game_state2| $render,
+            $( $field: $field_type = $field_default ),*
+        );
+    };
     (
         $name:ident,
         cost_growth: $cost_growth:literal,
+        cost_start: $cost_start:literal,
+        help_text: $help_text:literal,
+        allow_in_moving: $allow_in_moving:literal,
         on_click: |$self:ident, $game_state:ident| $on_click:block,
         render: |$self2:ident, $game_state2:ident| $render:block,
         $( $field:ident: $field_type:ty = $field_default:expr ),*
@@ -731,7 +796,7 @@ macro_rules! new_button {
             y: usize,
             width: usize,
             height: usize,
-            text: String,
+            button_text: String,
             cost: usize,
             $( $field: $field_type ),*
         }
@@ -743,21 +808,38 @@ macro_rules! new_button {
                     y,
                     width: 3,
                     height: 1,
-                    text: "Buy".to_string(),
-                    cost: 1,
+                    button_text: "Buy".to_string(),
+                    cost: $cost_start,
                     $( $field: $field_default ),*
                 }
+            }
+
+            #[allow(unused)]
+            fn change_button_text(&mut self, new_text: &str) {
+                // adjust width
+                let change_x = new_text.len() as i32 - self.button_text.len() as i32;
+                self.x = (self.x as i32 - change_x) as usize;
+                self.width = new_text.len();
+                self.button_text = new_text.to_string();
+
             }
         }
 
         impl UiButton for $name {
+            fn help_text(&self) -> &'static str {
+                $help_text
+            }
+
             fn bbox(&self) -> (usize, usize, usize, usize) {
                 (self.x, self.y, self.width, self.height)
             }
 
             fn on_click(&mut $self, shared_state: &mut SharedState) {
                 let $game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
-                if $game_state.max_blocks > $self.cost {
+                if $game_state.phase != GamePhase::Building && !$allow_in_moving {
+                    return;
+                }
+                if $game_state.max_blocks >= $self.cost {
                     // TODO: add shared shopmanager
                     $game_state.max_blocks -= $self.cost;
                     $game_state.blocks -= $self.cost;
@@ -772,13 +854,26 @@ macro_rules! new_button {
                 let lmb_down = shared_state.mouse_info.left_mouse_down;
 
                 let fg_color = [0, 0, 0];
-                let bg_color = match (is_hover, lmb_down) {
-                    (true, true) => [200, 200, 255],
-                    (true, false) => [255, 255, 255],
-                    (false, _) => [200, 200, 200],
+                let enough_blocks = $game_state2.max_blocks >= $self2.cost;
+                let deactivated_color = [100, 100, 100];
+                let mut bg_color = if $allow_in_moving {
+                    match (is_hover, lmb_down) {
+                        (true, true) => [200, 200, 255],
+                        (true, false) => [255, 255, 255],
+                        (false, _) => [200, 200, 200],
+                    }
+                } else {
+                    match (is_hover, lmb_down, $game_state2.phase) {
+                        (_, _, phase) if phase != GamePhase::Building => deactivated_color,
+                        (true, true, _) => [200, 200, 255],
+                        (true, false, _) => [255, 255, 255],
+                        (false, _, _) => [200, 200, 200],
+                    }
                 };
-                let text = &$self2.text;
-                WithColor(fg_color, WithBgColor(bg_color, text.as_str())).render(
+                if !enough_blocks {
+                    bg_color = deactivated_color;
+                }
+                WithColor(fg_color, WithBgColor(bg_color, &$self2.button_text)).render(
                     &mut renderer,
                     $self2.x,
                     $self2.y,
@@ -794,8 +889,62 @@ macro_rules! new_button {
 }
 
 new_button!(
+    BlockHeightButton,
+    cost_growth: 2.0,
+    cost_start: 2000,
+    help_text: "Help: Increase the height of blocks by 1.",
+    allow_in_moving: false,
+    on_click: |self, game_state| {
+        game_state.upgrades.block_height += 1;
+    },
+    render: |self, game_state| {
+        format!(
+            "Block Height ({}) for {} ",
+            game_state.upgrades.block_height, self.cost
+        )
+    },
+);
+
+new_button!(
+    PlayerWeightButton,
+    cost_growth: 3.0,
+    cost_start: 20_000,
+    help_text: "Help: Increase the weight of the player.",
+    allow_in_moving: false,
+    on_click: |self, game_state| {
+        game_state.upgrades.player_weight += 1;
+    },
+    render: |self, game_state| {
+        format!(
+            "Player Weight ({}) for {} ",
+            game_state.upgrades.player_weight, self.cost
+        )
+    },
+);
+
+new_button!(
+    PlayerJumpHeightButton,
+    cost_growth: 3.0,
+    cost_start: 15,
+    help_text: "Help: Increase the jump height of the player.",
+    allow_in_moving: false,
+    on_click: |self, game_state| {
+        game_state.upgrades.player_jump_boost_factor += 0.1;
+    },
+    render: |self, game_state| {
+        format!(
+            "Jump Height ({:.1}) for {} ",
+            game_state.upgrades.player_jump_boost_factor, self.cost
+        )
+    },
+);
+
+new_button!(
     GhostBuyButton,
-    cost_growth: 1.5,
+    cost_growth: 1.4,
+    cost_start: 80,
+    help_text: "Help: Ghosts give the same amount of blocks on death as the player and 1 block\nif they are alive at the end of the round.",
+    allow_in_moving: false,
     on_click: |self, game_state| {
         let new_offset = if let Some(player_ghost) = game_state.player_ghosts.last() {
             player_ghost.offset_secs + game_state.curr_ghost_delay
@@ -813,87 +962,32 @@ new_button!(
     },
 );
 
-// struct GhostBuyButton {
-//     x: usize,
-//     y: usize,
-//     width: usize,
-//     height: usize,
-//     text: String,
-//     cost: usize,
-// }
-//
-// impl GhostBuyButton {
-//     fn new(x: usize, y: usize, width: usize, height: usize, text: String) -> Self {
-//         assert!(width >= text.len());
-//         Self {
-//             x,
-//             y,
-//             width,
-//             height,
-//             text,
-//             cost: 1,
-//         }
-//     }
-// }
-//
-// impl UiButton for GhostBuyButton {
-//     fn bbox(&self) -> (usize, usize, usize, usize) {
-//         (self.x, self.y, self.width, self.height)
-//     }
-//
-//     fn on_click(&mut self, shared_state: &mut SharedState) {
-//         let game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
-//         if game_state.max_blocks > self.cost {
-//             // TODO: add shared shopmanager
-//             game_state.max_blocks -= self.cost;
-//             game_state.blocks -= self.cost;
-//             let new_offset = if let Some(player_ghost) = game_state.player_ghosts.last() {
-//                 player_ghost.offset_secs + game_state.curr_ghost_delay
-//             } else {
-//                 game_state.curr_ghost_delay
-//             };
-//             game_state.player_ghosts.push(PlayerGhost::new(new_offset));
-//             self.cost = ((self.cost as f64) * 1.5).ceil() as usize;
-//         }
-//     }
-//
-//     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
-//         let game_state = shared_state.extensions.get::<GameState>().unwrap();
-//         let is_hover = self.mouse_hover(
-//             shared_state.mouse_info.last_mouse_pos.0,
-//             shared_state.mouse_info.last_mouse_pos.1,
-//         );
-//         let lmb_down = shared_state.mouse_info.left_mouse_down;
-//
-//         let fg_color = [0, 0, 0];
-//         let bg_color = match (is_hover, lmb_down) {
-//             (true, true) => [200, 200, 255],
-//             (true, false) => [255, 255, 255],
-//             (false, _) => [200, 200, 200],
-//         };
-//         let text = &self.text;
-//         WithColor(fg_color, WithBgColor(bg_color, text.as_str())).render(
-//             &mut renderer,
-//             self.x,
-//             self.y,
-//             depth_base,
-//         );
-//         let left_text = format!(
-//             "Player Ghosts ({}) for {} ",
-//             game_state.player_ghosts.len(),
-//             self.cost
-//         );
-//         // render to the left
-//         let len = left_text.len();
-//         left_text.render(&mut renderer, self.x - len as usize, self.y, depth_base);
-//     }
-// }
+new_button!(
+    GhostCutenessButton,
+    cost_growth: 1.1,
+    cost_start: 100,
+    help_text: "Help: Ghosts give more blocks if they're alive at the end of a round.",
+    allow_in_moving: false,
+    on_click: |self, game_state| {
+        game_state.upgrades.ghost_cuteness += 1;
+    },
+    render: |self, game_state| {
+        format!(
+            "Ghost Cuteness ({}) for {} ",
+            game_state.upgrades.ghost_cuteness,
+            self.cost
+        )
+    },
+);
 
 new_button!(
     GhostDelayButton,
-    cost_growth: 2.0,
+    cost_growth: 1.8,
+    cost_start: 600,
+    help_text: "Help: Decrease the delay between player and ghost movement.",
+    allow_in_moving: false,
     on_click: |self, game_state| {
-        game_state.curr_ghost_delay -= 0.05;
+        game_state.curr_ghost_delay /= 1.2;
         let mut curr_offset = game_state.curr_ghost_delay;
         for ghost in &mut game_state.player_ghosts {
             ghost.offset_secs = curr_offset;
@@ -902,10 +996,40 @@ new_button!(
     },
     render: |self, game_state| {
         format!(
-            "Ghost Delay ({:.2}) for {} ",
+            "Ghost Delay ({:.3}) for {} ",
             game_state.curr_ghost_delay, self.cost
         )
-        .to_string()
+    },
+);
+
+new_button!(
+    AutoPlayButton,
+    cost_growth: 1.0,
+    cost_start: 1000,
+    help_text: "Help: Automatically start rounds and make the player jump.",
+    allow_in_moving: true,
+    on_click: |self, game_state| {
+        if let Some(auto_play) = game_state.upgrades.auto_play {
+            game_state.upgrades.auto_play = Some(!auto_play);
+        } else {
+            game_state.upgrades.auto_play = Some(false);
+            self.change_button_text("Toggle");
+            self.cost = 0;
+        }
+
+    },
+    render: |self, game_state| {
+        if self.cost > 0 {
+            format!(
+                "Auto Play for {} ",
+                self.cost
+            )
+        } else {
+            format!(
+                "Auto Play ({}) ",
+                if game_state.upgrades.auto_play.unwrap() { "On" } else { "Off" }
+            )
+        }
     },
 );
 
@@ -915,7 +1039,7 @@ pub struct UiBarComponent {
 }
 
 impl UiBarComponent {
-    pub const HEIGHT: usize = 7;
+    pub const HEIGHT: usize = 11;
     const BUILDING_PHASE_COLOR: [u8; 3] = [0, 200, 0];
     const MOVING_PHASE_COLOR: [u8; 3] = [200, 0, 0];
 
@@ -933,12 +1057,28 @@ impl Component for UiBarComponent {
         let text = "Buy".to_string();
         let x = setup_info.width - 1 - text.len();
         self.buttons
+            .push(Box::new(PlayerJumpHeightButton::new(x, y)));
+        y += 1;
+        self.buttons
             .push(Box::new(GhostBuyButton::new(x, y)));
         y += 1;
+        self.buttons
+            .push(Box::new(GhostCutenessButton::new(x, y)));
+        y += 1;
         self.buttons.push(Box::new(GhostDelayButton::new(x, y)));
+        y += 1;
+        self.buttons.push(Box::new(AutoPlayButton::new(x, y)));
+        y += 1;
+        self.buttons
+            .push(Box::new(BlockHeightButton::new(x, y)));
+        y += 1;
+        self.buttons
+            .push(Box::new(PlayerWeightButton::new(x, y)));
+        y += 1;
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        let game_state = shared_state.extensions.get::<GameState>().unwrap();
         let last_mouse_info = shared_state.mouse_info;
         // Check if we're hovering a button
         let (x, y) = last_mouse_info.last_mouse_pos;
@@ -1024,7 +1164,12 @@ impl Component for UiBarComponent {
                 blocks, max_blocks
             )
         } else {
-            format!("Blocks: {:width$}/{}", blocks, max_blocks)
+            let recv_s = if game_state.phase == GamePhase::Building {
+                format!(" (received: {})", game_state.last_received_blocks)
+            } else {
+                "".to_string()
+            };
+            format!("Blocks: {:width$}/{} {recv_s}", blocks, max_blocks)
         };
         block_s.render(&mut renderer, x, y, depth_base);
         y += 1;
@@ -1033,12 +1178,13 @@ impl Component for UiBarComponent {
         received_blocks_str.render(&mut renderer, x, y, depth_base);
         y += 1;
         x = 1;
-        let controls_str = match phase {
-            GamePhase::Building | GamePhase::MoveToBuilding => {
+        let controls_str = match (phase, self.hover_button) {
+            (_, Some(hover_button)) => self.buttons[hover_button].help_text(),
+            (GamePhase::Building | GamePhase::MoveToBuilding, _) => {
                 "Controls: LMB to place blocks, Space to start round\n\
             Goal: Build a map for the character to die from falling from increasing heights"
             }
-            GamePhase::Moving | GamePhase::BuildingToMoving => {
+            (GamePhase::Moving | GamePhase::BuildingToMoving, _) => {
                 "Controls: A/D to move, Space to jump\n\
             Goal: Die from falling from increasing heights to earn more blocks"
             }
