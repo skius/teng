@@ -396,11 +396,20 @@ impl Component for PlayerComponent {
         let game_state = shared_state.extensions.get::<GameState>().unwrap();
         // Set bg color depending on positive y velocity
         let max_bg_color = 100;
-        let bg_color = if game_state.player_state.y_vel > 0.0 {
-            [game_state.player_state.y_vel.min(max_bg_color as f64) as u8, 0, 0]
-        } else {
-            [0, 0, 0]
+        let bg_color = match (game_state.player_state.dead_time, game_state.player_state.y_vel) {
+            (Some(dead_time), _) => {
+                let time_since_death = (Instant::now() - dead_time).as_secs_f64();
+                if time_since_death < 0.05 {
+                    [200, 150, 150]
+                } else {
+                    [0, 0, 0]
+                }
+            }
+            (None, y_vel) => {
+                [y_vel.min(max_bg_color as f64) as u8, 0, 0]
+            }
         };
+
         renderer.set_default_bg_color(bg_color);
 
         if game_state.player_state.dead_time.is_some() {
