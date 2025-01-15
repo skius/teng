@@ -687,6 +687,8 @@ impl Component for BuildingDrawComponent {
     }
 }
 
+// TODO: resize ui button should move the x of ui buttons. Maybe just handle that in render?
+// could have an enum for offset types, like Bottom(usize), Top(usize), Left(usize), Right(usize)
 trait UiButton: Any {
     fn bbox(&self) -> (usize, usize, usize, usize) {
         panic!("Need to implement mouse_hover is bbox is not provided")
@@ -701,23 +703,6 @@ trait UiButton: Any {
 
     fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32);
 }
-
-// a macro to define new buttons.
-/* usage should be:
-new_button! {
-    GhostBuyButton,
-    custom_field_1: usize = 0,
-    custom_field_2: bool = true, etc, unlimited
-    x: 1,
-    y: 1,
-    {
-      // some block that is inserted in the on_click function
-    },
-    {
-      // some block that is inserted in the render function
-    }
-}
-*/
 
 macro_rules! new_button {
     (
