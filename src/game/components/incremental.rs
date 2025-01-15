@@ -8,6 +8,14 @@
 //! The game resets to the building phase and you're awarded all your blocks back plus the additional ones you earned.
 //!
 //! You start with no blocks, and the player's death height is barely enough to die when jumping.
+//!
+//! Ideas:
+//! - Pet that also gives you more blocks when you die
+//! - Option to draw something (RMB mechanics of not becoming physics objects until release) and if
+//! if it's a valid shape, you get some special effect
+//! - Option to buy permanent blocks that don't get reset when you die
+//! - Every round there could be random events, for example special entities that fall from the top 
+//! on top of your world
 
 use crate::game::components::{Bullet, DecayElement, MouseTrackerComponent};
 use crate::game::{
