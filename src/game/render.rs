@@ -10,13 +10,16 @@ pub trait Render {
 impl Render for &str {
     fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
         let mut y = y;
+        let mut draw_x = x;
         for (i, c) in self.chars().enumerate() {
             if c == '\n' {
                 y += 1;
+                draw_x = x;
                 continue;
             }
             let pixel = Pixel::new(c);
-            renderer.render_pixel(x + i, y, pixel, depth);
+            renderer.render_pixel(draw_x, y, pixel, depth);
+            draw_x += 1;
         }
     }
 }

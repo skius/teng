@@ -20,6 +20,7 @@ use crate::physics::PhysicsBoard;
 pub use render::*;
 pub use renderer::*;
 use crate::game::components::elevator::ElevatorComponent;
+use crate::game::components::incremental::UiBarComponent;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pixel {
@@ -126,7 +127,7 @@ impl SharedState {
         Self {
             mouse_info: MouseInfo::default(),
             target_fps: Some(150.0),
-            decay_board: Display::new(width, height, DecayElement::new(' ')),
+            decay_board: Display::new(width, height-UiBarComponent::HEIGHT, DecayElement::new(' ')),
             physics_board: PhysicsBoard::new(width),
             display_info: DisplayInfo::new(width, height),
             pressed_keys: micromap::Map::new(),
@@ -139,10 +140,10 @@ impl SharedState {
     }
 
     pub fn resize(&mut self, width: usize, height: usize) {
-        self.decay_board.resize_keep(width, height);
+        self.decay_board.resize_keep(width, height-UiBarComponent::HEIGHT);
         self.physics_board.resize(width);
         self.display_info = DisplayInfo::new(width, height);
-        self.collision_board.resize_keep(width, height);
+        self.collision_board.resize_keep(width, height-UiBarComponent::HEIGHT);
     }
 }
 

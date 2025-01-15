@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 use crossterm::event::{Event, KeyCode};
 use smallvec::SmallVec;
 use crate::game::components::{Bullet, DecayElement, MouseTrackerComponent};
-use crate::game::{BreakingAction, Component, DebugMessage, MouseInfo, Pixel, Render, Renderer, SetupInfo, SharedState, Sprite, UpdateInfo};
+use crate::game::{BreakingAction, Component, DebugMessage, MouseInfo, Pixel, Render, Renderer, SetupInfo, SharedState, Sprite, UpdateInfo, WithColor};
 
 #[derive(Default, Debug, PartialEq)]
 enum GamePhase {
@@ -29,6 +29,8 @@ struct GameState {
     phase: GamePhase,
     blocks: usize,
     max_blocks: usize,
+    received_blocks: usize,
+    max_blocks_per_round: usize,
     player_state: PlayerState,
 }
 
@@ -38,7 +40,9 @@ impl GameState {
             phase: GamePhase::default(),
             blocks: 0,
             max_blocks: 0,
-            player_state: PlayerState::new(1, height),
+            received_blocks: 0,
+            max_blocks_per_round: 0,
+            player_state: PlayerState::new(1, height-UiBarComponent::HEIGHT),
         }
     }
 }
@@ -57,6 +61,7 @@ impl Component for GameComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
         shared_state.components_to_add.push(Box::new(PlayerComponent::new()));
         shared_state.components_to_add.push(Box::new(BuildingDrawComponent::new()));
+        shared_state.components_to_add.push(Box::new(UiBarComponent::new()));
         shared_state.extensions.insert(GameState::new(setup_info.width, setup_info.height));
     }
 
@@ -65,6 +70,9 @@ impl Component for GameComponent {
         match game_state.phase {
             GamePhase::MoveToBuilding => {
                 game_state.phase = GamePhase::Building;
+                game_state.max_blocks += game_state.received_blocks;
+                game_state.max_blocks_per_round = game_state.max_blocks_per_round.max(game_state.received_blocks);
+                game_state.received_blocks = 0;
                 game_state.blocks = game_state.max_blocks;
                 shared_state.physics_board.clear();
             }
@@ -76,6 +84,7 @@ impl Component for GameComponent {
             }
             GamePhase::BuildingToMoving => {
                 game_state.phase = GamePhase::Moving;
+                game_state.player_state.y = shared_state.display_info.height() as f64 - 1.0 - UiBarComponent::HEIGHT as f64;
                 game_state.player_state.x = 1.0;
             }
             GamePhase::Moving => {
@@ -117,7 +126,7 @@ pub struct PlayerComponent {
 }
 
 impl PlayerComponent {
-    const DEATH_HEIGHT: f64 = 4.0;
+    const DEATH_HEIGHT: f64 = 3.5;
     const DEATH_RESPAWN_TIME: f64 = 2.0;
     const DEATH_STOP_X_MOVE_TIME: f64 = 0.5;
 
@@ -196,7 +205,7 @@ impl Component for PlayerComponent {
         }
 
         // Player physics
-        let height = shared_state.display_info.height() as f64;
+        let height = shared_state.display_info.height() as f64 - UiBarComponent::HEIGHT as f64;
         let width = shared_state.display_info.width() as f64;
 
         let gravity = 40.0;
@@ -354,15 +363,16 @@ impl Component for PlayerComponent {
         let grounded = game_state.player_state.y >= bottom_wall - 1.2;
         if !grounded {
             game_state.player_state.max_height_since_last_ground_touch = game_state.player_state.max_height_since_last_ground_touch.min(game_state.player_state.y);
+            game_state.player_state.max_height_since_last_ground_touch = game_state.player_state.max_height_since_last_ground_touch.floor();
         } else {
-            let fall_distance = game_state.player_state.y - game_state.player_state.max_height_since_last_ground_touch;
-            if fall_distance > Self::DEATH_HEIGHT {
+            let fall_distance = game_state.player_state.y.floor() - game_state.player_state.max_height_since_last_ground_touch;
+            if fall_distance >= Self::DEATH_HEIGHT {
                 // Player died
                 game_state.player_state.dead_time = Some(current_time);
                 // add blocks proportional to fall distance
                 let blocks = (fall_distance).abs().ceil() as usize;
                 shared_state.debug_messages.push(DebugMessage::new(format!("You fell from {} blocks high and earned {} blocks", fall_distance, blocks), current_time + Duration::from_secs(5)));
-                game_state.max_blocks += blocks;
+                game_state.received_blocks += blocks;
             }
             game_state.player_state.max_height_since_last_ground_touch = game_state.player_state.y;
         }
@@ -423,7 +433,7 @@ impl Component for BuildingDrawComponent {
     fn is_active(&self, shared_state: &SharedState) -> bool {
         shared_state.extensions.get::<GameState>().unwrap().phase == GamePhase::Building
     }
-    
+
     fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         if let Event::Mouse(event) = event {
             let mut new_mouse_info = self.last_mouse_info;
@@ -435,6 +445,9 @@ impl Component for BuildingDrawComponent {
                     if mouse_info.left_mouse_down {
                         let x = mouse_info.last_mouse_pos.0 as u16;
                         let y = mouse_info.last_mouse_pos.1 as u16;
+                        if y >= shared_state.display_info.height() as u16 - UiBarComponent::HEIGHT as u16 {
+                            return;
+                        }
                         if self.draw_queue.contains(&(x, y)) {
                             return;
                         }
@@ -463,11 +476,99 @@ impl Component for BuildingDrawComponent {
         // also current pixel, in case we're holding the button and not moving
         if self.last_mouse_info.left_mouse_down {
             let (x, y) = self.last_mouse_info.last_mouse_pos;
-            if shared_state.decay_board[(x, y)].c != ' ' {
+            if y < (shared_state.display_info.height() - UiBarComponent::HEIGHT) && shared_state.decay_board[(x, y)].c != ' ' {
                 // refresh the decay time
                 shared_state.decay_board[(x, y)] =
                     DecayElement::new_with_time('█', update_info.current_time);
             }
         }
+    }
+}
+
+pub struct UiBarComponent {
+
+}
+
+impl UiBarComponent {
+    pub const HEIGHT: usize = 7;
+    const BUILDING_PHASE_COLOR: [u8; 3] = [0, 200, 0];
+    const MOVING_PHASE_COLOR: [u8; 3] = [200, 0, 0];
+
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Component for UiBarComponent {
+    fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+        let game_state = shared_state.extensions.get::<GameState>().unwrap();
+        let blocks = game_state.blocks;
+        let max_blocks = game_state.max_blocks;
+        let received_blocks = game_state.received_blocks;
+        let max_received_blocks = game_state.max_blocks_per_round;
+        let phase = &game_state.phase;
+        let (phase_str, phase_color) = match phase {
+            GamePhase::MoveToBuilding => ("Building", Self::BUILDING_PHASE_COLOR),
+            GamePhase::Building => ("Building", Self::BUILDING_PHASE_COLOR),
+            GamePhase::BuildingToMoving => ("Moving", Self::MOVING_PHASE_COLOR),
+            GamePhase::Moving => ("Moving", Self::MOVING_PHASE_COLOR),
+        };
+
+
+        // Draw outline of UI
+        let top_y = shared_state.display_info.height() - Self::HEIGHT;
+        let width = shared_state.display_info.width();
+        // draw top corners
+        renderer.render_pixel(0, top_y, Pixel::new('┌'), depth_base);
+        renderer.render_pixel(width - 1, top_y, Pixel::new('┐'), depth_base);
+        // draw top line
+        "─".repeat(width - 2).chars().enumerate().for_each(|(i, c)| {
+            renderer.render_pixel(i + 1, top_y, Pixel::new(c), depth_base);
+        });
+        let bottom_y = top_y + Self::HEIGHT - 1;
+        renderer.render_pixel(0, bottom_y, Pixel::new('└'), depth_base);
+        renderer.render_pixel(width - 1, bottom_y, Pixel::new('┘'), depth_base);
+        // draw bottom line
+        "─".repeat(width - 2).chars().enumerate().for_each(|(i, c)| {
+            renderer.render_pixel(i + 1, bottom_y, Pixel::new(c), depth_base);
+        });
+        // Draw connecting lines
+        for y in (top_y + 1)..bottom_y {
+            renderer.render_pixel(0, y, Pixel::new('│'), depth_base);
+            renderer.render_pixel(width - 1, y, Pixel::new('│'), depth_base);
+        }
+
+        let mut x = 1;
+        let mut y = top_y + 1;
+        let mut s = "Phase: ";
+        s.render(&mut renderer, x, y, depth_base);
+        x += s.len();
+        s = phase_str;
+        WithColor(phase_color, s).render(&mut renderer, x, y, depth_base);
+        x = 1;
+        y += 1;
+        // render block numbers constant sized
+        let max_blocks_str = format!("{}", max_blocks);
+        let width = max_blocks_str.len();
+        let block_s = if received_blocks > 0 {
+            format!("Blocks: {:width$}/{} + {received_blocks}", blocks, max_blocks)
+        } else {
+            format!("Blocks: {:width$}/{}", blocks, max_blocks)
+        };
+        block_s.render(&mut renderer, x, y, depth_base);
+        y += 1;
+        x = 1;
+        let received_blocks_str = format!("High Score: {}", max_received_blocks);
+        received_blocks_str.render(&mut renderer, x, y, depth_base);
+        y += 1;
+        x = 1;
+        let controls_str = match phase {
+            GamePhase::Building | GamePhase::MoveToBuilding => "Controls: LMB to place blocks, Space to start round\n\
+            Goal: Build a map for the character to die from falling from increasing heights",
+            GamePhase::Moving | GamePhase::BuildingToMoving  => "Controls: A/D to move, Space to jump\n\
+            Goal: Die from falling from increasing heights to earn more blocks",
+        };
+        controls_str.render(&mut renderer, x, y, depth_base);
+
     }
 }
