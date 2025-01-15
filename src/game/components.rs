@@ -149,11 +149,11 @@ impl Component for DebugInfoComponent {
         };
         format!("FPS: {:.2} ({})", self.fps, target_str).render(&mut renderer, 0, y, depth_base);
         y += 1;
-        let debug_string = format!("DebugInfo: {:#?}", shared_state.debug_info);
-        for line in debug_string.lines() {
-            line.render(&mut renderer, 0, y, depth_base);
-            y += 1;
-        }
+        // let debug_string = format!("DebugInfo: {:#?}", shared_state.debug_info);
+        // for line in debug_string.lines() {
+        //     line.render(&mut renderer, 0, y, depth_base);
+        //     y += 1;
+        // }
         format!("Display size: {}x{}", shared_state.display_info.width(), shared_state.display_info.height()).render(&mut renderer, 0, y, depth_base);
         y += 1;
         // format!("Pressed keys: {:?}", shared_state.pressed_keys).render(&mut renderer, 0, y, depth_base);
