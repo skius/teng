@@ -14,10 +14,10 @@ use crate::game::{
     BreakingAction, Component, DebugMessage, MouseInfo, Pixel, Render, Renderer, SetupInfo,
     SharedState, Sprite, UpdateInfo, WithBgColor, WithColor,
 };
+use anymap::any::Any;
 use crossterm::event::{Event, KeyCode};
 use smallvec::SmallVec;
 use std::time::{Duration, Instant};
-use anymap::any::Any;
 
 #[derive(Default, Debug, PartialEq)]
 enum GamePhase {
@@ -588,9 +588,19 @@ impl PlayerGhost {
         }
         let render_state = &history[history_size - offset_samples - 1];
         if render_state.dead {
-            WithColor([130,130,130],death_sprite).render(&mut renderer, render_state.x, render_state.y, depth_base);
+            WithColor([130, 130, 130], death_sprite).render(
+                &mut renderer,
+                render_state.x,
+                render_state.y,
+                depth_base,
+            );
         } else {
-            WithColor([130,130,130],player_sprite).render(&mut renderer, render_state.x, render_state.y, depth_base);
+            WithColor([130, 130, 130], player_sprite).render(
+                &mut renderer,
+                render_state.x,
+                render_state.y,
+                depth_base,
+            );
         }
     }
 }
@@ -796,13 +806,7 @@ struct GhostBuyButton {
 }
 
 impl GhostBuyButton {
-    fn new(
-        x: usize,
-        y: usize,
-        width: usize,
-        height: usize,
-        text: String,
-    ) -> Self {
+    fn new(x: usize, y: usize, width: usize, height: usize, text: String) -> Self {
         assert!(width >= text.len());
         Self {
             x,
@@ -826,9 +830,11 @@ impl UiButton for GhostBuyButton {
             // TODO: add shared shopmanager
             game_state.max_blocks -= self.cost;
             game_state.blocks -= self.cost;
-            let new_offset  = if let Some(player_ghost) = game_state.player_ghosts.last() {
+            let new_offset = if let Some(player_ghost) = game_state.player_ghosts.last() {
                 player_ghost.offset_secs + game_state.curr_ghost_delay
-            } else { game_state.curr_ghost_delay };
+            } else {
+                game_state.curr_ghost_delay
+            };
             game_state.player_ghosts.push(PlayerGhost::new(new_offset));
             self.cost = ((self.cost as f64) * 1.5).ceil() as usize;
         }
@@ -836,7 +842,10 @@ impl UiButton for GhostBuyButton {
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let game_state = shared_state.extensions.get::<GameState>().unwrap();
-        let is_hover = self.mouse_hover(shared_state.mouse_info.last_mouse_pos.0, shared_state.mouse_info.last_mouse_pos.1);
+        let is_hover = self.mouse_hover(
+            shared_state.mouse_info.last_mouse_pos.0,
+            shared_state.mouse_info.last_mouse_pos.1,
+        );
         let lmb_down = shared_state.mouse_info.left_mouse_down;
 
         let fg_color = [0, 0, 0];
@@ -852,7 +861,11 @@ impl UiButton for GhostBuyButton {
             self.y,
             depth_base,
         );
-        let left_text = format!("Player Ghosts ({}) for {} ", game_state.player_ghosts.len(), self.cost);
+        let left_text = format!(
+            "Player Ghosts ({}) for {} ",
+            game_state.player_ghosts.len(),
+            self.cost
+        );
         // render to the left
         let len = left_text.len();
         left_text.render(&mut renderer, self.x - len as usize, self.y, depth_base);
@@ -873,7 +886,11 @@ new_button!(
         }
     },
     {
-        format!("Ghost Delay ({:.2}) for {} ", game_state.curr_ghost_delay, self.cost).to_string()
+        format!(
+            "Ghost Delay ({:.2}) for {} ",
+            game_state.curr_ghost_delay, self.cost
+        )
+        .to_string()
     }
 );
 
@@ -900,13 +917,8 @@ impl Component for UiBarComponent {
         let mut y = setup_info.height - Self::HEIGHT + 1;
         let text = "Buy".to_string();
         let x = setup_info.width - 1 - text.len();
-        self.buttons.push(Box::new(GhostBuyButton::new(
-            x,
-            y,
-            text.len(),
-            1,
-            text,
-        )));
+        self.buttons
+            .push(Box::new(GhostBuyButton::new(x, y, text.len(), 1, text)));
         y += 1;
         self.buttons.push(Box::new(GhostDelayButton::new(x, y)));
     }
@@ -917,8 +929,7 @@ impl Component for UiBarComponent {
         let (x, y) = last_mouse_info.last_mouse_pos;
         let mut hovering = false;
         for (i, button) in self.buttons.iter().enumerate() {
-            if button.mouse_hover(x, y)
-            {
+            if button.mouse_hover(x, y) {
                 self.hover_button = Some(i);
                 hovering = true;
                 break;
