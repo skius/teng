@@ -460,7 +460,7 @@ impl Component for FloodFillComponent {
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
-        if shared_state.mouse_info.right_mouse_down || self.received_down_event_this_frame {
+        if self.received_down_event_this_frame {
             // We must have received some mouse events since last release.
             self.has_content = true;
             // Tracking and updating of board state happens on event handling as to not skip any
