@@ -9,14 +9,16 @@
 //!
 //! You start with no blocks, and the player's death height is barely enough to die when jumping.
 
-use std::time::Instant;
-use crossterm::event::KeyCode;
-use crate::game::components::Bullet;
-use crate::game::{Component, Pixel, Render, Renderer, SetupInfo, SharedState, Sprite, UpdateInfo};
+use std::time::{Duration, Instant};
+use crossterm::event::{Event, KeyCode};
+use smallvec::SmallVec;
+use crate::game::components::{Bullet, DecayElement, MouseTrackerComponent};
+use crate::game::{BreakingAction, Component, DebugMessage, MouseInfo, Pixel, Render, Renderer, SetupInfo, SharedState, Sprite, UpdateInfo};
 
 #[derive(Default, Debug, PartialEq)]
 enum GamePhase {
     #[default]
+    MoveToBuilding,
     Building,
     BuildingToMoving,
     Moving,
@@ -54,12 +56,18 @@ impl GameComponent {
 impl Component for GameComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
         shared_state.components_to_add.push(Box::new(PlayerComponent::new()));
+        shared_state.components_to_add.push(Box::new(BuildingDrawComponent::new()));
         shared_state.extensions.insert(GameState::new(setup_info.width, setup_info.height));
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
         let mut game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
         match game_state.phase {
+            GamePhase::MoveToBuilding => {
+                game_state.phase = GamePhase::Building;
+                game_state.blocks = game_state.max_blocks;
+                shared_state.physics_board.clear();
+            }
             GamePhase::Building => {
                 if shared_state.pressed_keys.contains_key(&KeyCode::Char(' ')) {
                     // hack to have a frame of delay, so that we don't immediately jump due to the space bar press
@@ -68,6 +76,7 @@ impl Component for GameComponent {
             }
             GamePhase::BuildingToMoving => {
                 game_state.phase = GamePhase::Moving;
+                game_state.player_state.x = 1.0;
             }
             GamePhase::Moving => {
 
@@ -138,7 +147,7 @@ impl Component for PlayerComponent {
                 game_state.player_state.x_vel = 0.0;
             }
             if time_since_death >= Self::DEATH_RESPAWN_TIME {
-                game_state.phase = GamePhase::Building;
+                game_state.phase = GamePhase::MoveToBuilding;
                 game_state.player_state.dead_time = None;
             }
         }
@@ -346,8 +355,14 @@ impl Component for PlayerComponent {
         if !grounded {
             game_state.player_state.max_height_since_last_ground_touch = game_state.player_state.max_height_since_last_ground_touch.min(game_state.player_state.y);
         } else {
-            if game_state.player_state.y - game_state.player_state.max_height_since_last_ground_touch > Self::DEATH_HEIGHT {
+            let fall_distance = game_state.player_state.y - game_state.player_state.max_height_since_last_ground_touch;
+            if fall_distance > Self::DEATH_HEIGHT {
+                // Player died
                 game_state.player_state.dead_time = Some(current_time);
+                // add blocks proportional to fall distance
+                let blocks = (fall_distance).abs().ceil() as usize;
+                shared_state.debug_messages.push(DebugMessage::new(format!("You fell from {} blocks high and earned {} blocks", fall_distance, blocks), current_time + Duration::from_secs(5)));
+                game_state.max_blocks += blocks;
             }
             game_state.player_state.max_height_since_last_ground_touch = game_state.player_state.y;
         }
@@ -389,16 +404,70 @@ impl Component for PlayerComponent {
 }
 
 
-struct BuildingDrawComponent {}
+struct BuildingDrawComponent {
+    last_mouse_info: MouseInfo,
+    // small queue for multiple events in one frame
+    draw_queue: SmallVec<[(u16, u16); 20]>,
+}
 
 impl BuildingDrawComponent {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            last_mouse_info: MouseInfo::default(),
+            draw_queue: SmallVec::new(),
+        }
     }
 }
 
 impl Component for BuildingDrawComponent {
+    fn is_active(&self, shared_state: &SharedState) -> bool {
+        shared_state.extensions.get::<GameState>().unwrap().phase == GamePhase::Building
+    }
+    
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
+        if let Event::Mouse(event) = event {
+            let mut new_mouse_info = self.last_mouse_info;
+            MouseTrackerComponent::fill_mouse_info(event, &mut new_mouse_info);
+            MouseTrackerComponent::smooth_two_updates(
+                self.last_mouse_info,
+                new_mouse_info,
+                |mouse_info| {
+                    if mouse_info.left_mouse_down {
+                        let x = mouse_info.last_mouse_pos.0 as u16;
+                        let y = mouse_info.last_mouse_pos.1 as u16;
+                        if self.draw_queue.contains(&(x, y)) {
+                            return;
+                        }
+                        // if decay board already has this pixel, we don't need to count it towards our blocks
+                        let exists_already = shared_state.decay_board[(x as usize, y as usize)].c != ' ';
+                        // draw only if it either exists, or we have enough blocks
+                        if exists_already || shared_state.extensions.get::<GameState>().unwrap().blocks > 0 {
+                            if !exists_already {
+                                shared_state.extensions.get_mut::<GameState>().unwrap().blocks -= 1;
+                            }
+                            self.draw_queue.push((x, y));
+                        }
+                    }
+                },
+            );
+            self.last_mouse_info = new_mouse_info;
+        }
+        None
+    }
+
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
-        
+        for (x, y) in self.draw_queue.drain(..) {
+            shared_state.decay_board[(x as usize, y as usize)] =
+                DecayElement::new_with_time('█', update_info.current_time);
+        }
+        // also current pixel, in case we're holding the button and not moving
+        if self.last_mouse_info.left_mouse_down {
+            let (x, y) = self.last_mouse_info.last_mouse_pos;
+            if shared_state.decay_board[(x, y)].c != ' ' {
+                // refresh the decay time
+                shared_state.decay_board[(x, y)] =
+                    DecayElement::new_with_time('█', update_info.current_time);
+            }
+        }
     }
 }

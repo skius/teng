@@ -160,7 +160,7 @@ pub trait Component: Any {
         true
     }
     /// Called when an event is received. This could happen multiple times per frame.
-    fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         None
     }
     /// Called once per frame to update the component's state.
@@ -319,7 +319,7 @@ impl<W: Write> Game<W> {
             if !component.is_active(&self.shared_state) {
                 continue;
             }
-            if let Some(action) = component.on_event(event.clone()) {
+            if let Some(action) = component.on_event(event.clone(), &mut self.shared_state) {
                 return Some(action);
             }
         }

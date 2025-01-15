@@ -74,7 +74,7 @@ impl DebugInfoComponent {
 }
 
 impl Component for DebugInfoComponent {
-    fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         self.num_events += 1;
         None
     }
@@ -188,7 +188,7 @@ impl FPSLockerComponent {
 }
 
 impl Component for FPSLockerComponent {
-    fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         match event {
             Event::Key(KeyEvent {
                 code: KeyCode::Char('l'),
@@ -310,7 +310,7 @@ impl MouseTrackerComponent {
 }
 
 impl Component for MouseTrackerComponent {
-    fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         if let Event::Mouse(event) = event {
             Self::fill_mouse_info(event, &mut self.last_mouse_info);
         }
@@ -331,7 +331,7 @@ impl Component for MouseTrackerComponent {
 pub struct QuitterComponent;
 
 impl Component for QuitterComponent {
-    fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         if matches!(
             event,
             Event::Key(KeyEvent {
@@ -447,7 +447,7 @@ impl FloodFillComponent {
 }
 
 impl Component for FloodFillComponent {
-    fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         match event {
             Event::Resize(width, height) => {
                 self.board.resize_discard(width as usize, height as usize);
@@ -526,7 +526,7 @@ impl SimpleDrawComponent {
 }
 
 impl Component for SimpleDrawComponent {
-    fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         if let Event::Mouse(event) = event {
             let mut new_mouse_info = self.last_mouse_info;
             MouseTrackerComponent::fill_mouse_info(event, &mut new_mouse_info);
@@ -705,7 +705,7 @@ impl KeyPressRecorderComponent {
 }
 
 impl Component for KeyPressRecorderComponent {
-    fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         match event {
             Event::Key(ke) => {
                 // assert_eq!(ke.kind, crossterm::event::KeyEventKind::Press);

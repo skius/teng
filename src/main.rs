@@ -574,7 +574,7 @@ fn main() -> io::Result<()> {
     game.add_component(Box::new(PhysicsComponent::new()));
     game.add_component(Box::new(DecayComponent::new()));
     game.add_component_with(|width, height| Box::new(FloodFillComponent::new(width, height)));
-    game.add_component(Box::new(SimpleDrawComponent::new()));
+    // game.add_component(Box::new(SimpleDrawComponent::new()));
     // game.add_component_with(|width, height| Box::new(PlayerComponent::new(1, height)));
     // game.add_component_with(|width, height| Box::new(incremental::PlayerComponent::new(1, height)));
     game.add_component(Box::new(incremental::GameComponent::new()));

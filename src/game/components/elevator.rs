@@ -34,7 +34,7 @@ impl ElevatorComponent {
 }
 
 impl Component for ElevatorComponent {
-    fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         match event {
             Event::Mouse(me) => {
                 if me.kind == crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) {
