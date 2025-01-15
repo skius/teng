@@ -14,18 +14,31 @@ use crossterm::event::KeyCode;
 use crate::game::components::Bullet;
 use crate::game::{Component, Pixel, Render, Renderer, SetupInfo, SharedState, Sprite, UpdateInfo};
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, PartialEq)]
 enum GamePhase {
     #[default]
     Building,
+    BuildingToMoving,
     Moving,
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 struct GameState {
     phase: GamePhase,
     blocks: usize,
     max_blocks: usize,
+    player_state: PlayerState,
+}
+
+impl GameState {
+    fn new(width: usize, height: usize) -> Self {
+        Self {
+            phase: GamePhase::default(),
+            blocks: 0,
+            max_blocks: 0,
+            player_state: PlayerState::new(1, height),
+        }
+    }
 }
 
 pub struct GameComponent {
@@ -40,12 +53,31 @@ impl GameComponent {
 
 impl Component for GameComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
-        shared_state.components_to_add.push(Box::new(PlayerComponent::new(1, setup_info.height)));
-        shared_state.extensions.insert(GameState::default());
+        shared_state.components_to_add.push(Box::new(PlayerComponent::new()));
+        shared_state.extensions.insert(GameState::new(setup_info.width, setup_info.height));
+    }
+
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        let mut game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
+        match game_state.phase {
+            GamePhase::Building => {
+                if shared_state.pressed_keys.contains_key(&KeyCode::Char(' ')) {
+                    // hack to have a frame of delay, so that we don't immediately jump due to the space bar press
+                    game_state.phase = GamePhase::BuildingToMoving;
+                }
+            }
+            GamePhase::BuildingToMoving => {
+                game_state.phase = GamePhase::Moving;
+            }
+            GamePhase::Moving => {
+
+            }
+        }
     }
 }
 
-pub struct PlayerComponent {
+#[derive(Debug)]
+pub struct PlayerState {
     x: f64,
     y: f64,
     x_vel: f64,
@@ -53,15 +85,11 @@ pub struct PlayerComponent {
     sprite: Sprite<3, 2>,
     dead_sprite: Sprite<5, 1>,
     dead_time: Option<Instant>,
-    max_height_since_last_ground_touch: f64,
+    max_height_since_last_ground_touch: f64
 }
 
-impl PlayerComponent {
-    const DEATH_HEIGHT: f64 = 4.0;
-    const DEATH_RESPAWN_TIME: f64 = 2.0;
-    const DEATH_STOP_X_MOVE_TIME: f64 = 0.5;
-
-    pub fn new(x: usize, y: usize) -> Self {
+impl PlayerState {
+    fn new(x: usize, y: usize) -> Self {
         Self {
             x: x as f64,
             y: y as f64,
@@ -75,21 +103,43 @@ impl PlayerComponent {
     }
 }
 
+pub struct PlayerComponent {
+    // player_state: PlayerState,
+}
+
+impl PlayerComponent {
+    const DEATH_HEIGHT: f64 = 4.0;
+    const DEATH_RESPAWN_TIME: f64 = 2.0;
+    const DEATH_STOP_X_MOVE_TIME: f64 = 0.5;
+
+    pub fn new() -> Self {
+        Self {
+        }
+    }
+}
+
 impl Component for PlayerComponent {
+    fn is_active(&self, shared_state: &SharedState) -> bool {
+        shared_state.extensions.get::<GameState>().unwrap().phase == GamePhase::Moving
+    }
+
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        let mut game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
+
         let current_time = update_info.current_time;
 
         if shared_state.pressed_keys.contains_key(&KeyCode::Char('k')) {
-            self.dead_time = Some(current_time);
+            game_state.player_state.dead_time = Some(current_time);
         }
 
-        if let Some(dead_time) = self.dead_time {
+        if let Some(dead_time) = game_state.player_state.dead_time {
             let time_since_death = (current_time - dead_time).as_secs_f64();
             if time_since_death >= Self::DEATH_STOP_X_MOVE_TIME {
-                self.x_vel = 0.0;
+                game_state.player_state.x_vel = 0.0;
             }
             if time_since_death >= Self::DEATH_RESPAWN_TIME {
-                self.dead_time = None;
+                game_state.phase = GamePhase::Building;
+                game_state.player_state.dead_time = None;
             }
         }
 
@@ -99,39 +149,39 @@ impl Component for PlayerComponent {
             .as_secs_f64();
 
         // Player inputs, only if not dead
-        if self.dead_time.is_none() {
+        if game_state.player_state.dead_time.is_none() {
             if shared_state.pressed_keys.contains_key(&KeyCode::Char('a')) {
-                if self.x_vel > 0.0 {
-                    self.x_vel = 0.0;
-                } else if self.x_vel == 0.0 {
-                    self.x_vel = -10.0;
+                if game_state.player_state.x_vel > 0.0 {
+                    game_state.player_state.x_vel = 0.0;
+                } else if game_state.player_state.x_vel == 0.0 {
+                    game_state.player_state.x_vel = -10.0;
                 } else {
-                    self.x_vel = -10.0;
+                    game_state.player_state.x_vel = -10.0;
                 }
             } else if shared_state.pressed_keys.contains_key(&KeyCode::Char('d')) {
-                if self.x_vel < 0.0 {
-                    self.x_vel = 0.0;
-                } else if self.x_vel == 0.0 {
-                    self.x_vel = 10.0;
+                if game_state.player_state.x_vel < 0.0 {
+                    game_state.player_state.x_vel = 0.0;
+                } else if game_state.player_state.x_vel == 0.0 {
+                    game_state.player_state.x_vel = 10.0;
                 } else {
-                    self.x_vel = 10.0;
+                    game_state.player_state.x_vel = 10.0;
                 }
             }
             if shared_state.pressed_keys.contains_key(&KeyCode::Char('A')) {
-                if self.x_vel > 0.0 {
-                    self.x_vel = 0.0;
-                } else if self.x_vel == 0.0 {
-                    self.x_vel = -20.0;
+                if game_state.player_state.x_vel > 0.0 {
+                    game_state.player_state.x_vel = 0.0;
+                } else if game_state.player_state.x_vel == 0.0 {
+                    game_state.player_state.x_vel = -20.0;
                 } else {
-                    self.x_vel = -20.0
+                    game_state.player_state.x_vel = -20.0
                 }
             } else if shared_state.pressed_keys.contains_key(&KeyCode::Char('D')) {
-                if self.x_vel < 0.0 {
-                    self.x_vel = 0.0;
-                } else if self.x_vel == 0.0 {
-                    self.x_vel = 20.0;
+                if game_state.player_state.x_vel < 0.0 {
+                    game_state.player_state.x_vel = 0.0;
+                } else if game_state.player_state.x_vel == 0.0 {
+                    game_state.player_state.x_vel = 20.0;
                 } else {
-                    self.x_vel = 20.0;
+                    game_state.player_state.x_vel = 20.0;
                 }
             }
         }
@@ -142,8 +192,8 @@ impl Component for PlayerComponent {
 
         let gravity = 40.0;
 
-        self.y_vel += gravity * dt;
-        self.x += self.x_vel * dt;
+        game_state.player_state.y_vel += gravity * dt;
+        game_state.player_state.x += game_state.player_state.x_vel * dt;
 
         let mut bottom_wall = height;
         let mut left_wall = 0.0f64;
@@ -153,8 +203,8 @@ impl Component for PlayerComponent {
         let step_size = 1;
 
         // find a physics entity below us
-        let mut x_u = self.x.floor() as usize;
-        let mut y_u = self.y.floor() as usize;
+        let mut x_u = game_state.player_state.x.floor() as usize;
+        let mut y_u = game_state.player_state.y.floor() as usize;
         if y_u >= height as usize {
             y_u = height as usize - 1;
         }
@@ -199,7 +249,7 @@ impl Component for PlayerComponent {
         }
 
         // -1.0 etc to account for size of sprite
-        if self.x-1.0 < left_wall {
+        if game_state.player_state.x-1.0 < left_wall {
             // Check if we can do a step
             // initialize false because if there is no left_idx, we can't do a step
             let mut do_step = false;
@@ -207,7 +257,7 @@ impl Component for PlayerComponent {
                 for base_check in 0..step_size {
                     // if there is one, we assume true
                     do_step = true;
-                    let check_y = self.y.floor() as usize - 1 - base_check;
+                    let check_y = game_state.player_state.y.floor() as usize - 1 - base_check;
                     // TODO: saturation
                     for y in (check_y - 1)..=check_y {
                         if shared_state.collision_board[(left_idx, y)] {
@@ -222,16 +272,16 @@ impl Component for PlayerComponent {
 
             }
             if !do_step {
-                self.x = left_wall+1.0;
+                game_state.player_state.x = left_wall+1.0;
             }
-            // self.x_vel = 0.0;
-        } else if self.x+1.0 >= right_wall {
+            // game_state.x_vel = 0.0;
+        } else if game_state.player_state.x+1.0 >= right_wall {
             // Check if we can do a step
             let mut do_step = false;
             if let Some(right_idx) = right_idx {
                 for base_check in 0..step_size {
                     do_step = true;
-                    let check_y = self.y.floor() as usize - 1 - base_check;
+                    let check_y = game_state.player_state.y.floor() as usize - 1 - base_check;
                     for y in (check_y - 1)..=check_y {
                         if shared_state.collision_board[(right_idx, y)] {
                             do_step = false;
@@ -245,17 +295,17 @@ impl Component for PlayerComponent {
 
             }
             if !do_step {
-                self.x = right_wall - 2.0;
+                game_state.player_state.x = right_wall - 2.0;
             }
 
             // self.x_vel = 0.0;
         }
 
         // need to update for bottom checking, since x checking can clamp x and change the bottom check result
-        let mut x_u = self.x.floor() as usize;
+        let mut x_u = game_state.player_state.x.floor() as usize;
         // and only update y here, because otherwise x checking will think we're inside the floor block
-        self.y += self.y_vel * dt;
-        let mut y_u = self.y.floor() as usize;
+        game_state.player_state.y += game_state.player_state.y_vel * dt;
+        let mut y_u = game_state.player_state.y.floor() as usize;
         if y_u >= height as usize {
             y_u = height as usize - 1;
         }
@@ -280,57 +330,75 @@ impl Component for PlayerComponent {
         }
 
         // TODO: sprite size should be taken into account for top wall checking
-        if self.y < 0.0 {
-            self.y = 0.0;
-            self.y_vel = 0.0;
-        } else if self.y >= bottom_wall {
-            self.y = bottom_wall - 1.0;
+        if game_state.player_state.y < 0.0 {
+            game_state.player_state.y = 0.0;
+            game_state.player_state.y_vel = 0.0;
+        } else if game_state.player_state.y >= bottom_wall {
+            game_state.player_state.y = bottom_wall - 1.0;
             // if we're going up, don't douch the jump velocity.
-            if self.y_vel >= 0.0 {
-                self.y_vel = 0.0;
+            if game_state.player_state.y_vel >= 0.0 {
+                game_state.player_state.y_vel = 0.0;
             }
 
         }
 
-        let grounded = self.y >= bottom_wall - 1.2;
+        let grounded = game_state.player_state.y >= bottom_wall - 1.2;
         if !grounded {
-            self.max_height_since_last_ground_touch = self.max_height_since_last_ground_touch.min(self.y);
+            game_state.player_state.max_height_since_last_ground_touch = game_state.player_state.max_height_since_last_ground_touch.min(game_state.player_state.y);
         } else {
-            if self.y - self.max_height_since_last_ground_touch > Self::DEATH_HEIGHT {
-                self.dead_time = Some(current_time);
+            if game_state.player_state.y - game_state.player_state.max_height_since_last_ground_touch > Self::DEATH_HEIGHT {
+                game_state.player_state.dead_time = Some(current_time);
             }
-            self.max_height_since_last_ground_touch = self.y;
+            game_state.player_state.max_height_since_last_ground_touch = game_state.player_state.y;
         }
 
-        // Now jump input since we need grounded information
-        if shared_state.pressed_keys.contains_key(&KeyCode::Char(' ')) {
-            if grounded {
-                self.y_vel = -20.0;
+        if game_state.player_state.dead_time.is_none() {
+            // Now jump input since we need grounded information
+            if shared_state.pressed_keys.contains_key(&KeyCode::Char(' ')) {
+                if grounded {
+                    game_state.player_state.y_vel = -20.0;
+                }
             }
         }
-        shared_state.debug_info.player_y = self.y;
-        shared_state.debug_info.player_x = self.x;
+        shared_state.debug_info.player_y = game_state.player_state.y;
+        shared_state.debug_info.player_x = game_state.player_state.x;
         shared_state.debug_info.left_wall = left_wall;
         shared_state.debug_info.bottom_wall = bottom_wall;
-        shared_state.debug_info.y_vel = self.y_vel;
+        shared_state.debug_info.y_vel = game_state.player_state.y_vel;
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+        let game_state = shared_state.extensions.get::<GameState>().unwrap();
         // Set bg color depending on positive y velocity
         let max_bg_color = 100;
-        let bg_color = if self.y_vel > 0.0 {
-            [self.y_vel.min(max_bg_color as f64) as u8, 0, 0]
+        let bg_color = if game_state.player_state.y_vel > 0.0 {
+            [game_state.player_state.y_vel.min(max_bg_color as f64) as u8, 0, 0]
         } else {
             [0, 0, 0]
         };
         renderer.set_default_bg_color(bg_color);
 
-        if self.dead_time.is_some() {
-            self.dead_sprite
-                .render(&mut renderer, self.x.floor() as usize, self.y.floor() as usize, depth_base);
+        if game_state.player_state.dead_time.is_some() {
+            game_state.player_state.dead_sprite
+                .render(&mut renderer, game_state.player_state.x.floor() as usize, game_state.player_state.y.floor() as usize, depth_base);
         } else {
-            self.sprite
-                .render(&mut renderer, self.x.floor() as usize, self.y.floor() as usize, depth_base);
+            game_state.player_state.sprite
+                .render(&mut renderer, game_state.player_state.x.floor() as usize, game_state.player_state.y.floor() as usize, depth_base);
         }
+    }
+}
+
+
+struct BuildingDrawComponent {}
+
+impl BuildingDrawComponent {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Component for BuildingDrawComponent {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        
     }
 }

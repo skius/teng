@@ -155,6 +155,10 @@ pub struct SetupInfo {
 pub trait Component: Any {
     /// Called in the very beginning. Useful to initialize more components or extension states.
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {}
+    /// Called to determine if this component is active. If not, none of the other methods will be invoked.
+    fn is_active(&self, shared_state: &SharedState) -> bool {
+        true
+    }
     /// Called when an event is received. This could happen multiple times per frame.
     fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
         None
@@ -312,6 +316,9 @@ impl<W: Write> Game<W> {
 
     fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
         for component in self.components.iter_mut() {
+            if !component.is_active(&self.shared_state) {
+                continue;
+            }
             if let Some(action) = component.on_event(event.clone()) {
                 return Some(action);
             }
@@ -340,6 +347,9 @@ impl<W: Write> Game<W> {
 
     fn update(&mut self, update_info: UpdateInfo) {
         for component in self.components.iter_mut() {
+            if !component.is_active(&self.shared_state) {
+                continue;
+            }
             component.update(update_info, &mut self.shared_state);
         }
         self.update_game(update_info);
@@ -384,10 +394,16 @@ impl<W: Write> Game<W> {
                 Box::new(DebugInfoComponent::new())
             });
         }
+        for new_component in self.shared_state.components_to_add.drain(..) {
+            self.components.push(new_component);
+        }
     }
 
     fn render(&mut self) -> io::Result<()> {
         for (idx, component) in self.components.iter().enumerate() {
+            if !component.is_active(&self.shared_state) {
+                continue;
+            }
             component.render(
                 &mut self.display_renderer,
                 &self.shared_state,

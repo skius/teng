@@ -40,6 +40,7 @@ impl Render for Pixel {
     }
 }
 
+#[derive(Debug)]
 pub struct Sprite<const WIDTH: usize, const HEIGHT: usize> {
     pub pixels: [[Pixel; WIDTH]; HEIGHT],
     center_pos: (usize, usize),
