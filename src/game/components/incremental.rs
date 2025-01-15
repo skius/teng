@@ -17,6 +17,7 @@ use crate::game::{
 use crossterm::event::{Event, KeyCode};
 use smallvec::SmallVec;
 use std::time::{Duration, Instant};
+use anymap::any::Any;
 
 #[derive(Default, Debug, PartialEq)]
 enum GamePhase {
@@ -46,6 +47,7 @@ struct GameState {
     player_state: PlayerState,
     player_history: Vec<PlayerHistoryElement>,
     player_ghosts: Vec<PlayerGhost>,
+    curr_ghost_delay: f64,
 }
 
 impl GameState {
@@ -59,7 +61,8 @@ impl GameState {
             max_blocks_per_round: 0,
             player_state: PlayerState::new(1, height - UiBarComponent::HEIGHT),
             player_history: Vec::new(),
-            player_ghosts: vec![PlayerGhost::new(0.6)],
+            player_ghosts: vec![],
+            curr_ghost_delay: 1.0,
         }
     }
 }
@@ -525,7 +528,7 @@ struct PlayerGhost {
 }
 
 impl PlayerGhost {
-    const SAMPLE_RATE: f64 = 60.0;
+    const SAMPLE_RATE: f64 = 160.0;
     const HISTORY_SIZE_SECS: f64 = 10.0;
 
     fn new(offset_secs: f64) -> Self {
@@ -585,9 +588,9 @@ impl PlayerGhost {
         }
         let render_state = &history[history_size - offset_samples - 1];
         if render_state.dead {
-            death_sprite.render(&mut renderer, render_state.x, render_state.y, depth_base);
+            WithColor([130,130,130],death_sprite).render(&mut renderer, render_state.x, render_state.y, depth_base);
         } else {
-            player_sprite.render(&mut renderer, render_state.x, render_state.y, depth_base);
+            WithColor([130,130,130],player_sprite).render(&mut renderer, render_state.x, render_state.y, depth_base);
         }
     }
 }
@@ -674,23 +677,131 @@ impl Component for BuildingDrawComponent {
     }
 }
 
-struct UiButton {
+trait UiButton: Any {
+    fn bbox(&self) -> (usize, usize, usize, usize) {
+        panic!("Need to implement mouse_hover is bbox is not provided")
+    }
+
+    fn mouse_hover(&self, mouse_x: usize, mouse_y: usize) -> bool {
+        let (x, y, width, height) = self.bbox();
+        mouse_x >= x && mouse_x < x + width && mouse_y >= y && mouse_y < y + height
+    }
+
+    fn on_click(&mut self, shared_state: &mut SharedState);
+
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32);
+}
+
+// a macro to define new buttons.
+/* usage should be:
+new_button! {
+    GhostBuyButton,
+    custom_field_1: usize = 0,
+    custom_field_2: bool = true, etc, unlimited
+    x: 1,
+    y: 1,
+    {
+      // some block that is inserted in the on_click function
+    },
+    {
+      // some block that is inserted in the render function
+    }
+}
+*/
+
+macro_rules! new_button {
+    (
+        $name:ident,
+        $cost_growth:literal,
+        $game_state:ident,
+        $self:ident,
+        $on_click:block,
+        $render:block
+        $( $field:ident: $field_type:ty = $field_default:expr ),*
+    ) => {
+        struct $name {
+            x: usize,
+            y: usize,
+            width: usize,
+            height: usize,
+            text: String,
+            cost: usize,
+            $( $field: $field_type ),*
+        }
+
+        impl $name {
+            fn new(x: usize, y: usize) -> Self {
+                Self {
+                    x,
+                    y,
+                    width: 3,
+                    height: 1,
+                    text: "Buy".to_string(),
+                    cost: 1,
+                    $( $field: $field_default ),*
+                }
+            }
+        }
+
+        impl UiButton for $name {
+            fn bbox(&self) -> (usize, usize, usize, usize) {
+                (self.x, self.y, self.width, self.height)
+            }
+
+            fn on_click(&mut $self, shared_state: &mut SharedState) {
+                let $game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
+                if $game_state.max_blocks > $self.cost {
+                    // TODO: add shared shopmanager
+                    $game_state.max_blocks -= $self.cost;
+                    $game_state.blocks -= $self.cost;
+                    $on_click
+                    $self.cost = (($self.cost as f64) * $cost_growth).ceil() as usize;
+                }
+            }
+
+            fn render(&$self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+                let $game_state = shared_state.extensions.get::<GameState>().unwrap();
+                let is_hover = $self.mouse_hover(shared_state.mouse_info.last_mouse_pos.0, shared_state.mouse_info.last_mouse_pos.1);
+                let lmb_down = shared_state.mouse_info.left_mouse_down;
+
+                let fg_color = [0, 0, 0];
+                let bg_color = match (is_hover, lmb_down) {
+                    (true, true) => [200, 200, 255],
+                    (true, false) => [255, 255, 255],
+                    (false, _) => [200, 200, 200],
+                };
+                let text = &$self.text;
+                WithColor(fg_color, WithBgColor(bg_color, text.as_str())).render(
+                    &mut renderer,
+                    $self.x,
+                    $self.y,
+                    depth_base,
+                );
+                let left_text = $render;
+                // render to the left
+                let len = left_text.len();
+                left_text.render(&mut renderer, $self.x - len as usize, $self.y, depth_base);
+            }
+        }
+    };
+}
+
+struct GhostBuyButton {
     x: usize,
     y: usize,
     width: usize,
     height: usize,
     text: String,
-    on_click: Box<dyn Fn(&mut SharedState) -> ()>,
+    cost: usize,
 }
 
-impl UiButton {
+impl GhostBuyButton {
     fn new(
         x: usize,
         y: usize,
         width: usize,
         height: usize,
         text: String,
-        on_click: Box<dyn Fn(&mut SharedState) -> ()>,
     ) -> Self {
         assert!(width >= text.len());
         Self {
@@ -699,14 +810,75 @@ impl UiButton {
             width,
             height,
             text,
-            on_click,
+            cost: 1,
         }
     }
 }
 
+impl UiButton for GhostBuyButton {
+    fn bbox(&self) -> (usize, usize, usize, usize) {
+        (self.x, self.y, self.width, self.height)
+    }
+
+    fn on_click(&mut self, shared_state: &mut SharedState) {
+        let game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
+        if game_state.max_blocks > self.cost {
+            // TODO: add shared shopmanager
+            game_state.max_blocks -= self.cost;
+            game_state.blocks -= self.cost;
+            let new_offset  = if let Some(player_ghost) = game_state.player_ghosts.last() {
+                player_ghost.offset_secs + game_state.curr_ghost_delay
+            } else { game_state.curr_ghost_delay };
+            game_state.player_ghosts.push(PlayerGhost::new(new_offset));
+            self.cost = ((self.cost as f64) * 1.5).ceil() as usize;
+        }
+    }
+
+    fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+        let game_state = shared_state.extensions.get::<GameState>().unwrap();
+        let is_hover = self.mouse_hover(shared_state.mouse_info.last_mouse_pos.0, shared_state.mouse_info.last_mouse_pos.1);
+        let lmb_down = shared_state.mouse_info.left_mouse_down;
+
+        let fg_color = [0, 0, 0];
+        let bg_color = match (is_hover, lmb_down) {
+            (true, true) => [200, 200, 255],
+            (true, false) => [255, 255, 255],
+            (false, _) => [200, 200, 200],
+        };
+        let text = &self.text;
+        WithColor(fg_color, WithBgColor(bg_color, text.as_str())).render(
+            &mut renderer,
+            self.x,
+            self.y,
+            depth_base,
+        );
+        let left_text = format!("Player Ghosts ({}) for {} ", game_state.player_ghosts.len(), self.cost);
+        // render to the left
+        let len = left_text.len();
+        left_text.render(&mut renderer, self.x - len as usize, self.y, depth_base);
+    }
+}
+
+new_button!(
+    GhostDelayButton,
+    2.0,
+    game_state,
+    self,
+    {
+        game_state.curr_ghost_delay -= 0.05;
+        let mut curr_offset = game_state.curr_ghost_delay;
+        for ghost in &mut game_state.player_ghosts {
+            ghost.offset_secs = curr_offset;
+            curr_offset += game_state.curr_ghost_delay;
+        }
+    },
+    {
+        format!("Ghost Delay ({:.2}) for {} ", game_state.curr_ghost_delay, self.cost).to_string()
+    }
+);
+
 pub struct UiBarComponent {
-    buttons: Vec<UiButton>,
-    button_labels: Vec<String>,
+    buttons: Vec<Box<dyn UiButton>>,
     hover_button: Option<usize>,
 }
 
@@ -718,7 +890,6 @@ impl UiBarComponent {
     pub fn new() -> Self {
         Self {
             buttons: vec![],
-            button_labels: vec![],
             hover_button: None,
         }
     }
@@ -726,19 +897,18 @@ impl UiBarComponent {
 
 impl Component for UiBarComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
-        let text = "Buy";
-        self.buttons.push(UiButton::new(
-            setup_info.width - 1 - text.len(),
-            setup_info.height - Self::HEIGHT + 1,
+        let mut y = setup_info.height - Self::HEIGHT + 1;
+        let text = "Buy".to_string();
+        let x = setup_info.width - 1 - text.len();
+        self.buttons.push(Box::new(GhostBuyButton::new(
+            x,
+            y,
             text.len(),
             1,
-            text.to_string(),
-            Box::new(|shared_state| {
-                let mut game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
-                game_state.max_blocks += 1;
-            }),
-        ));
-        self.button_labels.push("Player Ghosts (0) ".to_string());
+            text,
+        )));
+        y += 1;
+        self.buttons.push(Box::new(GhostDelayButton::new(x, y)));
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
@@ -747,10 +917,7 @@ impl Component for UiBarComponent {
         let (x, y) = last_mouse_info.last_mouse_pos;
         let mut hovering = false;
         for (i, button) in self.buttons.iter().enumerate() {
-            if x >= button.x
-                && x < button.x + button.width
-                && y >= button.y
-                && y < button.y + button.height
+            if button.mouse_hover(x, y)
             {
                 self.hover_button = Some(i);
                 hovering = true;
@@ -763,7 +930,7 @@ impl Component for UiBarComponent {
         if shared_state.mouse_pressed.left {
             // we pressed a button, if we're hovering
             if let Some(hover_button) = self.hover_button {
-                (self.buttons[hover_button].on_click)(shared_state);
+                self.buttons[hover_button].on_click(shared_state);
             }
         }
     }
@@ -853,26 +1020,8 @@ impl Component for UiBarComponent {
         controls_str.render(&mut renderer, x, y, depth_base);
 
         // render buttons
-        for (i, button) in self.buttons.iter().enumerate() {
-            let is_hover = self.hover_button == Some(i);
-            let fg_color = [0, 0, 0];
-            let lmb_down = shared_state.mouse_info.left_mouse_down;
-            let bg_color = match (is_hover, lmb_down) {
-                (true, true) => [200, 200, 255],
-                (true, false) => [255, 255, 255],
-                (false, _) => [200, 200, 200],
-            };
-            let text = &button.text;
-            WithColor(fg_color, WithBgColor(bg_color, text.as_str())).render(
-                &mut renderer,
-                button.x,
-                button.y,
-                depth_base,
-            );
-            let left_text = format!("{}", self.button_labels[i]);
-            // render to the left
-            let len = left_text.len();
-            left_text.render(&mut renderer, button.x - len as usize, button.y, depth_base);
+        for button in &self.buttons {
+            button.render(&mut renderer, shared_state, depth_base);
         }
     }
 }

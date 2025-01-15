@@ -86,6 +86,12 @@ impl<const WIDTH: usize, const HEIGHT: usize> Render for Sprite<WIDTH, HEIGHT> {
     }
 }
 
+impl<T: Render> Render for &T {
+    fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
+        (*self).render(renderer, x, y, depth);
+    }
+}
+
 pub struct WithColor<T>(pub [u8; 3], pub T);
 
 impl<T: Render> Render for WithColor<T> {
