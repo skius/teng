@@ -1,7 +1,40 @@
+//! Game description:
+//! Your goal is to make the player fall from increasing heights and die.
+//! Your current 'currency' is the amount of blocks you can place.
+//!
+//! There is a building phase, and a moving phase.
+//! In the building phase you place the blocks you have available.
+//! In the moving phase you walk around until you die, at which point you get more blocks for the next phase.
+//! The game resets to the building phase and you're awarded all your blocks back plus the additional ones you earned.
+//!
+//! You start with no blocks, and the player's death height is barely enough to die when jumping.
+
 use std::time::Instant;
 use crossterm::event::KeyCode;
 use crate::game::components::Bullet;
 use crate::game::{Component, Pixel, Render, Renderer, SharedState, Sprite, UpdateInfo};
+
+#[derive(Default, Debug)]
+enum GamePhase {
+    #[default]
+    Building,
+    Moving,
+}
+
+#[derive(Default, Debug)]
+struct GameState {
+    phase: GamePhase,
+    blocks: usize,
+    max_blocks: usize,
+}
+
+pub struct GameComponent {
+
+}
+
+impl Component for GameComponent {
+    
+}
 
 pub struct PlayerComponent {
     x: f64,
@@ -15,9 +48,9 @@ pub struct PlayerComponent {
 }
 
 impl PlayerComponent {
-    const DEATH_HEIGHT: f64 = 25.0;
+    const DEATH_HEIGHT: f64 = 4.0;
     const DEATH_RESPAWN_TIME: f64 = 2.0;
-    const DEATH_STOP_X_MOVE_TIME: f64 = 1.0;
+    const DEATH_STOP_X_MOVE_TIME: f64 = 0.5;
 
     pub fn new(x: usize, y: usize) -> Self {
         Self {
@@ -34,31 +67,6 @@ impl PlayerComponent {
 }
 
 impl Component for PlayerComponent {
-    // fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
-    //     match event {
-    //         Event::Key(ke) => {
-    //             assert_eq!(ke.kind, crossterm::event::KeyEventKind::Press);
-    //             match ke.code {
-    //                 KeyCode::Char('w' | 'W') => {
-    //                     self.y = self.y.saturating_sub(1);
-    //                 }
-    //                 KeyCode::Char('s' | 'S') => {
-    //                     self.y = self.y.saturating_add(1);
-    //                 }
-    //                 KeyCode::Char(c@('a' | 'A')) => {
-    //                     self.x = self.x.saturating_sub(1 + c.is_ascii_uppercase() as usize);
-    //                 }
-    //                 KeyCode::Char(c@('d' | 'D')) => {
-    //                     self.x = self.x.saturating_add(1 + c.is_ascii_uppercase() as usize);
-    //                 }
-    //                 _ => {}
-    //             }
-    //         }
-    //         _ => {}
-    //     }
-    //     None
-    // }
-
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
         let current_time = update_info.current_time;
 
@@ -299,6 +307,15 @@ impl Component for PlayerComponent {
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+        // Set bg color depending on positive y velocity
+        let max_bg_color = 100;
+        let bg_color = if self.y_vel > 0.0 {
+            [self.y_vel.min(max_bg_color as f64) as u8, 0, 0]
+        } else {
+            [0, 0, 0]
+        };
+        renderer.set_default_bg_color(bg_color);
+
         if self.dead_time.is_some() {
             self.dead_sprite
                 .render(&mut renderer, self.x.floor() as usize, self.y.floor() as usize, depth_base);

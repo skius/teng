@@ -25,17 +25,19 @@ use crate::game::components::elevator::ElevatorComponent;
 pub struct Pixel {
     c: char,
     color: Option<[u8; 3]>,
+    bg_color: Option<[u8; 3]>,
 }
 
 impl Pixel {
     pub fn new(c: char) -> Self {
-        Self { c, color: None }
+        Self { c, color: None, bg_color: None }
     }
 
     pub fn with_color(self, color: [u8; 3]) -> Self {
         Self {
             color: Some(color),
             c: self.c,
+            bg_color: None,
         }
     }
 }
@@ -45,6 +47,7 @@ impl Default for Pixel {
         Self {
             c: ' ',
             color: None,
+            bg_color: None,
         }
     }
 }
