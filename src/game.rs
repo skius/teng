@@ -118,6 +118,7 @@ pub struct SharedState {
     debug_info: DebugInfo,
     debug_messages: SmallVec<[DebugMessage; 16]>,
     extensions: AnyMap,
+    components_to_add: Vec<Box<dyn Component>>,
 }
 
 impl SharedState {
@@ -133,6 +134,7 @@ impl SharedState {
             debug_info: DebugInfo::new(),
             debug_messages: SmallVec::new(),
             extensions: AnyMap::new(),
+            components_to_add: Vec::new(),
         }
     }
 
@@ -144,8 +146,15 @@ impl SharedState {
     }
 }
 
+pub struct SetupInfo {
+    pub width: usize,
+    pub height: usize,
+}
+
 /// A game component that can listen to events, perform logic, and render itself.
 pub trait Component: Any {
+    /// Called in the very beginning. Useful to initialize more components or extension states.
+    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {}
     /// Called when an event is received. This could happen multiple times per frame.
     fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
         None
@@ -350,6 +359,20 @@ impl<W: Write> Game<W> {
         }
     }
 
+    // fn swap_component_dynamic(&mut self, new: Box<dyn Component>) {
+    //     let mut found = false;
+    //     for idx in 0..self.components.len() {
+    //         if (&*self.components[idx]).type_id() == (&*new).type_id() {
+    //             self.components.remove(idx);
+    //             found = true;
+    //             break;
+    //         }
+    //     }
+    //     if !found {
+    //         self.add_component(new);
+    //     }
+    // }
+
     fn update_game(&mut self, update_info: UpdateInfo) {
         if self.shared_state.pressed_keys.contains_key(&KeyCode::Char('e')) {
             self.swap_component::<ElevatorComponent>(|width, height| {
@@ -375,6 +398,19 @@ impl<W: Write> Game<W> {
     }
 
     fn setup(&mut self) -> io::Result<()> {
+        let setup_info = SetupInfo {
+            width: self.width(),
+            height: self.height(),
+        };
+        let mut already_setup_components = 0;
+        while already_setup_components < self.components.len() {
+            let component = &mut self.components[already_setup_components];
+            component.setup(&setup_info, &mut self.shared_state);
+            for new_component in self.shared_state.components_to_add.drain(..) {
+                self.components.push(new_component);
+            }
+            already_setup_components += 1;
+        }
         Ok(())
     }
 

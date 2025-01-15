@@ -12,7 +12,7 @@
 use std::time::Instant;
 use crossterm::event::KeyCode;
 use crate::game::components::Bullet;
-use crate::game::{Component, Pixel, Render, Renderer, SharedState, Sprite, UpdateInfo};
+use crate::game::{Component, Pixel, Render, Renderer, SetupInfo, SharedState, Sprite, UpdateInfo};
 
 #[derive(Default, Debug)]
 enum GamePhase {
@@ -32,8 +32,17 @@ pub struct GameComponent {
 
 }
 
+impl GameComponent {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
 impl Component for GameComponent {
-    
+    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
+        shared_state.components_to_add.push(Box::new(PlayerComponent::new(1, setup_info.height)));
+        shared_state.extensions.insert(GameState::default());
+    }
 }
 
 pub struct PlayerComponent {

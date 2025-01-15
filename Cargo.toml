@@ -12,5 +12,5 @@ anymap = "0.12.1"
 
 [profile.release]
 #strip = true
-lto = true
-codegen-units = 1
+#lto = true
+#codegen-units = 1
