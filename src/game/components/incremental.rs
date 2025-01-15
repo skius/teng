@@ -62,7 +62,13 @@ struct Upgrades {
 
 impl Upgrades {
     fn new() -> Self {
-        Self { auto_play: None, block_height: 1, player_weight: 1, player_jump_boost_factor: 1.0, ghost_cuteness: 1 }
+        Self {
+            auto_play: None,
+            block_height: 1,
+            player_weight: 1,
+            player_jump_boost_factor: 1.0,
+            ghost_cuteness: 1,
+        }
     }
 }
 
@@ -142,7 +148,9 @@ impl Component for GameComponent {
                 shared_state.physics_board.clear();
             }
             GamePhase::Building => {
-                if shared_state.pressed_keys.contains_key(&KeyCode::Char(' ')) || game_state.upgrades.auto_play == Some(true) {
+                if shared_state.pressed_keys.contains_key(&KeyCode::Char(' '))
+                    || game_state.upgrades.auto_play == Some(true)
+                {
                     // hack to have a frame of delay, so that we don't immediately jump due to the space bar press
                     game_state.phase = GamePhase::BuildingToMoving;
                 }
@@ -162,9 +170,7 @@ impl Component for GameComponent {
                     shared_state.pressed_keys.insert(KeyCode::Char('d'), 1);
                 }
             }
-            GamePhase::Moving => {
-
-            }
+            GamePhase::Moving => {}
         }
     }
 }
@@ -454,7 +460,9 @@ impl Component for PlayerComponent {
                 // Player died
                 game_state.player_state.dead_time = Some(current_time);
                 // add blocks proportional to fall distance
-                let blocks = fall_distance.abs().ceil() as usize * game_state.upgrades.block_height * game_state.upgrades.player_weight;
+                let blocks = fall_distance.abs().ceil() as usize
+                    * game_state.upgrades.block_height
+                    * game_state.upgrades.player_weight;
                 shared_state.debug_messages.push(DebugMessage::new(
                     format!(
                         "You fell from {} blocks high and earned {} blocks",
@@ -474,7 +482,8 @@ impl Component for PlayerComponent {
                 if grounded {
                     // set y pos to be exactly the bottom wall so we have consistent jump heights hopefully
                     game_state.player_state.y = bottom_wall - 1.0;
-                    game_state.player_state.y_vel = -20.0 * game_state.upgrades.player_jump_boost_factor;
+                    game_state.player_state.y_vel =
+                        -20.0 * game_state.upgrades.player_jump_boost_factor;
                 }
             }
         }
@@ -644,7 +653,7 @@ impl PlayerGhost {
                 depth_base,
             );
         } else {
-            WithColor([130+cuteness as u8, 130, 130], player_sprite).render(
+            WithColor([130 + cuteness as u8, 130, 130], player_sprite).render(
                 &mut renderer,
                 render_state.x,
                 render_state.y,
@@ -1059,21 +1068,17 @@ impl Component for UiBarComponent {
         self.buttons
             .push(Box::new(PlayerJumpHeightButton::new(x, y)));
         y += 1;
-        self.buttons
-            .push(Box::new(GhostBuyButton::new(x, y)));
+        self.buttons.push(Box::new(GhostBuyButton::new(x, y)));
         y += 1;
-        self.buttons
-            .push(Box::new(GhostCutenessButton::new(x, y)));
+        self.buttons.push(Box::new(GhostCutenessButton::new(x, y)));
         y += 1;
         self.buttons.push(Box::new(GhostDelayButton::new(x, y)));
         y += 1;
         self.buttons.push(Box::new(AutoPlayButton::new(x, y)));
         y += 1;
-        self.buttons
-            .push(Box::new(BlockHeightButton::new(x, y)));
+        self.buttons.push(Box::new(BlockHeightButton::new(x, y)));
         y += 1;
-        self.buttons
-            .push(Box::new(PlayerWeightButton::new(x, y)));
+        self.buttons.push(Box::new(PlayerWeightButton::new(x, y)));
         y += 1;
     }
 
