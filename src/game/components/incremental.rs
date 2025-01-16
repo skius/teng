@@ -1,3 +1,7 @@
+//! Game name ideas:
+//! - Terminally Ill (exe: termill?)
+//! - Untitled Terminal Incremental Game (UTIG, GITU(reverse))?
+//!
 //! Game description:
 //! Your goal is to make the player fall from increasing heights and die.
 //! Your current 'currency' is the amount of blocks you can place.
@@ -1067,7 +1071,7 @@ impl Component for UiBarComponent {
                         self.change_button_text("Toggle");
                         self.cost = 0;
                     }
-            
+
                 },
                 render: |self, game_state| {
                     if self.cost > 0 {
