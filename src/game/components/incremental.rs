@@ -143,7 +143,8 @@ impl Component for GameComponent {
                 game_state.phase = GamePhase::Building;
                 game_state.max_blocks += game_state.received_blocks;
                 game_state.last_received_blocks = game_state.received_blocks;
-                game_state.last_round_time = (update_info.current_time - game_state.start_of_round).as_secs_f64();
+                game_state.last_round_time =
+                    (update_info.current_time - game_state.start_of_round).as_secs_f64();
                 game_state.max_blocks_per_round = game_state
                     .max_blocks_per_round
                     .max(game_state.received_blocks);
@@ -1189,7 +1190,11 @@ impl Component for UiBarComponent {
         // TODO: factor in building time to bps?
         // TODO: keep track of max bps overall?
         let bps = game_state.last_received_blocks as f64 / game_state.last_round_time;
-        format!("Last round: {} at {:.2}/s", game_state.last_received_blocks, bps).render(&mut renderer, x, y, depth_base);
+        format!(
+            "Last round: {} at {:.2}/s",
+            game_state.last_received_blocks, bps
+        )
+        .render(&mut renderer, x, y, depth_base);
         y += 1;
         x = 1;
         let received_blocks_str = format!("High Score: {}", max_received_blocks);
