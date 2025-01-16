@@ -57,7 +57,9 @@ struct Upgrades {
     block_height: usize,
     player_weight: usize,
     player_jump_boost_factor: f64,
+    fall_speed_factor: f64,
     ghost_cuteness: usize,
+    velocity_exponent: f64,
 }
 
 impl Upgrades {
@@ -67,7 +69,9 @@ impl Upgrades {
             block_height: 1,
             player_weight: 1,
             player_jump_boost_factor: 1.0,
+            fall_speed_factor: 1.0,
             ghost_cuteness: 1,
+            velocity_exponent: 0.0,
         }
     }
 }
@@ -303,7 +307,10 @@ impl Component for PlayerComponent {
         let height = shared_state.display_info.height() as f64 - UiBarComponent::HEIGHT as f64;
         let width = shared_state.display_info.width() as f64;
 
-        let gravity = 40.0;
+        let gravity = if game_state.player_state.y_vel > 0.0 {
+            // if we're going down, we want to fall faster depending on the upgrades
+            40.0 * game_state.upgrades.fall_speed_factor
+        } else { 40.0 };
 
         game_state.player_state.y_vel += gravity * dt;
         game_state.player_state.x += game_state.player_state.x_vel * dt;
@@ -439,6 +446,7 @@ impl Component for PlayerComponent {
         }
 
         // TODO: sprite size should be taken into account for top wall checking
+        let mut velocity_at_bottom_hit = None;
         if game_state.player_state.y < 0.0 {
             game_state.player_state.y = 0.0;
             game_state.player_state.y_vel = 0.0;
@@ -446,6 +454,7 @@ impl Component for PlayerComponent {
             game_state.player_state.y = bottom_wall - 1.0;
             // if we're going up, don't douch the jump velocity.
             if game_state.player_state.y_vel >= 0.0 {
+                velocity_at_bottom_hit = Some(game_state.player_state.y_vel);
                 game_state.player_state.y_vel = 0.0;
             }
         }
@@ -465,11 +474,18 @@ impl Component for PlayerComponent {
                 - game_state.player_state.max_height_since_last_ground_touch;
             if fall_distance >= Self::DEATH_HEIGHT {
                 // Player died
+                let death_velocity = velocity_at_bottom_hit.unwrap_or(1.0).max(game_state.player_state.y_vel);
+                shared_state.debug_messages.push(DebugMessage::new(
+                    format!("died with velocity {}", death_velocity),
+                    current_time + Duration::from_secs(5),
+                ));
                 game_state.player_state.dead_time = Some(current_time);
                 // add blocks proportional to fall distance
-                let blocks = fall_distance.abs().ceil() as usize
-                    * game_state.upgrades.block_height
-                    * game_state.upgrades.player_weight;
+                let blocks_f64 = fall_distance.abs().ceil()
+                    * game_state.upgrades.block_height as f64
+                    * game_state.upgrades.player_weight as f64
+                    * death_velocity.powf(game_state.upgrades.velocity_exponent);
+                let blocks = blocks_f64.ceil() as usize;
                 shared_state.debug_messages.push(DebugMessage::new(
                     format!(
                         "You fell from {} blocks high and earned {} blocks",
@@ -906,8 +922,8 @@ macro_rules! new_button {
 
 new_button!(
     BlockHeightButton,
-    cost_growth: 2.0,
-    cost_start: 2000,
+    cost_growth: 1.8,
+    cost_start: 400,
     help_text: "Help: Increase the height of blocks by 1.",
     allow_in_moving: false,
     on_click: |self, game_state| {
@@ -923,8 +939,8 @@ new_button!(
 
 new_button!(
     PlayerWeightButton,
-    cost_growth: 3.0,
-    cost_start: 20_000,
+    cost_growth: 2.3,
+    cost_start: 5_000,
     help_text: "Help: Increase the weight of the player.",
     allow_in_moving: false,
     on_click: |self, game_state| {
@@ -951,6 +967,40 @@ new_button!(
         format!(
             "Jump Height ({:.1}) for {} ",
             game_state.upgrades.player_jump_boost_factor, self.cost
+        )
+    },
+);
+
+new_button!(
+    FallSpeedButton,
+    cost_growth: 1.2,
+    cost_start: 20,
+    help_text: "Help: Increase the fall speed of the player.",
+    allow_in_moving: false,
+    on_click: |self, game_state| {
+        game_state.upgrades.fall_speed_factor += 0.1;
+    },
+    render: |self, game_state| {
+        format!(
+            "Fall Speed ({:.1}) for {} ",
+            game_state.upgrades.fall_speed_factor, self.cost
+        )
+    },
+);
+
+new_button!(
+    VelocityExponentButton,
+    cost_growth: 2.0,
+    cost_start: 120,
+    help_text: "Help: Received blocks are additionally multiplied by the death velocity^exponent.",
+    allow_in_moving: false,
+    on_click: |self, game_state| {
+        game_state.upgrades.velocity_exponent += 0.05;
+    },
+    render: |self, game_state| {
+        format!(
+            "Velocity Exponent ({:.2}) for {} ",
+            game_state.upgrades.velocity_exponent, self.cost
         )
     },
 );
@@ -999,7 +1049,7 @@ new_button!(
 new_button!(
     GhostDelayButton,
     cost_growth: 1.8,
-    cost_start: 600,
+    cost_start: 800,
     help_text: "Help: Decrease the delay between player and ghost movement.",
     allow_in_moving: false,
     on_click: |self, game_state| {
@@ -1075,15 +1125,20 @@ impl Component for UiBarComponent {
         self.buttons
             .push(Box::new(PlayerJumpHeightButton::new(x, y)));
         y += 1;
+        self.buttons
+            .push(Box::new(FallSpeedButton::new(x, y)));
+        y += 1;
         self.buttons.push(Box::new(GhostBuyButton::new(x, y)));
         y += 1;
         self.buttons.push(Box::new(GhostCutenessButton::new(x, y)));
         y += 1;
-        self.buttons.push(Box::new(GhostDelayButton::new(x, y)));
+        self.buttons.push(Box::new(VelocityExponentButton::new(x, y)));
         y += 1;
         self.buttons.push(Box::new(AutoPlayButton::new(x, y)));
         y += 1;
         self.buttons.push(Box::new(BlockHeightButton::new(x, y)));
+        y += 1;
+        self.buttons.push(Box::new(GhostDelayButton::new(x, y)));
         y += 1;
         self.buttons.push(Box::new(PlayerWeightButton::new(x, y)));
         y += 1;
