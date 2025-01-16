@@ -310,7 +310,9 @@ impl Component for PlayerComponent {
         let gravity = if game_state.player_state.y_vel > 0.0 {
             // if we're going down, we want to fall faster depending on the upgrades
             40.0 * game_state.upgrades.fall_speed_factor
-        } else { 40.0 };
+        } else {
+            40.0
+        };
 
         game_state.player_state.y_vel += gravity * dt;
         game_state.player_state.x += game_state.player_state.x_vel * dt;
@@ -474,7 +476,9 @@ impl Component for PlayerComponent {
                 - game_state.player_state.max_height_since_last_ground_touch;
             if fall_distance >= Self::DEATH_HEIGHT {
                 // Player died
-                let death_velocity = velocity_at_bottom_hit.unwrap_or(1.0).max(game_state.player_state.y_vel);
+                let death_velocity = velocity_at_bottom_hit
+                    .unwrap_or(1.0)
+                    .max(game_state.player_state.y_vel);
                 shared_state.debug_messages.push(DebugMessage::new(
                     format!("died with velocity {}", death_velocity),
                     current_time + Duration::from_secs(5),
@@ -823,6 +827,7 @@ macro_rules! new_button {
         render: |$self2:ident, $game_state2:ident| $render:block,
         $( $field:ident: $field_type:ty = $field_default:expr ),*
     ) => {
+        {
         struct $name {
             x: usize,
             y: usize,
@@ -917,187 +922,24 @@ macro_rules! new_button {
                 left_text.render(&mut renderer, $self2.x - len as usize, $self2.y, depth_base);
             }
         }
+        |x,y| Box::new($name::new(x, y))
+        }
     };
 }
 
-new_button!(
-    BlockHeightButton,
-    cost_growth: 1.8,
-    cost_start: 400,
-    help_text: "Help: Increase the height of blocks by 1.",
-    allow_in_moving: false,
-    on_click: |self, game_state| {
-        game_state.upgrades.block_height += 1;
-    },
-    render: |self, game_state| {
-        format!(
-            "Block Height ({}) for {} ",
-            game_state.upgrades.block_height, self.cost
-        )
-    },
-);
-
-new_button!(
-    PlayerWeightButton,
-    cost_growth: 2.3,
-    cost_start: 5_000,
-    help_text: "Help: Increase the weight of the player.",
-    allow_in_moving: false,
-    on_click: |self, game_state| {
-        game_state.upgrades.player_weight += 1;
-    },
-    render: |self, game_state| {
-        format!(
-            "Player Weight ({}) for {} ",
-            game_state.upgrades.player_weight, self.cost
-        )
-    },
-);
-
-new_button!(
-    PlayerJumpHeightButton,
-    cost_growth: 3.0,
-    cost_start: 15,
-    help_text: "Help: Increase the jump height of the player.",
-    allow_in_moving: false,
-    on_click: |self, game_state| {
-        game_state.upgrades.player_jump_boost_factor += 0.1;
-    },
-    render: |self, game_state| {
-        format!(
-            "Jump Height ({:.1}) for {} ",
-            game_state.upgrades.player_jump_boost_factor, self.cost
-        )
-    },
-);
-
-new_button!(
-    FallSpeedButton,
-    cost_growth: 1.2,
-    cost_start: 20,
-    help_text: "Help: Increase the fall speed of the player.",
-    allow_in_moving: false,
-    on_click: |self, game_state| {
-        game_state.upgrades.fall_speed_factor += 0.1;
-    },
-    render: |self, game_state| {
-        format!(
-            "Fall Speed ({:.1}) for {} ",
-            game_state.upgrades.fall_speed_factor, self.cost
-        )
-    },
-);
-
-new_button!(
-    VelocityExponentButton,
-    cost_growth: 2.0,
-    cost_start: 120,
-    help_text: "Help: Received blocks are additionally multiplied by the death velocity^exponent.",
-    allow_in_moving: false,
-    on_click: |self, game_state| {
-        game_state.upgrades.velocity_exponent += 0.05;
-    },
-    render: |self, game_state| {
-        format!(
-            "Velocity Exponent ({:.2}) for {} ",
-            game_state.upgrades.velocity_exponent, self.cost
-        )
-    },
-);
-
-new_button!(
-    GhostBuyButton,
-    cost_growth: 1.4,
-    cost_start: 80,
-    help_text: "Help: Ghosts give the same amount of blocks on death as the player and 1 block\nif they are alive at the end of the round.",
-    allow_in_moving: false,
-    on_click: |self, game_state| {
-        let new_offset = if let Some(player_ghost) = game_state.player_ghosts.last() {
-            player_ghost.offset_secs + game_state.curr_ghost_delay
-        } else {
-            game_state.curr_ghost_delay
-        };
-        game_state.player_ghosts.push(PlayerGhost::new(new_offset));
-    },
-    render: |self, game_state| {
-        format!(
-            "Player Ghosts ({}) for {} ",
-            game_state.player_ghosts.len(),
-            self.cost
-        )
-    },
-);
-
-new_button!(
-    GhostCutenessButton,
-    cost_growth: 1.1,
-    cost_start: 100,
-    help_text: "Help: Ghosts give more blocks if they're alive at the end of a round.",
-    allow_in_moving: false,
-    on_click: |self, game_state| {
-        game_state.upgrades.ghost_cuteness += 1;
-    },
-    render: |self, game_state| {
-        format!(
-            "Ghost Cuteness ({}) for {} ",
-            game_state.upgrades.ghost_cuteness,
-            self.cost
-        )
-    },
-);
-
-new_button!(
-    GhostDelayButton,
-    cost_growth: 1.8,
-    cost_start: 800,
-    help_text: "Help: Decrease the delay between player and ghost movement.",
-    allow_in_moving: false,
-    on_click: |self, game_state| {
-        game_state.curr_ghost_delay /= 1.2;
-        let mut curr_offset = game_state.curr_ghost_delay;
-        for ghost in &mut game_state.player_ghosts {
-            ghost.offset_secs = curr_offset;
-            curr_offset += game_state.curr_ghost_delay;
+macro_rules! add_buttons {
+    ($buttons:expr, $x:expr, $y:expr, $($button:expr),*$(,)?) => {
+        {
+                $(
+    {
+                    $buttons.push(($button)($x, $y));
+                    $y += 1;
         }
-    },
-    render: |self, game_state| {
-        format!(
-            "Ghost Delay ({:.3}) for {} ",
-            game_state.curr_ghost_delay, self.cost
-        )
-    },
-);
-
-new_button!(
-    AutoPlayButton,
-    cost_growth: 1.0,
-    cost_start: 1000,
-    help_text: "Help: Automatically start rounds and make the player jump.",
-    allow_in_moving: true,
-    on_click: |self, game_state| {
-        if let Some(auto_play) = game_state.upgrades.auto_play {
-            game_state.upgrades.auto_play = Some(!auto_play);
-        } else {
-            game_state.upgrades.auto_play = Some(false);
-            self.change_button_text("Toggle");
-            self.cost = 0;
+                )*
         }
+    };
+}
 
-    },
-    render: |self, game_state| {
-        if self.cost > 0 {
-            format!(
-                "Auto Play for {} ",
-                self.cost
-            )
-        } else {
-            format!(
-                "Auto Play ({}) ",
-                if game_state.upgrades.auto_play.unwrap() { "On" } else { "Off" }
-            )
-        }
-    },
-);
 
 pub struct UiBarComponent {
     buttons: Vec<Box<dyn UiButton>>,
@@ -1122,26 +964,179 @@ impl Component for UiBarComponent {
         let mut y = setup_info.height - Self::HEIGHT + 1;
         let text = "Buy".to_string();
         let x = setup_info.width - 1 - text.len();
-        self.buttons
-            .push(Box::new(PlayerJumpHeightButton::new(x, y)));
-        y += 1;
-        self.buttons
-            .push(Box::new(FallSpeedButton::new(x, y)));
-        y += 1;
-        self.buttons.push(Box::new(GhostBuyButton::new(x, y)));
-        y += 1;
-        self.buttons.push(Box::new(GhostCutenessButton::new(x, y)));
-        y += 1;
-        self.buttons.push(Box::new(VelocityExponentButton::new(x, y)));
-        y += 1;
-        self.buttons.push(Box::new(AutoPlayButton::new(x, y)));
-        y += 1;
-        self.buttons.push(Box::new(BlockHeightButton::new(x, y)));
-        y += 1;
-        self.buttons.push(Box::new(GhostDelayButton::new(x, y)));
-        y += 1;
-        self.buttons.push(Box::new(PlayerWeightButton::new(x, y)));
-        y += 1;
+        add_buttons!(
+            self.buttons, x, y,
+            new_button!(
+                PlayerJumpHeightButton,
+                cost_growth: 3.0,
+                cost_start: 15,
+                help_text: "Help: Increase the jump height of the player.",
+                allow_in_moving: false,
+                on_click: |self, game_state| {
+                    game_state.upgrades.player_jump_boost_factor += 0.1;
+                },
+                render: |self, game_state| {
+                    format!(
+                        "Jump Height ({:.1}) for {} ",
+                        game_state.upgrades.player_jump_boost_factor, self.cost
+                    )
+                },
+            ),
+            new_button!(
+                FallSpeedButton,
+                cost_growth: 1.2,
+                cost_start: 20,
+                help_text: "Help: Increase the fall speed of the player.",
+                allow_in_moving: false,
+                on_click: |self, game_state| {
+                    game_state.upgrades.fall_speed_factor += 0.1;
+                },
+                render: |self, game_state| {
+                    format!(
+                        "Fall Speed ({:.1}) for {} ",
+                        game_state.upgrades.fall_speed_factor, self.cost
+                    )
+                },
+            ),
+            new_button!(
+                GhostBuyButton,
+                cost_growth: 1.4,
+                cost_start: 80,
+                help_text: "Help: Ghosts give the same amount of blocks on death as the player and 1 block\nif they are alive at the end of the round.",
+                allow_in_moving: false,
+                on_click: |self, game_state| {
+                    let new_offset = if let Some(player_ghost) = game_state.player_ghosts.last() {
+                        player_ghost.offset_secs + game_state.curr_ghost_delay
+                    } else {
+                        game_state.curr_ghost_delay
+                    };
+                    game_state.player_ghosts.push(PlayerGhost::new(new_offset));
+                },
+                render: |self, game_state| {
+                    format!(
+                        "Player Ghosts ({}) for {} ",
+                        game_state.player_ghosts.len(),
+                        self.cost
+                    )
+                },
+            ),
+            new_button!(
+                GhostCutenessButton,
+                cost_growth: 1.1,
+                cost_start: 100,
+                help_text: "Help: Ghosts give more blocks if they're alive at the end of a round.",
+                allow_in_moving: false,
+                on_click: |self, game_state| {
+                    game_state.upgrades.ghost_cuteness += 1;
+                },
+                render: |self, game_state| {
+                    format!(
+                        "Ghost Cuteness ({}) for {} ",
+                        game_state.upgrades.ghost_cuteness,
+                        self.cost
+                    )
+                },
+            ),
+            new_button!(
+                VelocityExponentButton,
+                cost_growth: 2.0,
+                cost_start: 120,
+                help_text: "Help: Received blocks are additionally multiplied by the death velocity^exponent.",
+                allow_in_moving: false,
+                on_click: |self, game_state| {
+                    game_state.upgrades.velocity_exponent += 0.05;
+                },
+                render: |self, game_state| {
+                    format!(
+                        "Velocity Exponent ({:.2}) for {} ",
+                        game_state.upgrades.velocity_exponent, self.cost
+                    )
+                },
+            ),
+            new_button!(
+                AutoPlayButton,
+                cost_growth: 1.0,
+                cost_start: 1000,
+                help_text: "Help: Automatically start rounds and make the player jump.",
+                allow_in_moving: true,
+                on_click: |self, game_state| {
+                    if let Some(auto_play) = game_state.upgrades.auto_play {
+                        game_state.upgrades.auto_play = Some(!auto_play);
+                    } else {
+                        game_state.upgrades.auto_play = Some(false);
+                        self.change_button_text("Toggle");
+                        self.cost = 0;
+                    }
+            
+                },
+                render: |self, game_state| {
+                    if self.cost > 0 {
+                        format!(
+                            "Auto Play for {} ",
+                            self.cost
+                        )
+                    } else {
+                        format!(
+                            "Auto Play ({}) ",
+                            if game_state.upgrades.auto_play.unwrap() { "On" } else { "Off" }
+                        )
+                    }
+                },
+            ),
+            new_button!(
+                BlockHeightButton,
+                cost_growth: 1.8,
+                cost_start: 400,
+                help_text: "Help: Increase the height of blocks by 1.",
+                allow_in_moving: false,
+                on_click: |self, game_state| {
+                    game_state.upgrades.block_height += 1;
+                },
+                render: |self, game_state| {
+                    format!(
+                        "Block Height ({}) for {} ",
+                        game_state.upgrades.block_height, self.cost
+                    )
+                },
+            ),
+            new_button!(
+                GhostDelayButton,
+                cost_growth: 1.8,
+                cost_start: 800,
+                help_text: "Help: Decrease the delay between player and ghost movement.",
+                allow_in_moving: false,
+                on_click: |self, game_state| {
+                    game_state.curr_ghost_delay /= 1.2;
+                    let mut curr_offset = game_state.curr_ghost_delay;
+                    for ghost in &mut game_state.player_ghosts {
+                        ghost.offset_secs = curr_offset;
+                        curr_offset += game_state.curr_ghost_delay;
+                    }
+                },
+                render: |self, game_state| {
+                    format!(
+                        "Ghost Delay ({:.3}) for {} ",
+                        game_state.curr_ghost_delay, self.cost
+                    )
+                },
+            ),
+            new_button!(
+                PlayerWeightButton,
+                cost_growth: 2.3,
+                cost_start: 5_000,
+                help_text: "Help: Increase the weight of the player.",
+                allow_in_moving: false,
+                on_click: |self, game_state| {
+                    game_state.upgrades.player_weight += 1;
+                },
+                render: |self, game_state| {
+                    format!(
+                        "Player Weight ({}) for {} ",
+                        game_state.upgrades.player_weight, self.cost
+                    )
+                },
+            ),
+        );
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
