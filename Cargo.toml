@@ -11,6 +11,10 @@ rand = "0.8.5"
 anymap = "0.12.1"
 
 [profile.release]
+# for size:
 #strip = true
+#opt-level = 'z'
+
+# for performance:
 #lto = true
 #codegen-units = 1
