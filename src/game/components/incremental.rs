@@ -28,6 +28,19 @@
 //!    (-- ghost would only work if the world hasn't changed since last time, which would need a specific upgrade.
 //! - Obvious upgrades like blocks per block fallen you receive, ghost block multipliers, blocks per alive ghost, etc.
 //! - Maybe a way to make ghosts die before you?
+//! - Needs some kind of final purchase that's really expensive. Maybe 100B or so?
+//!    would be cool if that unlocked some new feature that made the numbers go up even more...
+//! - Ooh! Add a "mirror" that is just an entire player character incl. all upgrades like ghosts, that just mirrors
+//!    the movement on the other side of the screen. Immediately doubles the bps.
+//! - There could be an upgrade that ends the round immediately when all ghosts are dead. This could be
+//!     a late upgrade, for when the number of ghosts is typically the limiting factor instead of ghost delay.
+//! - Procedurally generated world!!!
+//! TODOs before playtests:
+//! - Disable unneeded components
+//! - Fix resize (player falling and button locations)
+//! - Maybe make player able to go above the screen (disable y = 0 collision)
+//! - At high fall gravities, the red background screen starts flashing when the player is on the floor.
+//!    maybe add override for when the player is on the floor and skip it?
 
 use crate::game::components::{Bullet, DecayElement, MouseTrackerComponent};
 use crate::game::{
@@ -97,6 +110,7 @@ struct GameState {
     curr_ghost_delay: f64,
     upgrades: Upgrades,
     start_of_round: Instant,
+    start_of_game: Instant,
 }
 
 impl GameState {
@@ -116,6 +130,7 @@ impl GameState {
             upgrades: Upgrades::new(),
             start_of_round: Instant::now(),
             last_round_time: 0.0,
+            start_of_game: Instant::now(),
         }
     }
 }
@@ -1045,7 +1060,7 @@ impl Component for UiBarComponent {
                 VelocityExponentButton,
                 cost_growth: 2.0,
                 cost_start: 120,
-                help_text: "Help: Received blocks are additionally multiplied by the death velocity^exponent.",
+                help_text: "Help: Received blocks are additionally multiplied by\nthe death velocity^exponent.",
                 allow_in_moving: false,
                 on_click: |self, game_state| {
                     game_state.upgrades.velocity_exponent += 0.05;
@@ -1221,6 +1236,12 @@ impl Component for UiBarComponent {
         WithColor(phase_color, s).render(&mut renderer, x, y, depth_base);
         x = 1;
         y += 1;
+        // Render game runtime
+        let runtime = game_state.start_of_game.elapsed().as_secs_f64();
+        let runtime_str = format!("Time: {:.1}s", runtime);
+        runtime_str.render(&mut renderer, x, y, depth_base);
+        y += 1;
+        x = 1;
         // render block numbers constant sized
         let max_blocks_str = format!("{}", max_blocks);
         let width = max_blocks_str.len();
