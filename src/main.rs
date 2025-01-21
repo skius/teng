@@ -551,6 +551,20 @@ fn render_loop() -> io::Result<()> {
 }
 
 fn main() -> io::Result<()> {
+    use std::backtrace::Backtrace;
+    use std::cell::Cell;
+
+    thread_local! {
+        static BACKTRACE: Cell<Option<Backtrace>> = const { Cell::new(None) };
+    }
+    {
+        // install panic handler
+        std::panic::set_hook(Box::new(|_| {
+            let trace = Backtrace::capture();
+            BACKTRACE.with(move |b| b.set(Some(trace)));
+        }));
+    }
+
     execute!(stdout(), crossterm::terminal::EnterAlternateScreen)?;
     // println!("{}", HELP);
     // println!("{:?}", size()?);
@@ -567,34 +581,39 @@ fn main() -> io::Result<()> {
     // actually, doesnt work on windows terminal.
     // execute!(stdout, crossterm::event::PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::REPORT_EVENT_TYPES | KeyboardEnhancementFlags::REPORT_ALL_KEYS_AS_ESCAPE_CODES))?;
 
-    let sink = CustomBufWriter::new();
-    let mut game = Game::new(sink);
-    game.add_component(Box::new(FPSLockerComponent::new(150.0)));
-    game.add_component(Box::new(KeyPressRecorderComponent::new()));
-    game.add_component(Box::new(ClearComponent));
-    game.add_component(Box::new(MouseTrackerComponent::new()));
-    game.add_component(Box::new(QuitterComponent));
-    game.add_component(Box::new(ForceApplyComponent));
-    game.add_component(Box::new(PhysicsComponent::new()));
-    game.add_component(Box::new(DecayComponent::new()));
-    game.add_component_with(|width, height| Box::new(FloodFillComponent::new(width, height)));
-    // game.add_component(Box::new(SimpleDrawComponent::new()));
-    // game.add_component_with(|width, height| Box::new(PlayerComponent::new(1, height)));
-    // game.add_component_with(|width, height| Box::new(incremental::PlayerComponent::new(1, height)));
-    game.add_component(Box::new(incremental::GameComponent::new()));
-    game.add_component(Box::new(DebugInfoComponent::new()));
-    // game.add_component_with(|width, height| Box::new(ElevatorComponent::new(width, height)));
+    // unwind panic
+    let result = std::panic::catch_unwind(|| {
+        let sink = CustomBufWriter::new();
+        let mut game = Game::new(sink);
+        game.add_component(Box::new(FPSLockerComponent::new(150.0)));
+        game.add_component(Box::new(KeyPressRecorderComponent::new()));
+        game.add_component(Box::new(ClearComponent));
+        game.add_component(Box::new(MouseTrackerComponent::new()));
+        game.add_component(Box::new(QuitterComponent));
+        game.add_component(Box::new(ForceApplyComponent));
+        game.add_component(Box::new(PhysicsComponent::new()));
+        game.add_component(Box::new(DecayComponent::new()));
+        game.add_component_with(|width, height| Box::new(FloodFillComponent::new(width, height)));
+        // game.add_component(Box::new(SimpleDrawComponent::new()));
+        // game.add_component_with(|width, height| Box::new(PlayerComponent::new(1, height)));
+        // game.add_component_with(|width, height| Box::new(incremental::PlayerComponent::new(1, height)));
+        game.add_component(Box::new(incremental::GameComponent::new()));
+        game.add_component(Box::new(DebugInfoComponent::new()));
+        // game.add_component_with(|width, height| Box::new(ElevatorComponent::new(width, height)));
 
-    if let Err(e) = game.run() {
-        println!("Error: {:?}", e);
-    }
+        if let Err(e) = game.run() {
+            println!("Error: {:?}", e);
+            // panic to catch it and print it later to main screen
+            panic!("game returned error: {:?}", e);
+        }
 
-    // if let Err(e) = game_loop(&mut stdout) {
-    //     println!("Error: {:?}\r", e);
-    // }
-    // if let Err(e) = render_loop() {
-    //     println!("Error: {:?}\r", e);
-    // }
+        // if let Err(e) = game_loop(&mut stdout) {
+        //     println!("Error: {:?}\r", e);
+        // }
+        // if let Err(e) = render_loop() {
+        //     println!("Error: {:?}\r", e);
+        // }
+    });
 
     execute!(stdout, DisableMouseCapture)?;
     execute!(stdout, cursor::Show)?;
@@ -612,6 +631,14 @@ fn main() -> io::Result<()> {
     // println!("{:?}", std::any::TypeId::of::<ElevatorComponent>());
     // println!("eq: {}", std::any::TypeId::of::<ElevatorComponent>() == (&*Box::new(ElevatorComponent::new(0, 0))).type_id());
     //
+
+    // only println now to main screen
+    if let Err(e) = result {
+        let b = BACKTRACE.with(|b| b.take()).unwrap();
+        eprintln!("{}", b);
+        eprintln!("Caught panic: {:?}", e.downcast_ref::<String>());
+
+    }
 
     Ok(())
 }
