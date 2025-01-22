@@ -78,6 +78,7 @@ impl std::io::Write for BoardWriter {
 
 /// Custom buffer writer that _only_ flushes explicitly
 /// Surprisingly leads to a speedup from 2000 fps to 4800 fps on a full screen terminal
+/// Update: Since diff rendering, there is no big difference between this and Stdout directly.
 struct CustomBufWriter {
     buf: Vec<u8>,
     flush_num: usize,

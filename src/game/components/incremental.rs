@@ -796,6 +796,22 @@ impl Component for BuildingDrawComponent {
     }
 }
 
+#[derive(Clone, Copy)]
+enum OffsetX {
+    /// This variant defines the button text to be left-aligned and the leftmost x coordinate of the button.
+    Left(usize),
+    /// This variant defines the button text to be right-aligned and the rightmost x coordinate of the button.
+    Right(usize),
+}
+
+#[derive(Clone, Copy)]
+enum OffsetY {
+    /// This variant defines the button text to be top-aligned and the topmost y coordinate of the button.
+    Top(usize),
+    /// This variant defines the button text to be bottom-aligned and the bottommost y coordinate of the button.
+    Bottom(usize),
+}
+
 // TODO: resize ui button should move the x of ui buttons. Maybe just handle that in render?
 // could have an enum for offset types, like Bottom(usize), Top(usize), Left(usize), Right(usize)
 trait UiButton: Any {
@@ -804,6 +820,8 @@ trait UiButton: Any {
     fn bbox(&self) -> (usize, usize, usize, usize) {
         panic!("Need to implement mouse_hover is bbox is not provided")
     }
+
+    fn update_screen_dimensions(&mut self, screen_height: usize, screen_width: usize);
 
     fn mouse_hover(&self, mouse_x: usize, mouse_y: usize) -> bool {
         let (x, y, width, height) = self.bbox();
@@ -848,23 +866,28 @@ macro_rules! new_button {
     ) => {
         {
         struct $name {
-            x: usize,
-            y: usize,
+            offset_x: OffsetX,
+            offset_y: OffsetY,
             width: usize,
             height: usize,
+            screen_width: usize,
+            screen_height: usize,
             button_text: String,
             cost: usize,
             $( $field: $field_type ),*
         }
 
         impl $name {
-            fn new(x: usize, y: usize) -> Self {
+            fn new(offset_x: OffsetX, offset_y: OffsetY, screen_height: usize, screen_width: usize) -> Self {
+                let text = "Buy".to_string();
                 Self {
-                    x,
-                    y,
-                    width: 3,
+                    offset_x,
+                    offset_y,
+                    width: text.len(),
                     height: 1,
-                    button_text: "Buy".to_string(),
+                    screen_width,
+                    screen_height,
+                    button_text: text,
                     cost: $cost_start,
                     $( $field: $field_default ),*
                 }
@@ -872,12 +895,13 @@ macro_rules! new_button {
 
             #[allow(unused)]
             fn change_button_text(&mut self, new_text: &str) {
-                // adjust width
-                let change_x = new_text.len() as i32 - self.button_text.len() as i32;
-                self.x = (self.x as i32 - change_x) as usize;
                 self.width = new_text.len();
                 self.button_text = new_text.to_string();
+            }
 
+            fn screen_pos(&self) -> (usize, usize) {
+                let (x, y, _, _) = self.bbox();
+                (x, y)
             }
         }
 
@@ -886,8 +910,21 @@ macro_rules! new_button {
                 $help_text
             }
 
+            fn update_screen_dimensions(&mut self, screen_height: usize, screen_width: usize) {
+                self.screen_height = screen_height;
+                self.screen_width = screen_width;
+            }
+
             fn bbox(&self) -> (usize, usize, usize, usize) {
-                (self.x, self.y, self.width, self.height)
+                let x = match self.offset_x {
+                    OffsetX::Left(x) => x,
+                    OffsetX::Right(x) => self.screen_width - self.width - x,
+                };
+                let y = match self.offset_y {
+                    OffsetY::Top(y) => y,
+                    OffsetY::Bottom(y) => self.screen_height - self.height - y,
+                };
+                (x, y, self.width, self.height)
             }
 
             fn on_click(&mut $self, shared_state: &mut SharedState) {
@@ -929,30 +966,31 @@ macro_rules! new_button {
                 if !enough_blocks {
                     bg_color = deactivated_color;
                 }
+                let (x, y) = $self2.screen_pos();
                 WithColor(fg_color, WithBgColor(bg_color, &$self2.button_text)).render(
                     &mut renderer,
-                    $self2.x,
-                    $self2.y,
+                    x,
+                    y,
                     depth_base,
                 );
                 let left_text = $render;
                 // render to the left
                 let len = left_text.len();
-                left_text.render(&mut renderer, $self2.x - len as usize, $self2.y, depth_base);
+                left_text.render(&mut renderer, x - len as usize, y, depth_base);
             }
         }
-        |x,y| Box::new($name::new(x, y))
+        |x, y, screen_height, screen_width| Box::new($name::new(x, y, screen_height, screen_width))
         }
     };
 }
 
 macro_rules! add_buttons {
-    ($buttons:expr, $x:expr, $y:expr, $($button:expr),*$(,)?) => {
+    ($buttons:expr, $x:expr, $y:expr, $screen_height:expr, $screen_width:expr, $($button:expr),*$(,)?) => {
         {
                 $(
     {
-                    $buttons.push(($button)($x, $y));
-                    $y += 1;
+                    $buttons.push(($button)($x, OffsetY::Bottom($y), $screen_height, $screen_width));
+                    $y -= 1;
         }
                 )*
         }
@@ -980,11 +1018,14 @@ impl UiBarComponent {
 
 impl Component for UiBarComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
-        let mut y = setup_info.height - Self::HEIGHT + 1;
+        let mut y_offset = Self::HEIGHT - 2;
         let text = "Buy".to_string();
-        let x = setup_info.width - 1 - text.len();
+        let x_offset = 1;
+        let x_offset = OffsetX::Right(x_offset);
+        let screen_height = setup_info.height;
+        let screen_width = setup_info.width;
         add_buttons!(
-            self.buttons, x, y,
+            self.buttons, x_offset, y_offset, screen_height, screen_width,
             new_button!(
                 PlayerJumpHeightButton,
                 cost_growth: 3.0,
@@ -1158,6 +1199,15 @@ impl Component for UiBarComponent {
         );
     }
 
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
+        if let Event::Resize(width, height) = event {
+            self.buttons.iter_mut().for_each(|button| {
+                button.update_screen_dimensions(height as usize, width as usize);
+            });
+        }
+        None
+    }
+
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
         let game_state = shared_state.extensions.get::<GameState>().unwrap();
         let last_mouse_info = shared_state.mouse_info;
@@ -1291,7 +1341,7 @@ impl Component for UiBarComponent {
 
         // render buttons
         for button in &self.buttons {
-            button.render(&mut renderer, shared_state, depth_base);
+            button.render(&mut renderer, shared_state, depth_base+10);
         }
     }
 }
