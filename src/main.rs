@@ -551,20 +551,6 @@ fn render_loop() -> io::Result<()> {
 }
 
 fn main() -> io::Result<()> {
-    use std::backtrace::Backtrace;
-    use std::cell::Cell;
-
-    thread_local! {
-        static BACKTRACE: Cell<Option<Backtrace>> = const { Cell::new(None) };
-    }
-    {
-        // install panic handler
-        std::panic::set_hook(Box::new(|_| {
-            let trace = Backtrace::capture();
-            BACKTRACE.with(move |b| b.set(Some(trace)));
-        }));
-    }
-
     execute!(stdout(), crossterm::terminal::EnterAlternateScreen)?;
     // println!("{}", HELP);
     // println!("{:?}", size()?);
@@ -581,64 +567,57 @@ fn main() -> io::Result<()> {
     // actually, doesnt work on windows terminal.
     // execute!(stdout, crossterm::event::PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::REPORT_EVENT_TYPES | KeyboardEnhancementFlags::REPORT_ALL_KEYS_AS_ESCAPE_CODES))?;
 
-    // unwind panic
-    let result = std::panic::catch_unwind(|| {
-        let sink = CustomBufWriter::new();
-        let mut game = Game::new(sink);
-        game.add_component(Box::new(FPSLockerComponent::new(150.0)));
-        game.add_component(Box::new(KeyPressRecorderComponent::new()));
-        game.add_component(Box::new(ClearComponent));
-        game.add_component(Box::new(MouseTrackerComponent::new()));
-        game.add_component(Box::new(QuitterComponent));
-        game.add_component(Box::new(ForceApplyComponent));
-        game.add_component(Box::new(PhysicsComponent::new()));
-        game.add_component(Box::new(DecayComponent::new()));
-        game.add_component_with(|width, height| Box::new(FloodFillComponent::new(width, height)));
-        // game.add_component(Box::new(SimpleDrawComponent::new()));
-        // game.add_component_with(|width, height| Box::new(PlayerComponent::new(1, height)));
-        // game.add_component_with(|width, height| Box::new(incremental::PlayerComponent::new(1, height)));
-        game.add_component(Box::new(incremental::GameComponent::new()));
-        game.add_component(Box::new(DebugInfoComponent::new()));
-        // game.add_component_with(|width, height| Box::new(ElevatorComponent::new(width, height)));
+    fn cleanup() {
+        let mut stdout = io::stdout();
+        execute!(stdout, DisableMouseCapture).unwrap();
+        execute!(stdout, cursor::Show).unwrap();
 
-        if let Err(e) = game.run() {
-            println!("Error: {:?}", e);
-            // panic to catch it and print it later to main screen
-            panic!("game returned error: {:?}", e);
-        }
+        // show cursor
+        execute!(
+            stdout,
+            crossterm::terminal::Clear(crossterm::terminal::ClearType::All)
+        ).unwrap();
 
-        // if let Err(e) = game_loop(&mut stdout) {
-        //     println!("Error: {:?}\r", e);
-        // }
-        // if let Err(e) = render_loop() {
-        //     println!("Error: {:?}\r", e);
-        // }
-    });
+        disable_raw_mode().unwrap();
 
-    execute!(stdout, DisableMouseCapture)?;
-    execute!(stdout, cursor::Show)?;
-
-    // show cursor
-    execute!(
-        stdout,
-        crossterm::terminal::Clear(crossterm::terminal::ClearType::All)
-    )?;
-
-    disable_raw_mode()?;
-
-    execute!(stdout, crossterm::terminal::LeaveAlternateScreen)?;
-    // println!("{:?}", (&*Box::new(ElevatorComponent::new(0, 0))).type_id());
-    // println!("{:?}", std::any::TypeId::of::<ElevatorComponent>());
-    // println!("eq: {}", std::any::TypeId::of::<ElevatorComponent>() == (&*Box::new(ElevatorComponent::new(0, 0))).type_id());
-    //
-
-    // only println now to main screen
-    if let Err(e) = result {
-        let b = BACKTRACE.with(|b| b.take()).unwrap();
-        eprintln!("{}", b);
-        eprintln!("Caught panic: {:?}", e.downcast_ref::<String>());
-
+        execute!(stdout, crossterm::terminal::LeaveAlternateScreen).unwrap();
     }
+    // install panic handler
+    std::panic::set_hook(Box::new(|pinfo| {
+        cleanup();
+        eprintln!("{}", pinfo);
+    }));
+
+    let sink = CustomBufWriter::new();
+    let mut game = Game::new(sink);
+    game.add_component(Box::new(FPSLockerComponent::new(150.0)));
+    game.add_component(Box::new(KeyPressRecorderComponent::new()));
+    game.add_component(Box::new(ClearComponent));
+    game.add_component(Box::new(MouseTrackerComponent::new()));
+    game.add_component(Box::new(QuitterComponent));
+    game.add_component(Box::new(ForceApplyComponent));
+    game.add_component(Box::new(PhysicsComponent::new()));
+    game.add_component(Box::new(DecayComponent::new()));
+    game.add_component_with(|width, height| Box::new(FloodFillComponent::new(width, height)));
+    // game.add_component(Box::new(SimpleDrawComponent::new()));
+    // game.add_component_with(|width, height| Box::new(PlayerComponent::new(1, height)));
+    // game.add_component_with(|width, height| Box::new(incremental::PlayerComponent::new(1, height)));
+    game.add_component(Box::new(incremental::GameComponent::new()));
+    game.add_component(Box::new(DebugInfoComponent::new()));
+    // game.add_component_with(|width, height| Box::new(ElevatorComponent::new(width, height)));
+
+    if let Err(e) = game.run() {
+        println!("Error: {:?}", e);
+    }
+
+    // if let Err(e) = game_loop(&mut stdout) {
+    //     println!("Error: {:?}\r", e);
+    // }
+    // if let Err(e) = render_loop() {
+    //     println!("Error: {:?}\r", e);
+    // }
+
+    cleanup();
 
     Ok(())
 }
