@@ -3,6 +3,7 @@ use std::ops::{Index, IndexMut};
 use crossterm::event::{Event, KeyCode};
 use noise::{NoiseFn, Simplex};
 use crate::game::{BreakingAction, Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
+use crate::game::components::incremental::GameState;
 
 #[derive(Debug, Clone)]
 pub struct InitializedTile {
@@ -53,6 +54,7 @@ struct WorldIndex {
 /// Invariants:
 /// * The heights (the lengths of the two tops, and the lengths of the two bottoms) are aligned
 /// * The widths (the lengths of the two rights\[..] and the lengths of the two lefts\[..]) are aligned
+#[derive(Debug)]
 pub struct World {
     top_right: Vec<Vec<Tile>>,
     bottom_right: Vec<Vec<Tile>>,
@@ -249,39 +251,55 @@ impl World {
     }
 }
 
-impl Component for World {
+pub struct WorldComponent {
+}
+
+impl WorldComponent {
+    pub fn new() -> Self {
+        Self {
+        }
+    }
+}
+
+impl Component for WorldComponent {
     fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         if let Event::Resize(width, height) = event {
-            self.screen_width = width as usize;
-            self.screen_height = height as usize;
-            self.expand_to_contain(self.camera_window());
+            let game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
+            let world = &mut game_state.world;
+            world.screen_width = width as usize;
+            world.screen_height = height as usize;
+            world.expand_to_contain(world.camera_window());
         }
 
         None
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        let world = &mut shared_state.extensions.get_mut::<GameState>().unwrap().world;
+        
         if shared_state.pressed_keys.contains_key(&KeyCode::Char('r')) {
-            self.regenerate();
+            world.regenerate();
         }
 
         if shared_state.pressed_keys.contains_key(&KeyCode::Char('w')) {
-            self.move_camera(0, 1);
+            world.move_camera(0, 1);
         }
         if shared_state.pressed_keys.contains_key(&KeyCode::Char('s')) {
-            self.move_camera(0, -1);
+            world.move_camera(0, -1);
         }
         if shared_state.pressed_keys.contains_key(&KeyCode::Char('a')) {
-            self.move_camera(-1, 0);
+            world.move_camera(-1, 0);
         }
         if shared_state.pressed_keys.contains_key(&KeyCode::Char('d')) {
-            self.move_camera(1, 0);
+            world.move_camera(1, 0);
         }
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
-        let camera_x = self.camera_attach.0;
-        let camera_y = self.camera_attach.1;
+        let world = &shared_state.extensions.get::<GameState>().unwrap().world;
+        
+        let camera_x = world.camera_attach.0;
+        let camera_y = world.camera_attach.1;
 
         let screen_width = shared_state.display_info.width();
         let screen_height = shared_state.display_info.height();
@@ -298,7 +316,7 @@ impl Component for World {
                     continue;
                 }
 
-                if let Some(tile) = self.get(world_x, world_y) {
+                if let Some(tile) = world.get(world_x, world_y) {
                     match tile {
                         Tile::Ungenerated => {
                             renderer.render_pixel(x, y, Pixel::new('u'), depth_base);

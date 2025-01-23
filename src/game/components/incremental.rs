@@ -52,7 +52,7 @@ use crossterm::event::{Event, KeyCode};
 use smallvec::SmallVec;
 use std::time::{Duration, Instant};
 use crate::game::components::incremental::ui::UiBarComponent;
-use crate::game::components::incremental::world::World;
+use crate::game::components::incremental::world::{World, WorldComponent};
 
 pub mod world;
 pub mod ui;
@@ -116,10 +116,12 @@ struct GameState {
     upgrades: Upgrades,
     start_of_round: Instant,
     start_of_game: Instant,
+    world: World,
 }
 
 impl GameState {
-    fn new(width: usize, height: usize) -> Self {
+    fn new(setup_info: &SetupInfo) -> Self {
+        let height = setup_info.height;
         Self {
             phase: GamePhase::default(),
             blocks: 0,
@@ -136,6 +138,7 @@ impl GameState {
             start_of_round: Instant::now(),
             last_round_time: 0.0,
             start_of_game: Instant::now(),
+            world: World::new(setup_info),
         }
     }
 }
@@ -150,7 +153,7 @@ impl GameComponent {
 
 impl Component for GameComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
-        shared_state.components_to_add.push(Box::new(World::new(setup_info)));
+        shared_state.components_to_add.push(Box::new(WorldComponent::new()));
         shared_state
             .components_to_add
             .push(Box::new(PlayerComponent::new()));
@@ -162,7 +165,7 @@ impl Component for GameComponent {
             .push(Box::new(UiBarComponent::new()));
         shared_state
             .extensions
-            .insert(GameState::new(setup_info.width, setup_info.height));
+            .insert(GameState::new(setup_info));
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
