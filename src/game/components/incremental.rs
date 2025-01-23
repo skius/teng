@@ -42,7 +42,7 @@
 //! - At high fall gravities, the red background screen starts flashing when the player is on the floor.
 //!    maybe add override for when the player is on the floor and skip it?
 
-use crate::game::components::{Bullet, DecayElement, MouseTrackerComponent};
+use crate::game::components::{DecayElement, MouseTrackerComponent};
 use crate::game::{
     BreakingAction, Component, DebugMessage, MouseInfo, Pixel, Render, Renderer, SetupInfo,
     SharedState, Sprite, UpdateInfo, WithBgColor, WithColor,
@@ -51,6 +51,9 @@ use anymap::any::Any;
 use crossterm::event::{Event, KeyCode};
 use smallvec::SmallVec;
 use std::time::{Duration, Instant};
+use crate::game::components::incremental::world::World;
+
+mod world;
 
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 enum GamePhase {
@@ -145,6 +148,7 @@ impl GameComponent {
 
 impl Component for GameComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
+        shared_state.components_to_add.push(Box::new(World::new(setup_info)));
         shared_state
             .components_to_add
             .push(Box::new(PlayerComponent::new()));
@@ -1019,7 +1023,6 @@ impl UiBarComponent {
 impl Component for UiBarComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
         let mut y_offset = Self::HEIGHT - 2;
-        let text = "Buy".to_string();
         let x_offset = 1;
         let x_offset = OffsetX::Right(x_offset);
         let screen_height = setup_info.height;
@@ -1249,47 +1252,58 @@ impl Component for UiBarComponent {
         // Draw outline of UI
         let top_y = shared_state.display_info.height() - Self::HEIGHT;
         let width = shared_state.display_info.width();
+
+        let background_depth = depth_base;
+        let content_depth = background_depth+1;
+        let button_depth = content_depth+1;
+
+        // draw entire background
+        for y in top_y..(top_y + Self::HEIGHT) {
+            " ".repeat(width).render(&mut renderer, 0, y, background_depth);
+        }
+
+
         // draw top corners
-        renderer.render_pixel(0, top_y, Pixel::new('┌'), depth_base);
-        renderer.render_pixel(width - 1, top_y, Pixel::new('┐'), depth_base);
+        renderer.render_pixel(0, top_y, Pixel::new('┌'), content_depth);
+        renderer.render_pixel(width - 1, top_y, Pixel::new('┐'), content_depth);
         // draw top line
         "─"
             .repeat(width - 2)
             .chars()
             .enumerate()
             .for_each(|(i, c)| {
-                renderer.render_pixel(i + 1, top_y, Pixel::new(c), depth_base);
+                renderer.render_pixel(i + 1, top_y, Pixel::new(c), content_depth);
             });
         let bottom_y = top_y + Self::HEIGHT - 1;
-        renderer.render_pixel(0, bottom_y, Pixel::new('└'), depth_base);
-        renderer.render_pixel(width - 1, bottom_y, Pixel::new('┘'), depth_base);
+        renderer.render_pixel(0, bottom_y, Pixel::new('└'), content_depth);
+        renderer.render_pixel(width - 1, bottom_y, Pixel::new('┘'), content_depth);
         // draw bottom line
         "─"
             .repeat(width - 2)
             .chars()
             .enumerate()
             .for_each(|(i, c)| {
-                renderer.render_pixel(i + 1, bottom_y, Pixel::new(c), depth_base);
+                renderer.render_pixel(i + 1, bottom_y, Pixel::new(c), content_depth);
             });
         // Draw connecting lines
         for y in (top_y + 1)..bottom_y {
-            renderer.render_pixel(0, y, Pixel::new('│'), depth_base);
-            renderer.render_pixel(width - 1, y, Pixel::new('│'), depth_base);
+            renderer.render_pixel(0, y, Pixel::new('│'), content_depth);
+            renderer.render_pixel(width - 1, y, Pixel::new('│'), content_depth);
         }
 
         let mut x = 1;
         let mut y = top_y + 1;
         let mut s = "Phase: ";
-        s.render(&mut renderer, x, y, depth_base);
+        s.render(&mut renderer, x, y, content_depth);
         x += s.len();
         s = phase_str;
-        WithColor(phase_color, s).render(&mut renderer, x, y, depth_base);
+        WithColor(phase_color, s).render(&mut renderer, x, y, content_depth);
         x = 1;
         y += 1;
         // Render game runtime
         let runtime = game_state.start_of_game.elapsed().as_secs_f64();
         let runtime_str = format!("Time: {:.1}s", runtime);
-        runtime_str.render(&mut renderer, x, y, depth_base);
+        runtime_str.render(&mut renderer, x, y, content_depth);
         y += 1;
         x = 1;
         // render block numbers constant sized
@@ -1309,7 +1323,7 @@ impl Component for UiBarComponent {
             // format!("Blocks: {:width$}/{} {recv_s}", blocks, max_blocks)
             format!("Blocks: {:width$}/{}", blocks, max_blocks)
         };
-        block_s.render(&mut renderer, x, y, depth_base);
+        block_s.render(&mut renderer, x, y, content_depth);
         y += 1;
         x = 1;
         // TODO: factor in building time to bps?
@@ -1319,11 +1333,11 @@ impl Component for UiBarComponent {
             "Last round: {} at {:.2}/s",
             game_state.last_received_blocks, bps
         )
-        .render(&mut renderer, x, y, depth_base);
+        .render(&mut renderer, x, y, content_depth);
         y += 1;
         x = 1;
         let received_blocks_str = format!("High Score: {}", max_received_blocks);
-        received_blocks_str.render(&mut renderer, x, y, depth_base);
+        received_blocks_str.render(&mut renderer, x, y, content_depth);
         y += 1;
         x = 1;
         let controls_str = match (phase, self.hover_button) {
@@ -1337,11 +1351,12 @@ impl Component for UiBarComponent {
             Goal: Die from falling from increasing heights to earn more blocks"
             }
         };
-        controls_str.render(&mut renderer, x, y, depth_base);
+        controls_str.render(&mut renderer, x, y, content_depth);
 
         // render buttons
         for button in &self.buttons {
-            button.render(&mut renderer, shared_state, depth_base+10);
+            button.render(&mut renderer, shared_state, button_depth);
         }
     }
 }
+

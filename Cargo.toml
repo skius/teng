@@ -9,6 +9,7 @@ smallvec = "1.13.2"
 micromap = "0.0.15"
 rand = "0.8.5"
 anymap = "0.12.1"
+noise = "0.9.0"
 
 [profile.release]
 # for size:

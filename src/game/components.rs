@@ -3,10 +3,10 @@ pub mod incremental;
 
 use crate::game::display::Display;
 use crate::game::{
-    BreakingAction, Component, DebugMessage, MouseInfo, Pixel, Render, Renderer, SharedState,
+    BreakingAction, Component, MouseInfo, Pixel, Render, Renderer, SharedState,
     Sprite, UpdateInfo,
 };
-use crate::physics::{Entity, PhysicsBoard};
+use crate::physics::PhysicsBoard;
 use crossterm::event::{Event, KeyCode, KeyEvent, MouseEvent, MouseEventKind};
 use smallvec::SmallVec;
 use std::time::{Duration, Instant};
