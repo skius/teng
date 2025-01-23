@@ -15,7 +15,7 @@ mod render;
 mod renderer;
 
 use crate::game::components::elevator::ElevatorComponent;
-use crate::game::components::incremental::UiBarComponent;
+use crate::game::components::incremental::ui::UiBarComponent;
 use crate::game::components::{DebugInfo, DebugInfoComponent, DecayElement};
 use crate::game::display::Display;
 use crate::physics::PhysicsBoard;
