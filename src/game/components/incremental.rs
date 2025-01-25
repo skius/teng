@@ -482,7 +482,7 @@ impl Component for PlayerComponent {
             game_state.player_state.y_vel = 0.0;
         } else if game_state.player_state.y >= bottom_wall {
             game_state.player_state.y = bottom_wall - 1.0;
-            // if we're going up, don't douch the jump velocity.
+            // if we're going up, don't touch the jump velocity.
             if game_state.player_state.y_vel >= 0.0 {
                 velocity_at_bottom_hit = Some(game_state.player_state.y_vel);
                 game_state.player_state.y_vel = 0.0;

@@ -130,10 +130,16 @@ impl<W: Write> DisplayRenderer<W> {
         if x >= self.width || y >= self.height {
             return;
         }
-        
+
         let old_depth = self.depth_buffer[(x, y)];
+        if old_depth == i32::MIN {
+            // This is the first pixel arriving for this position, so we do not want to do any blending.
+            self.display[(x, y)] = new_pixel;
+            self.depth_buffer[(x, y)] = new_depth;
+            return;
+        }
         let old_pixel = self.display[(x, y)];
-        
+
         let (lower_pixel, upper_pixel) = if old_depth < new_depth {
             (old_pixel, new_pixel)
         } else {
@@ -141,17 +147,10 @@ impl<W: Write> DisplayRenderer<W> {
         };
         self.display[(x, y)] = upper_pixel.put_over(lower_pixel);
         self.depth_buffer[(x, y)] = old_depth.max(new_depth);
-        
-        
-        // if depth > self.depth_buffer[(x, y)] {
-        //     self.display[(x, y)] = pixel;
-        //     self.depth_buffer[(x, y)] = depth;
-        // } else {
-        //     // 
-        // }
     }
 
     pub fn reset_screen(&mut self) {
+        // needed because otherwise we get the 'solitaire bouncing cards' effect
         self.display.clear();
         self.depth_buffer.clear();
     }
@@ -159,23 +158,25 @@ impl<W: Write> DisplayRenderer<W> {
     pub fn flush(&mut self) -> io::Result<()> {
         queue!(self.sink, crossterm::cursor::MoveTo(0, 0))?;
 
-        let render_everyting = self.last_bg_color != self.default_bg_color
+        let render_everything = self.last_bg_color != self.default_bg_color
             || self.last_fg_color != self.default_fg_color;
 
         self.last_fg_color = self.default_fg_color;
         self.last_bg_color = self.default_bg_color;
         queue!(
             self.sink,
-            crossterm::style::SetForegroundColor(crossterm::style::Color::Rgb {
-                r: self.default_fg_color[0],
-                g: self.default_fg_color[1],
-                b: self.default_fg_color[2],
+            crossterm::style::SetColors(crossterm::style::Colors {
+                foreground: Some(crossterm::style::Color::Rgb {
+                    r: self.default_fg_color[0],
+                    g: self.default_fg_color[1],
+                    b: self.default_fg_color[2],
+                }),
+                background: Some(crossterm::style::Color::Rgb {
+                    r: self.default_bg_color[0],
+                    g: self.default_bg_color[1],
+                    b: self.default_bg_color[2],
+                }),
             }),
-            crossterm::style::SetBackgroundColor(crossterm::style::Color::Rgb {
-                r: self.default_bg_color[0],
-                g: self.default_bg_color[1],
-                b: self.default_bg_color[2],
-            })
         )?;
 
 
@@ -183,7 +184,7 @@ impl<W: Write> DisplayRenderer<W> {
         for y in 0..self.height {
             for x in 0..self.width {
                 let pixel = self.display[(x, y)];
-                if !render_everyting {
+                if !render_everything {
                     if pixel == self.prev_display[(x, y)] {
                         continue;
                     }
@@ -223,95 +224,17 @@ impl<W: Write> DisplayRenderer<W> {
                 curr_pos = (0, y + 1);
             }
         }
-        
-
-        // if render_everyting {
-        //     for y in 0..self.height {
-        //         for x in 0..self.width {
-        //             let pixel = self.display[(x, y)];
-        //             let new_color = pixel.color.unwrap_or(self.default_fg_color);
-        //             if new_color != self.last_fg_color {
-        //                 queue!(
-        //                     self.sink,
-        //                     crossterm::style::SetForegroundColor(crossterm::style::Color::Rgb {
-        //                         r: new_color[0],
-        //                         g: new_color[1],
-        //                         b: new_color[2],
-        //                     })
-        //                 )?;
-        //                 self.last_fg_color = new_color;
-        //             }
-        //             let new_bg_color = pixel.bg_color.unwrap_or(self.default_bg_color);
-        //             if new_bg_color != self.last_bg_color {
-        //                 queue!(
-        //                     self.sink,
-        //                     crossterm::style::SetBackgroundColor(crossterm::style::Color::Rgb {
-        //                         r: new_bg_color[0],
-        //                         g: new_bg_color[1],
-        //                         b: new_bg_color[2],
-        //                     })
-        //                 )?;
-        //                 self.last_bg_color = new_bg_color;
-        //             }
-        //             queue!(self.sink, crossterm::style::Print(pixel.c))?;
-        //         }
-        //         if y < self.height - 1 {
-        //             queue!(self.sink, crossterm::cursor::MoveToNextLine(1))?;
-        //         }
-        //     }
-        // } else {
-        //     let mut curr_pos = (0, 0);
-        //     for y in 0..self.height {
-        //         for x in 0..self.width {
-        //             let pixel = self.display[(x, y)];
-        //             if pixel == self.prev_display[(x, y)] {
-        //                 continue;
-        //             }
-        //             if curr_pos != (x, y) {
-        //                 queue!(self.sink, crossterm::cursor::MoveTo(x as u16, y as u16))?;
-        //             }
-        //             let new_color = pixel.color.unwrap_or(self.default_fg_color);
-        //             if new_color != self.last_fg_color {
-        //                 queue!(
-        //                     self.sink,
-        //                     crossterm::style::SetForegroundColor(crossterm::style::Color::Rgb {
-        //                         r: new_color[0],
-        //                         g: new_color[1],
-        //                         b: new_color[2],
-        //                     })
-        //                 )?;
-        //                 self.last_fg_color = new_color;
-        //             }
-        //             let new_bg_color = pixel.bg_color.unwrap_or(self.default_bg_color);
-        //             if new_bg_color != self.last_bg_color {
-        //                 queue!(
-        //                     self.sink,
-        //                     crossterm::style::SetBackgroundColor(crossterm::style::Color::Rgb {
-        //                         r: new_bg_color[0],
-        //                         g: new_bg_color[1],
-        //                         b: new_bg_color[2],
-        //                     })
-        //                 )?;
-        //                 self.last_bg_color = new_bg_color;
-        //             }
-        //             queue!(self.sink, crossterm::style::Print(pixel.c))?;
-        //             curr_pos = (x, y);
-        //         }
-        //         if y < self.height - 1 {
-        //             queue!(self.sink, crossterm::cursor::MoveToNextLine(1))?;
-        //             curr_pos = (0, y + 1);
-        //         }
-        //     }
-        // }
 
         self.sink.flush()?;
         std::mem::swap(&mut self.display, &mut self.prev_display);
-        // self.display.clear();
 
+        // We're "abusing" these fields to compute on next flush whether the defaults have changed.
+        // If the defaults did indeed change across calls, our 'prev_display' is essentially invalidated,
+        // since pixel-equivalence does not equal display-equivalence, because two Color::Default values
+        // are not display-equivalent anymore.
+        // It is fine to abuse these fields, since they get set on the next flush anyway in the beginning.
         self.last_fg_color = self.default_fg_color;
         self.last_bg_color = self.default_bg_color;
-
-        self.depth_buffer.clear();
 
         Ok(())
     }
