@@ -1,6 +1,6 @@
 use anymap::any::Any;
 use crossterm::event::Event;
-use crate::game::{BreakingAction, Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo, WithColor, WithBgColor};
+use crate::game::{BreakingAction, Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
 use crate::game::components::incremental::{GamePhase, GameState, PlayerGhost};
 
 #[derive(Clone, Copy)]
@@ -174,7 +174,7 @@ macro_rules! new_button {
                     bg_color = deactivated_color;
                 }
                 let (x, y) = $self2.screen_pos();
-                WithColor(fg_color, WithBgColor(bg_color, &$self2.button_text)).render(
+                $self2.button_text.with_color(fg_color).with_bg_color(bg_color).render(
                     &mut renderer,
                     x,
                     y,
@@ -500,7 +500,7 @@ impl Component for UiBarComponent {
         s.render(&mut renderer, x, y, content_depth);
         x += s.len();
         s = phase_str;
-        WithColor(phase_color, s).render(&mut renderer, x, y, content_depth);
+        s.with_color(phase_color).render(&mut renderer, x, y, content_depth);
         x = 1;
         y += 1;
         // Render game runtime

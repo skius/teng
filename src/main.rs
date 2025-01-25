@@ -11,7 +11,7 @@ use crate::game::components::{
     FloodFillComponent, ForceApplyComponent, KeyPressRecorderComponent, MouseTrackerComponent,
     PhysicsComponent, PlayerComponent, QuitterComponent, SimpleDrawComponent,
 };
-use crate::game::{DisplayRenderer, Game, Pixel, Render, Renderer, Sprite, WithColor};
+use crate::game::{DisplayRenderer, Game, Pixel, Render, Renderer, Sprite};
 use crossterm::event::{KeyEvent, KeyboardEnhancementFlags, MouseButton, MouseEventKind};
 use crossterm::style::{Color, Colored, Colors};
 use crossterm::terminal::size;
@@ -540,7 +540,7 @@ fn render_loop() -> io::Result<()> {
         }
 
         "hello".render(&mut renderer, 3, 4, 5);
-        WithColor([100, 200, 100], "world").render(&mut renderer, 3, 5, 5);
+        "world".with_color([100, 200, 100]).render(&mut renderer, 3, 5, 5);
 
         renderer.flush()?;
 

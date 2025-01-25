@@ -45,7 +45,7 @@
 use crate::game::components::{DecayElement, MouseTrackerComponent};
 use crate::game::{
     BreakingAction, Component, DebugMessage, MouseInfo, Pixel, Render, Renderer, SetupInfo,
-    SharedState, Sprite, UpdateInfo, WithBgColor, WithColor,
+    SharedState, Sprite, UpdateInfo,
 };
 use anymap::any::Any;
 use crossterm::event::{Event, KeyCode};
@@ -701,14 +701,14 @@ impl PlayerGhost {
         let render_state = &history[history_size - offset_samples - 1];
         let cuteness = game_state.upgrades.ghost_cuteness;
         if render_state.dead {
-            WithColor([130, 130, 130], death_sprite).render(
+            death_sprite.with_color([130, 130, 130]).render(
                 &mut renderer,
                 render_state.x,
                 render_state.y,
                 depth_base,
             );
         } else {
-            WithColor([130 + cuteness as u8, 130, 130], player_sprite).render(
+            player_sprite.with_color([130 + cuteness as u8, 130, 130]).render(
                 &mut renderer,
                 render_state.x,
                 render_state.y,

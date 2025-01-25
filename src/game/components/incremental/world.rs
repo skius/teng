@@ -239,9 +239,9 @@ impl World {
                 if let Some(tile) = self.get_mut(x, y) {
                     if let Tile::Ungenerated = tile {
                         let draw = if y <= ground_offset_height {
-                            Pixel::new('█').with_color([139, 69, 19])
+                            Pixel::new(' ').with_bg_color([139, 69, 19])
                         } else {
-                            Pixel::new('█').with_color([100, 100, 255])
+                            Pixel::new(' ').with_bg_color([100, 100, 255])
                         };
                         *tile = Tile::Initialized(InitializedTile { draw });
                     }
@@ -276,7 +276,7 @@ impl Component for WorldComponent {
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
         let world = &mut shared_state.extensions.get_mut::<GameState>().unwrap().world;
-        
+
         if shared_state.pressed_keys.contains_key(&KeyCode::Char('r')) {
             world.regenerate();
         }
@@ -297,7 +297,7 @@ impl Component for WorldComponent {
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let world = &shared_state.extensions.get::<GameState>().unwrap().world;
-        
+
         let camera_x = world.camera_attach.0;
         let camera_y = world.camera_attach.1;
 

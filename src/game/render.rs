@@ -5,6 +5,22 @@ use std::io::Write;
 pub trait Render {
     /// Render the object at the given position with the given depth
     fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32);
+
+    /// Render the object with a given color
+    fn with_color(&self, color: [u8; 3]) -> impl Render
+    where
+        Self: Sized,
+    {
+        WithColor(color, self)
+    }
+
+    /// Render the object with a given background color
+    fn with_bg_color(&self, bg_color: [u8; 3]) -> impl Render
+    where
+        Self: Sized,
+    {
+        WithBgColor(bg_color, self)
+    }
 }
 
 impl Render for &str {
@@ -92,7 +108,7 @@ impl<T: Render> Render for &T {
     }
 }
 
-pub struct WithColor<T>(pub [u8; 3], pub T);
+struct WithColor<T>(pub [u8; 3], pub T);
 
 impl<T: Render> Render for WithColor<T> {
     fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
@@ -104,7 +120,7 @@ impl<T: Render> Render for WithColor<T> {
     }
 }
 
-pub struct WithBgColor<T>(pub [u8; 3], pub T);
+struct WithBgColor<T>(pub [u8; 3], pub T);
 
 impl<T: Render> Render for WithBgColor<T> {
     fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
