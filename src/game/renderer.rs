@@ -178,54 +178,22 @@ impl<W: Write> DisplayRenderer<W> {
             })
         )?;
 
-        if render_everyting {
-            for y in 0..self.height {
-                for x in 0..self.width {
-                    let pixel = self.display[(x, y)];
-                    let new_color = pixel.color.unwrap_or(self.default_fg_color);
-                    if new_color != self.last_fg_color {
-                        queue!(
-                            self.sink,
-                            crossterm::style::SetForegroundColor(crossterm::style::Color::Rgb {
-                                r: new_color[0],
-                                g: new_color[1],
-                                b: new_color[2],
-                            })
-                        )?;
-                        self.last_fg_color = new_color;
-                    }
-                    let new_bg_color = pixel.bg_color.unwrap_or(self.default_bg_color);
-                    if new_bg_color != self.last_bg_color {
-                        queue!(
-                            self.sink,
-                            crossterm::style::SetBackgroundColor(crossterm::style::Color::Rgb {
-                                r: new_bg_color[0],
-                                g: new_bg_color[1],
-                                b: new_bg_color[2],
-                            })
-                        )?;
-                        self.last_bg_color = new_bg_color;
-                    }
-                    queue!(self.sink, crossterm::style::Print(pixel.c))?;
-                }
-                if y < self.height - 1 {
-                    queue!(self.sink, crossterm::cursor::MoveToNextLine(1))?;
-                }
-            }
-        } else {
-            let mut curr_pos = (0, 0);
-            for y in 0..self.height {
-                for x in 0..self.width {
-                    let pixel = self.display[(x, y)];
+
+        let mut curr_pos = (0, 0);
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let pixel = self.display[(x, y)];
+                if !render_everyting {
                     if pixel == self.prev_display[(x, y)] {
                         continue;
                     }
                     if curr_pos != (x, y) {
                         queue!(self.sink, crossterm::cursor::MoveTo(x as u16, y as u16))?;
                     }
-                    let new_color = pixel.color.unwrap_or(self.default_fg_color);
-                    if new_color != self.last_fg_color {
-                        queue!(
+                }
+                let new_color = pixel.color.unwrap_or(self.default_fg_color);
+                if new_color != self.last_fg_color {
+                    queue!(
                             self.sink,
                             crossterm::style::SetForegroundColor(crossterm::style::Color::Rgb {
                                 r: new_color[0],
@@ -233,11 +201,11 @@ impl<W: Write> DisplayRenderer<W> {
                                 b: new_color[2],
                             })
                         )?;
-                        self.last_fg_color = new_color;
-                    }
-                    let new_bg_color = pixel.bg_color.unwrap_or(self.default_bg_color);
-                    if new_bg_color != self.last_bg_color {
-                        queue!(
+                    self.last_fg_color = new_color;
+                }
+                let new_bg_color = pixel.bg_color.unwrap_or(self.default_bg_color);
+                if new_bg_color != self.last_bg_color {
+                    queue!(
                             self.sink,
                             crossterm::style::SetBackgroundColor(crossterm::style::Color::Rgb {
                                 r: new_bg_color[0],
@@ -245,17 +213,96 @@ impl<W: Write> DisplayRenderer<W> {
                                 b: new_bg_color[2],
                             })
                         )?;
-                        self.last_bg_color = new_bg_color;
-                    }
-                    queue!(self.sink, crossterm::style::Print(pixel.c))?;
-                    curr_pos = (x, y);
+                    self.last_bg_color = new_bg_color;
                 }
-                if y < self.height - 1 {
-                    queue!(self.sink, crossterm::cursor::MoveToNextLine(1))?;
-                    curr_pos = (0, y + 1);
-                }
+                queue!(self.sink, crossterm::style::Print(pixel.c))?;
+                curr_pos = (x, y);
+            }
+            if y < self.height - 1 {
+                queue!(self.sink, crossterm::cursor::MoveToNextLine(1))?;
+                curr_pos = (0, y + 1);
             }
         }
+        
+
+        // if render_everyting {
+        //     for y in 0..self.height {
+        //         for x in 0..self.width {
+        //             let pixel = self.display[(x, y)];
+        //             let new_color = pixel.color.unwrap_or(self.default_fg_color);
+        //             if new_color != self.last_fg_color {
+        //                 queue!(
+        //                     self.sink,
+        //                     crossterm::style::SetForegroundColor(crossterm::style::Color::Rgb {
+        //                         r: new_color[0],
+        //                         g: new_color[1],
+        //                         b: new_color[2],
+        //                     })
+        //                 )?;
+        //                 self.last_fg_color = new_color;
+        //             }
+        //             let new_bg_color = pixel.bg_color.unwrap_or(self.default_bg_color);
+        //             if new_bg_color != self.last_bg_color {
+        //                 queue!(
+        //                     self.sink,
+        //                     crossterm::style::SetBackgroundColor(crossterm::style::Color::Rgb {
+        //                         r: new_bg_color[0],
+        //                         g: new_bg_color[1],
+        //                         b: new_bg_color[2],
+        //                     })
+        //                 )?;
+        //                 self.last_bg_color = new_bg_color;
+        //             }
+        //             queue!(self.sink, crossterm::style::Print(pixel.c))?;
+        //         }
+        //         if y < self.height - 1 {
+        //             queue!(self.sink, crossterm::cursor::MoveToNextLine(1))?;
+        //         }
+        //     }
+        // } else {
+        //     let mut curr_pos = (0, 0);
+        //     for y in 0..self.height {
+        //         for x in 0..self.width {
+        //             let pixel = self.display[(x, y)];
+        //             if pixel == self.prev_display[(x, y)] {
+        //                 continue;
+        //             }
+        //             if curr_pos != (x, y) {
+        //                 queue!(self.sink, crossterm::cursor::MoveTo(x as u16, y as u16))?;
+        //             }
+        //             let new_color = pixel.color.unwrap_or(self.default_fg_color);
+        //             if new_color != self.last_fg_color {
+        //                 queue!(
+        //                     self.sink,
+        //                     crossterm::style::SetForegroundColor(crossterm::style::Color::Rgb {
+        //                         r: new_color[0],
+        //                         g: new_color[1],
+        //                         b: new_color[2],
+        //                     })
+        //                 )?;
+        //                 self.last_fg_color = new_color;
+        //             }
+        //             let new_bg_color = pixel.bg_color.unwrap_or(self.default_bg_color);
+        //             if new_bg_color != self.last_bg_color {
+        //                 queue!(
+        //                     self.sink,
+        //                     crossterm::style::SetBackgroundColor(crossterm::style::Color::Rgb {
+        //                         r: new_bg_color[0],
+        //                         g: new_bg_color[1],
+        //                         b: new_bg_color[2],
+        //                     })
+        //                 )?;
+        //                 self.last_bg_color = new_bg_color;
+        //             }
+        //             queue!(self.sink, crossterm::style::Print(pixel.c))?;
+        //             curr_pos = (x, y);
+        //         }
+        //         if y < self.height - 1 {
+        //             queue!(self.sink, crossterm::cursor::MoveToNextLine(1))?;
+        //             curr_pos = (0, y + 1);
+        //         }
+        //     }
+        // }
 
         self.sink.flush()?;
         std::mem::swap(&mut self.display, &mut self.prev_display);
