@@ -19,8 +19,6 @@ enum OffsetY {
     Bottom(usize),
 }
 
-// TODO: resize ui button should move the x of ui buttons. Maybe just handle that in render?
-// could have an enum for offset types, like Bottom(usize), Top(usize), Left(usize), Right(usize)
 trait UiButton: Any {
     fn help_text(&self) -> &'static str;
 
