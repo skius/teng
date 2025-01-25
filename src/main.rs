@@ -540,7 +540,9 @@ fn render_loop() -> io::Result<()> {
         }
 
         "hello".render(&mut renderer, 3, 4, 5);
-        "world".with_color([100, 200, 100]).render(&mut renderer, 3, 5, 5);
+        "world"
+            .with_color([100, 200, 100])
+            .render(&mut renderer, 3, 5, 5);
 
         renderer.flush()?;
 
@@ -577,7 +579,8 @@ fn main() -> io::Result<()> {
         execute!(
             stdout,
             crossterm::terminal::Clear(crossterm::terminal::ClearType::All)
-        ).unwrap();
+        )
+        .unwrap();
 
         disable_raw_mode().unwrap();
 

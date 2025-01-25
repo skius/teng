@@ -18,10 +18,10 @@ use crate::game::components::elevator::ElevatorComponent;
 use crate::game::components::incremental::ui::UiBarComponent;
 use crate::game::components::{DebugInfo, DebugInfoComponent, DecayElement};
 use crate::game::display::Display;
+use crate::game::Color::Transparent;
 use crate::physics::PhysicsBoard;
 pub use render::*;
 pub use renderer::*;
-use crate::game::Color::Transparent;
 
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub enum Color {
@@ -31,7 +31,6 @@ pub enum Color {
     /// If there is no other color, it will behave the same as default.
     Transparent,
     Rgb([u8; 3]),
-
 }
 
 impl Color {
@@ -59,7 +58,7 @@ impl Pixel {
             bg_color: Color::Transparent,
         }
     }
-    
+
     pub fn transparent() -> Self {
         Self {
             c: ' ',
@@ -83,11 +82,11 @@ impl Pixel {
             color: self.color,
         }
     }
-    
+
     pub fn put_over(self, other: Pixel) -> Self {
         // works with priorities: transparent < default < color
         // and other < self
-        
+
         let mut new_pixel = self;
         if new_pixel.color == Transparent {
             new_pixel.color = other.color;

@@ -1,10 +1,13 @@
-use std::iter::repeat;
-use std::ops::{Index, IndexMut};
+use crate::game::components::incremental::ui::UiBarComponent;
+use crate::game::components::incremental::GameState;
+use crate::game::{
+    BreakingAction, Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo,
+};
 use crossterm::event::{Event, KeyCode};
 use noise::{NoiseFn, Simplex};
-use crate::game::{BreakingAction, Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
-use crate::game::components::incremental::GameState;
-use crate::game::components::incremental::ui::UiBarComponent;
+use std::iter::repeat;
+use std::ops::{Index, IndexMut};
+use crate::game::components::incremental::bidivec::BidiVec;
 
 #[derive(Debug, Clone)]
 pub struct InitializedTile {
@@ -65,6 +68,8 @@ pub struct World {
     camera_attach: (i64, i64),
     screen_width: usize,
     screen_height: usize,
+    /// For every x, this stores the y value of the ground level.
+    ground_level: BidiVec<i64>,
 }
 
 impl World {
@@ -74,8 +79,6 @@ impl World {
 
         let camera_attach = (0, screen_height as i64 / 2);
 
-
-
         let mut world = Self {
             top_right: vec![vec![Tile::Ungenerated; 1]; 1],
             bottom_right: vec![vec![Tile::Ungenerated; 1]; 1],
@@ -84,6 +87,7 @@ impl World {
             camera_attach,
             screen_width,
             screen_height,
+            ground_level: BidiVec::new(),
         };
 
         world.expand_to_contain(world.camera_window());
@@ -129,25 +133,26 @@ impl World {
             self.expand_top((want_max_y - actual_bounds.max_y) as usize);
         }
 
-
-
         if want_min_x < actual_bounds.min_x {
             self.expand_left((want_min_x - actual_bounds.min_x).abs() as usize);
         }
         if want_max_x > actual_bounds.max_x {
             self.expand_right((want_max_x - actual_bounds.max_x) as usize);
         }
-
     }
 
     fn expand_top(&mut self, amount: usize) {
-        self.top_left.extend(repeat(vec![Tile::Ungenerated; self.top_left[0].len()]).take(amount));
-        self.top_right.extend(repeat(vec![Tile::Ungenerated; self.top_right[0].len()]).take(amount));
+        self.top_left
+            .extend(repeat(vec![Tile::Ungenerated; self.top_left[0].len()]).take(amount));
+        self.top_right
+            .extend(repeat(vec![Tile::Ungenerated; self.top_right[0].len()]).take(amount));
     }
 
     fn expand_bottom(&mut self, amount: usize) {
-        self.bottom_left.extend(repeat(vec![Tile::Ungenerated; self.bottom_left[0].len()]).take(amount));
-        self.bottom_right.extend(repeat(vec![Tile::Ungenerated; self.bottom_right[0].len()]).take(amount));
+        self.bottom_left
+            .extend(repeat(vec![Tile::Ungenerated; self.bottom_left[0].len()]).take(amount));
+        self.bottom_right
+            .extend(repeat(vec![Tile::Ungenerated; self.bottom_right[0].len()]).take(amount));
     }
 
     fn expand_right(&mut self, amount: usize) {
@@ -225,17 +230,25 @@ impl World {
 
     pub fn regenerate(&mut self) {
         // Generates the world
-        let WorldBounds { min_x, max_x, min_y, max_y } = self.world_bounds();
+        let WorldBounds {
+            min_x,
+            max_x,
+            min_y,
+            max_y,
+        } = self.world_bounds();
         let height = max_y - min_y + 1;
         // let noise = noise::Simplex::new(42);
         let noise = noise::Fbm::<Simplex>::new(42);
         // go over entire world, find tiles that are ungenerated and generate them
         // go from left to right and generate based on noise function
+        self.ground_level.grow(min_x..=max_x, 0);
         for x in min_x..=max_x {
             let noise_value = noise.get([x as f64 / 70.0, 0.0]);
             let ground_offset_height = (noise_value * 30.0) as i64;
             // from min_y to ground_offset_height, make it brown ground, above blue sky
-
+            
+            self.ground_level[x] = ground_offset_height;
+            
             for y in min_y..=max_y {
                 if let Some(tile) = self.get_mut(x, y) {
                     if let Tile::Ungenerated = tile {
@@ -252,13 +265,11 @@ impl World {
     }
 }
 
-pub struct WorldComponent {
-}
+pub struct WorldComponent {}
 
 impl WorldComponent {
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 }
 
@@ -276,7 +287,11 @@ impl Component for WorldComponent {
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
-        let world = &mut shared_state.extensions.get_mut::<GameState>().unwrap().world;
+        let world = &mut shared_state
+            .extensions
+            .get_mut::<GameState>()
+            .unwrap()
+            .world;
 
         if shared_state.pressed_keys.contains_key(&KeyCode::Char('r')) {
             world.regenerate();
@@ -306,13 +321,12 @@ impl Component for WorldComponent {
         let screen_height = shared_state.display_info.height();
         let screen_height = screen_height - UiBarComponent::HEIGHT;
 
-
         for y in 0..screen_height {
             for x in 0..screen_width {
                 let world_x = camera_x + x as i64;
                 let world_y = camera_y - y as i64;
 
-                if world_y == 0 && x == 0{
+                if world_y == 0 && x == 0 {
                     // special case
                     "ground->".render(&mut renderer, x, y, depth_base);
                     continue;

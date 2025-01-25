@@ -1,7 +1,9 @@
+use crate::game::components::incremental::{GamePhase, GameState, PlayerGhost};
+use crate::game::{
+    BreakingAction, Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo,
+};
 use anymap::any::Any;
 use crossterm::event::Event;
-use crate::game::{BreakingAction, Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
-use crate::game::components::incremental::{GamePhase, GameState, PlayerGhost};
 
 #[derive(Clone, Copy)]
 enum OffsetX {
@@ -202,7 +204,6 @@ macro_rules! add_buttons {
     };
 }
 
-
 pub struct UiBarComponent {
     buttons: Vec<Box<dyn UiButton>>,
     hover_button: Option<usize>,
@@ -229,7 +230,11 @@ impl Component for UiBarComponent {
         let screen_height = setup_info.height;
         let screen_width = setup_info.width;
         add_buttons!(
-            self.buttons, x_offset, y_offset, screen_height, screen_width,
+            self.buttons,
+            x_offset,
+            y_offset,
+            screen_height,
+            screen_width,
             new_button!(
                 PlayerJumpHeightButton,
                 cost_growth: 3.0,
@@ -455,14 +460,14 @@ impl Component for UiBarComponent {
         let width = shared_state.display_info.width();
 
         let background_depth = depth_base;
-        let content_depth = background_depth+1;
-        let button_depth = content_depth+1;
+        let content_depth = background_depth + 1;
+        let button_depth = content_depth + 1;
 
         // draw entire background
         for y in top_y..(top_y + Self::HEIGHT) {
-            " ".repeat(width).render(&mut renderer, 0, y, background_depth);
+            " ".repeat(width)
+                .render(&mut renderer, 0, y, background_depth);
         }
-
 
         // draw top corners
         renderer.render_pixel(0, top_y, Pixel::new('┌'), content_depth);
@@ -498,7 +503,8 @@ impl Component for UiBarComponent {
         s.render(&mut renderer, x, y, content_depth);
         x += s.len();
         s = phase_str;
-        s.with_color(phase_color).render(&mut renderer, x, y, content_depth);
+        s.with_color(phase_color)
+            .render(&mut renderer, x, y, content_depth);
         x = 1;
         y += 1;
         // Render game runtime
@@ -534,7 +540,7 @@ impl Component for UiBarComponent {
             "Last round: {} at {:.2}/s",
             game_state.last_received_blocks, bps
         )
-            .render(&mut renderer, x, y, content_depth);
+        .render(&mut renderer, x, y, content_depth);
         y += 1;
         x = 1;
         let received_blocks_str = format!("High Score: {}", max_received_blocks);
@@ -560,4 +566,3 @@ impl Component for UiBarComponent {
         }
     }
 }
-

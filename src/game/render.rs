@@ -13,7 +13,7 @@ pub trait Render {
     {
         WithColor(color, self)
     }
-    
+
     /// Render the object with transparency
     fn transparent(&self) -> impl Render
     where
@@ -188,8 +188,7 @@ struct TransparentRendererAdapter<'a, R> {
 impl<'a, R: Renderer> Renderer for TransparentRendererAdapter<'a, R> {
     fn render_pixel(&mut self, x: usize, y: usize, mut pixel: Pixel, depth: i32) {
         pixel.color = Color::Transparent;
-        self.renderer
-            .render_pixel(x, y, pixel, depth);
+        self.renderer.render_pixel(x, y, pixel, depth);
     }
 
     fn flush(&mut self) -> std::io::Result<()> {

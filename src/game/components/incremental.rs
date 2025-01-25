@@ -42,6 +42,8 @@
 //! - At high fall gravities, the red background screen starts flashing when the player is on the floor.
 //!    maybe add override for when the player is on the floor and skip it?
 
+use crate::game::components::incremental::ui::UiBarComponent;
+use crate::game::components::incremental::world::{World, WorldComponent};
 use crate::game::components::{DecayElement, MouseTrackerComponent};
 use crate::game::{
     BreakingAction, Component, DebugMessage, MouseInfo, Pixel, Render, Renderer, SetupInfo,
@@ -51,11 +53,10 @@ use anymap::any::Any;
 use crossterm::event::{Event, KeyCode};
 use smallvec::SmallVec;
 use std::time::{Duration, Instant};
-use crate::game::components::incremental::ui::UiBarComponent;
-use crate::game::components::incremental::world::{World, WorldComponent};
 
-pub mod world;
+mod bidivec;
 pub mod ui;
+pub mod world;
 
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 enum GamePhase {
@@ -153,7 +154,9 @@ impl GameComponent {
 
 impl Component for GameComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
-        shared_state.components_to_add.push(Box::new(WorldComponent::new()));
+        shared_state
+            .components_to_add
+            .push(Box::new(WorldComponent::new()));
         shared_state
             .components_to_add
             .push(Box::new(PlayerComponent::new()));
@@ -163,9 +166,7 @@ impl Component for GameComponent {
         shared_state
             .components_to_add
             .push(Box::new(UiBarComponent::new()));
-        shared_state
-            .extensions
-            .insert(GameState::new(setup_info));
+        shared_state.extensions.insert(GameState::new(setup_info));
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
@@ -708,12 +709,9 @@ impl PlayerGhost {
                 depth_base,
             );
         } else {
-            player_sprite.with_color([130 + cuteness as u8, 130, 130]).render(
-                &mut renderer,
-                render_state.x,
-                render_state.y,
-                depth_base,
-            );
+            player_sprite
+                .with_color([130 + cuteness as u8, 130, 130])
+                .render(&mut renderer, render_state.x, render_state.y, depth_base);
         }
     }
 }

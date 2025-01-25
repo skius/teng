@@ -3,8 +3,7 @@ pub mod incremental;
 
 use crate::game::display::Display;
 use crate::game::{
-    BreakingAction, Component, MouseInfo, Pixel, Render, Renderer, SharedState,
-    Sprite, UpdateInfo,
+    BreakingAction, Component, MouseInfo, Pixel, Render, Renderer, SharedState, Sprite, UpdateInfo,
 };
 use crate::physics::PhysicsBoard;
 use crossterm::event::{Event, KeyCode, KeyEvent, MouseEvent, MouseEventKind};

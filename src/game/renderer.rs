@@ -179,7 +179,6 @@ impl<W: Write> DisplayRenderer<W> {
             }),
         )?;
 
-
         let mut curr_pos = (0, 0);
         for y in 0..self.height {
             for x in 0..self.width {
@@ -195,25 +194,25 @@ impl<W: Write> DisplayRenderer<W> {
                 let new_color = pixel.color.unwrap_or(self.default_fg_color);
                 if new_color != self.last_fg_color {
                     queue!(
-                            self.sink,
-                            crossterm::style::SetForegroundColor(crossterm::style::Color::Rgb {
-                                r: new_color[0],
-                                g: new_color[1],
-                                b: new_color[2],
-                            })
-                        )?;
+                        self.sink,
+                        crossterm::style::SetForegroundColor(crossterm::style::Color::Rgb {
+                            r: new_color[0],
+                            g: new_color[1],
+                            b: new_color[2],
+                        })
+                    )?;
                     self.last_fg_color = new_color;
                 }
                 let new_bg_color = pixel.bg_color.unwrap_or(self.default_bg_color);
                 if new_bg_color != self.last_bg_color {
                     queue!(
-                            self.sink,
-                            crossterm::style::SetBackgroundColor(crossterm::style::Color::Rgb {
-                                r: new_bg_color[0],
-                                g: new_bg_color[1],
-                                b: new_bg_color[2],
-                            })
-                        )?;
+                        self.sink,
+                        crossterm::style::SetBackgroundColor(crossterm::style::Color::Rgb {
+                            r: new_bg_color[0],
+                            g: new_bg_color[1],
+                            b: new_bg_color[2],
+                        })
+                    )?;
                     self.last_bg_color = new_bg_color;
                 }
                 queue!(self.sink, crossterm::style::Print(pixel.c))?;
