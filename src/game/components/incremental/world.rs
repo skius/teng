@@ -8,6 +8,7 @@ use noise::{NoiseFn, Simplex};
 use std::iter::repeat;
 use std::ops::{Index, IndexMut};
 use crate::game::components::incremental::bidivec::BidiVec;
+use crate::game::components::incremental::planarvec::{Bounds, PlanarVec};
 
 #[derive(Debug, Clone)]
 pub struct InitializedTile {
@@ -19,19 +20,6 @@ pub enum Tile {
     #[default]
     Ungenerated,
     Initialized(InitializedTile),
-}
-
-struct WorldBounds {
-    min_x: i64,
-    max_x: i64,
-    min_y: i64,
-    max_y: i64,
-}
-
-impl WorldBounds {
-    fn contains(&self, x: i64, y: i64) -> bool {
-        x >= self.min_x && x <= self.max_x && y >= self.min_y && y <= self.max_y
-    }
 }
 
 enum Quadrant {
@@ -60,10 +48,7 @@ struct WorldIndex {
 /// * The widths (the lengths of the two rights\[..] and the lengths of the two lefts\[..]) are aligned
 #[derive(Debug)]
 pub struct World {
-    top_right: Vec<Vec<Tile>>,
-    bottom_right: Vec<Vec<Tile>>,
-    top_left: Vec<Vec<Tile>>,
-    bottom_left: Vec<Vec<Tile>>,
+    tiles: PlanarVec<Tile>,
     /// The world position at which the top-left corner of the camera is located.
     camera_attach: (i64, i64),
     screen_width: usize,
@@ -80,10 +65,12 @@ impl World {
         let camera_attach = (0, screen_height as i64 / 2);
 
         let mut world = Self {
-            top_right: vec![vec![Tile::Ungenerated; 1]; 1],
-            bottom_right: vec![vec![Tile::Ungenerated; 1]; 1],
-            top_left: vec![vec![Tile::Ungenerated; 1]; 1],
-            bottom_left: vec![vec![Tile::Ungenerated; 1]; 1],
+            tiles: PlanarVec::new(Bounds {
+                min_x: -1,
+                max_x: 1,
+                min_y: -1,
+                max_y: 1,
+            }, Tile::Ungenerated),
             camera_attach,
             screen_width,
             screen_height,
@@ -94,7 +81,7 @@ impl World {
         world
     }
 
-    fn camera_window(&self) -> WorldBounds {
+    fn camera_window(&self) -> Bounds {
         let camera_x = self.camera_attach.0;
         let camera_y = self.camera_attach.1;
 
@@ -103,7 +90,7 @@ impl World {
         let min_y = camera_y - self.screen_height as i64 + 1;
         let max_y = camera_y;
 
-        WorldBounds {
+        Bounds {
             min_x,
             max_x,
             min_y,
@@ -118,127 +105,38 @@ impl World {
     }
 
     /// Expands the world to at the minimum contain the given bounds.
-    /// If `expand_y` is true, the world height will be increased to contain the bounds.
-    fn expand_to_contain(&mut self, bounds: WorldBounds) {
-        let want_min_x = bounds.min_x;
-        let want_max_x = bounds.max_x;
-        let want_min_y = bounds.min_y;
-        let want_max_y = bounds.max_y;
-        let actual_bounds = self.world_bounds();
-
-        if want_min_y < actual_bounds.min_y {
-            self.expand_bottom((want_min_y - actual_bounds.min_y).abs() as usize);
-        }
-        if want_max_y > actual_bounds.max_y {
-            self.expand_top((want_max_y - actual_bounds.max_y) as usize);
-        }
-
-        if want_min_x < actual_bounds.min_x {
-            self.expand_left((want_min_x - actual_bounds.min_x).abs() as usize);
-        }
-        if want_max_x > actual_bounds.max_x {
-            self.expand_right((want_max_x - actual_bounds.max_x) as usize);
-        }
+    fn expand_to_contain(&mut self, bounds: Bounds) {
+        self.tiles.expand(bounds, Tile::Ungenerated);
     }
 
-    fn expand_top(&mut self, amount: usize) {
-        self.top_left
-            .extend(repeat(vec![Tile::Ungenerated; self.top_left[0].len()]).take(amount));
-        self.top_right
-            .extend(repeat(vec![Tile::Ungenerated; self.top_right[0].len()]).take(amount));
-    }
-
-    fn expand_bottom(&mut self, amount: usize) {
-        self.bottom_left
-            .extend(repeat(vec![Tile::Ungenerated; self.bottom_left[0].len()]).take(amount));
-        self.bottom_right
-            .extend(repeat(vec![Tile::Ungenerated; self.bottom_right[0].len()]).take(amount));
-    }
-
-    fn expand_right(&mut self, amount: usize) {
-        for row in self.top_right.iter_mut() {
-            row.extend(repeat(Tile::Ungenerated).take(amount));
-        }
-        for row in self.bottom_right.iter_mut() {
-            row.extend(repeat(Tile::Ungenerated).take(amount));
-        }
-    }
-
-    fn expand_left(&mut self, amount: usize) {
-        for row in self.top_left.iter_mut() {
-            row.extend(repeat(Tile::Ungenerated).take(amount));
-        }
-        for row in self.bottom_left.iter_mut() {
-            row.extend(repeat(Tile::Ungenerated).take(amount));
-        }
-    }
-
-    fn world_bounds(&self) -> WorldBounds {
-        let max_y = self.top_right.len() as i64 - 1;
-        let min_y = -(self.bottom_right.len() as i64);
-        let max_x = self.top_right[0].len() as i64 - 1;
-        let min_x = -(self.top_left[0].len() as i64);
-
-        WorldBounds {
-            min_x,
-            max_x,
-            min_y,
-            max_y,
-        }
+    fn world_bounds(&self) -> Bounds {
+        self.tiles.bounds()
     }
 
     fn inside_world(&self, x: i64, y: i64) -> bool {
         self.world_bounds().contains(x, y)
     }
 
-    fn get_index(&self, x: i64, y: i64) -> Option<WorldIndex> {
-        if !self.inside_world(x, y) {
-            return None;
-        }
-
-        let (q, x, y) = match (x >= 0, y >= 0) {
-            (true, true) => (Quadrant::TopRight, x as usize, y as usize),
-            (true, false) => (Quadrant::BottomRight, x as usize, (-y) as usize - 1),
-            (false, true) => (Quadrant::TopLeft, (-x) as usize - 1, y as usize),
-            (false, false) => (Quadrant::BottomLeft, (-x) as usize - 1, (-y) as usize - 1),
-        };
-
-        Some(WorldIndex { q, x, y })
-    }
-
     pub fn get(&self, x: i64, y: i64) -> Option<&Tile> {
-        // Check bounds
-        if !self.inside_world(x, y) {
-            return None;
-        }
-
-        let WorldIndex { q, y, x } = self.get_index(x, y)?;
-
-        Some(&self[q][y][x])
+        self.tiles.get(x, y)
     }
 
     pub fn get_mut(&mut self, x: i64, y: i64) -> Option<&mut Tile> {
-        // Check bounds
-        if !self.inside_world(x, y) {
-            return None;
-        }
-
-        let WorldIndex { q, y, x } = self.get_index(x, y)?;
-
-        Some(&mut self[q][y][x])
+        self.tiles.get_mut(x, y)
     }
 
     pub fn regenerate(&mut self) {
         // Generates the world
-        let WorldBounds {
+        let Bounds {
             min_x,
             max_x,
             min_y,
             max_y,
         } = self.world_bounds();
-        let height = max_y - min_y + 1;
+
         // let noise = noise::Simplex::new(42);
         let noise = noise::Fbm::<Simplex>::new(42);
+
         // go over entire world, find tiles that are ungenerated and generate them
         // go from left to right and generate based on noise function
         self.ground_level.grow(min_x..=max_x, 0);
@@ -246,9 +144,9 @@ impl World {
             let noise_value = noise.get([x as f64 / 70.0, 0.0]);
             let ground_offset_height = (noise_value * 30.0) as i64;
             // from min_y to ground_offset_height, make it brown ground, above blue sky
-            
+
             self.ground_level[x] = ground_offset_height;
-            
+
             for y in min_y..=max_y {
                 if let Some(tile) = self.get_mut(x, y) {
                     if let Tile::Ungenerated = tile {
@@ -345,30 +243,6 @@ impl Component for WorldComponent {
                     renderer.render_pixel(x, y, Pixel::new('x'), depth_base);
                 }
             }
-        }
-    }
-}
-
-impl Index<Quadrant> for World {
-    type Output = Vec<Vec<Tile>>;
-
-    fn index(&self, q: Quadrant) -> &Self::Output {
-        match q {
-            Quadrant::TopRight => &self.top_right,
-            Quadrant::BottomRight => &self.bottom_right,
-            Quadrant::TopLeft => &self.top_left,
-            Quadrant::BottomLeft => &self.bottom_left,
-        }
-    }
-}
-
-impl IndexMut<Quadrant> for World {
-    fn index_mut(&mut self, q: Quadrant) -> &mut Self::Output {
-        match q {
-            Quadrant::TopRight => &mut self.top_right,
-            Quadrant::BottomRight => &mut self.bottom_right,
-            Quadrant::TopLeft => &mut self.top_left,
-            Quadrant::BottomLeft => &mut self.bottom_left,
         }
     }
 }

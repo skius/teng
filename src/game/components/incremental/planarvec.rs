@@ -4,6 +4,7 @@ use crate::game::components::incremental::bidivec::BidiVec;
 /// Bounds for a 2D plane. Includes all indices.
 /// x values range from min_x..=max_x
 /// y values range from min_y..=max_y
+#[derive(Debug, Clone, Copy)]
 pub struct Bounds {
     pub max_x: i64,
     pub min_x: i64,
@@ -18,6 +19,7 @@ impl Bounds {
 }
 
 /// A data structure capable of storing a 2D plane indexed by a pair of i64s, (x, y).
+#[derive(Debug, Clone)]
 pub struct PlanarVec<T> {
     // Outer index is x, inner index is y
     data: BidiVec<BidiVec<T>>,
@@ -38,6 +40,11 @@ impl<T> PlanarVec<T> {
         }
 
         Self { data, bounds }
+    }
+    
+    /// Returns the world bounds
+    pub fn bounds(&self) -> Bounds {
+        self.bounds
     }
 
     /// Gets the value at the given position.
