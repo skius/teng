@@ -126,14 +126,29 @@ impl<W: Write> DisplayRenderer<W> {
     }
 
     /// Higher depths have higher priority. At same depth, first write wins.
-    pub fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32) {
+    pub fn render_pixel(&mut self, x: usize, y: usize, new_pixel: Pixel, new_depth: i32) {
         if x >= self.width || y >= self.height {
             return;
         }
-        if depth > self.depth_buffer[(x, y)] {
-            self.display[(x, y)] = pixel;
-            self.depth_buffer[(x, y)] = depth;
-        }
+        
+        let old_depth = self.depth_buffer[(x, y)];
+        let old_pixel = self.display[(x, y)];
+        
+        let (lower_pixel, upper_pixel) = if old_depth < new_depth {
+            (old_pixel, new_pixel)
+        } else {
+            (new_pixel, old_pixel)
+        };
+        self.display[(x, y)] = upper_pixel.put_over(lower_pixel);
+        self.depth_buffer[(x, y)] = old_depth.max(new_depth);
+        
+        
+        // if depth > self.depth_buffer[(x, y)] {
+        //     self.display[(x, y)] = pixel;
+        //     self.depth_buffer[(x, y)] = depth;
+        // } else {
+        //     // 
+        // }
     }
 
     pub fn reset_screen(&mut self) {

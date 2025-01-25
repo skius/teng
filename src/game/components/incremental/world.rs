@@ -4,6 +4,7 @@ use crossterm::event::{Event, KeyCode};
 use noise::{NoiseFn, Simplex};
 use crate::game::{BreakingAction, Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
 use crate::game::components::incremental::GameState;
+use crate::game::components::incremental::ui::UiBarComponent;
 
 #[derive(Debug, Clone)]
 pub struct InitializedTile {
@@ -239,9 +240,9 @@ impl World {
                 if let Some(tile) = self.get_mut(x, y) {
                     if let Tile::Ungenerated = tile {
                         let draw = if y <= ground_offset_height {
-                            Pixel::new(' ').with_bg_color([139, 69, 19])
+                            Pixel::transparent().with_bg_color([139, 69, 19])
                         } else {
-                            Pixel::new(' ').with_bg_color([100, 100, 255])
+                            Pixel::transparent().with_bg_color([100, 100, 255])
                         };
                         *tile = Tile::Initialized(InitializedTile { draw });
                     }
@@ -303,6 +304,7 @@ impl Component for WorldComponent {
 
         let screen_width = shared_state.display_info.width();
         let screen_height = shared_state.display_info.height();
+        let screen_height = screen_height - UiBarComponent::HEIGHT;
 
 
         for y in 0..screen_height {

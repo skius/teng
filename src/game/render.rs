@@ -1,4 +1,4 @@
-use crate::game::{renderer::Renderer, Pixel};
+use crate::game::{renderer::Renderer, Color, Pixel};
 use std::fmt::Display;
 use std::io::Write;
 
@@ -12,6 +12,14 @@ pub trait Render {
         Self: Sized,
     {
         WithColor(color, self)
+    }
+    
+    /// Render the object with transparency
+    fn transparent(&self) -> impl Render
+    where
+        Self: Sized,
+    {
+        WithTransparency(self)
     }
 
     /// Render the object with a given background color
@@ -132,6 +140,15 @@ impl<T: Render> Render for WithBgColor<T> {
     }
 }
 
+struct WithTransparency<T>(pub T);
+
+impl<T: Render> Render for WithTransparency<T> {
+    fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
+        let mut adapter = TransparentRendererAdapter { renderer };
+        self.0.render(&mut adapter, x, y, depth);
+    }
+}
+
 struct ColorRendererAdapter<'a, R> {
     renderer: &'a mut R,
     color: [u8; 3],
@@ -157,6 +174,22 @@ impl<'a, R: Renderer> Renderer for BgColorRendererAdapter<'a, R> {
     fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32) {
         self.renderer
             .render_pixel(x, y, pixel.with_bg_color(self.bg_color), depth);
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.renderer.flush()
+    }
+}
+
+struct TransparentRendererAdapter<'a, R> {
+    renderer: &'a mut R,
+}
+
+impl<'a, R: Renderer> Renderer for TransparentRendererAdapter<'a, R> {
+    fn render_pixel(&mut self, x: usize, y: usize, mut pixel: Pixel, depth: i32) {
+        pixel.color = Color::Transparent;
+        self.renderer
+            .render_pixel(x, y, pixel, depth);
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
