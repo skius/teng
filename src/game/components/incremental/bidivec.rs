@@ -74,6 +74,14 @@ impl<T> BidiVec<T> {
             self.pos.resize((end + 1) as usize, default);
         }
     }
+    
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.neg.iter().chain(self.pos.iter())
+    }
+    
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.neg.iter_mut().chain(self.pos.iter_mut())
+    }
 }
 
 impl<T> Index<i64> for BidiVec<T> {

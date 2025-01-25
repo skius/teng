@@ -57,6 +57,7 @@ use std::time::{Duration, Instant};
 mod bidivec;
 pub mod ui;
 pub mod world;
+mod planarvec;
 
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 enum GamePhase {
