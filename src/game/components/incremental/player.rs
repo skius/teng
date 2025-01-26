@@ -125,12 +125,14 @@ impl Component for NewPlayerComponent {
         }
 
         // Update camera
-        // The camera should move if the player is less than 5 units away from the edge of the screen
-        let x_threshold = 30;
-        let y_threshold = 15;
+        // The camera should move if the player is less than 30% from the edge of the screen
+        let camera_bounds = game_state.world.camera_window();
+        let camera_width = camera_bounds.max_x - camera_bounds.min_x;
+        let camera_height = camera_bounds.max_y - camera_bounds.min_y;
+        let x_threshold = (camera_width as f64 * 0.3) as i64;
+        let y_threshold = (camera_height as f64 * 0.3) as i64;
         let player_world_x = self.entity.position.0 as i64;
         let player_world_y = self.entity.position.1 as i64;
-        let camera_bounds = game_state.world.camera_window();
         if player_world_x < camera_bounds.min_x + x_threshold {
             let move_by = camera_bounds.min_x - player_world_x + x_threshold;
             game_state.world.move_camera(-move_by, 0);

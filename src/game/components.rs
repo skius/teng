@@ -127,6 +127,7 @@ impl Component for DebugInfoComponent {
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+        let depth_base = i32::MAX - 100;
         let mut y = 0;
         format!("Help: q to quit, l to lock/unlock FPS, scroll to change FPS, LMB for drawing, RMB for flood fill, c to clear, WASD to walk, arrow keys to shoot, space to jump, f to apply force").render(
             &mut renderer,
