@@ -180,6 +180,7 @@ impl World {
         noise.octaves = 5;
 
         let dirt_noise = noise::Simplex::new(42);
+        // let dirt_noise = noise::Fbm::<Simplex>::new(50);
 
         let max_height_deviance = 60.0;
         let wideness_factor = 150.0;
