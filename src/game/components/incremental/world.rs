@@ -179,8 +179,11 @@ impl World {
         let mut noise = noise::Fbm::<Simplex>::new(42);
         noise.octaves = 5;
 
+        let dirt_noise = noise::Simplex::new(42);
+
         let max_height_deviance = 60.0;
         let wideness_factor = 150.0;
+        let dirt_wideness_factor = 20.0;
 
         // go over entire world, find tiles that are ungenerated and generate them
         // go from left to right and generate based on noise function
@@ -188,7 +191,9 @@ impl World {
         for x in min_x..=max_x {
             let noise_value = noise.get([x as f64 / wideness_factor, 0.0]);
             let ground_offset_height = (noise_value * max_height_deviance) as i64;
-            // from min_y to ground_offset_height, make it brown ground, above blue sky
+
+            // let dirt_offset = (dirt_noise.get([x as f64 / 10.0, 0.0]) * 2.0) as i64;
+            // let dirt_level = -10 + dirt_offset;
 
             self.ground_level[x] = ground_offset_height;
 
@@ -201,7 +206,27 @@ impl World {
                         // make it grey:
                         let yd = y.clamp(-50, 30) as u8;
                         let color = [100 + yd, 100 + yd, 100 + yd];
-                        Pixel::new('█').with_color(color).with_bg_color(color)
+                        let mut final_pixel = Pixel::new('█').with_color(color).with_bg_color(color);
+
+                        // Check if the ground height is below the dirt level
+                        let dirt_val = dirt_noise.get([x as f64 / dirt_wideness_factor, y as f64 / (dirt_wideness_factor * 2.0)]);
+                        // removal factor goes from 1.0 at y <= 0 to 0.0 at y >= 10
+                        let dirt_removal_factor = 1.0 - ((y - (-5)) as f64 / 10.0).clamp(0.0, 1.0);
+                        // if y is more than 6 below ground level, increase factor to 1.0 until 16 below ground
+                        let below_ground_removal_factor = 1.0 - ((ground_offset_height - 6 - y) as f64 / 10.0).clamp(0.0, 1.0);
+                        let dirt_val = dirt_val * dirt_removal_factor * below_ground_removal_factor;
+                        if dirt_val > 0.3 {
+                            // Add some dirt
+                            let dirt_color = [139, 69, 19];
+                            final_pixel = final_pixel.with_color(dirt_color).with_bg_color(dirt_color);
+                            if y == ground_offset_height {
+                                // Add some grass
+                                let grass_color = [0, 150, 0];
+                                final_pixel = final_pixel.with_color(grass_color).with_bg_color(grass_color);
+                            }
+                        }
+
+                        final_pixel
                     } else {
                         // air
                         // this color in rgb: #0178c8
