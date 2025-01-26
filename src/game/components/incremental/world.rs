@@ -62,7 +62,7 @@ pub struct World {
 impl World {
     pub fn new(setup_info: &SetupInfo) -> Self {
         let screen_width = setup_info.width;
-        let screen_height = setup_info.height;
+        let screen_height = setup_info.height - UiBarComponent::HEIGHT;
 
         let camera_attach = (0, screen_height as i64 / 2);
 
@@ -199,7 +199,7 @@ impl Component for WorldComponent {
             let game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
             let world = &mut game_state.world;
             world.screen_width = width as usize;
-            world.screen_height = height as usize;
+            world.screen_height = height as usize - UiBarComponent::HEIGHT;
             world.expand_to_contain(world.camera_window());
         }
 
@@ -216,6 +216,8 @@ impl Component for WorldComponent {
         if shared_state.pressed_keys.contains_key(&KeyCode::Char('r')) {
             world.regenerate();
         }
+        
+        world.tiles.expand(world.collision_board.bounds(), Tile::Ungenerated);
 
         // if shared_state.pressed_keys.contains_key(&KeyCode::Char('w')) {
         //     world.move_camera(0, 1);

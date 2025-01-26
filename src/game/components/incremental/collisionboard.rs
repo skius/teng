@@ -8,18 +8,13 @@ pub enum CollisionCell {
     Solid,
 }
 
-/// The object in question hits a wall at the given side. That means the object is 'free' on the
-/// other side.
-pub enum HorizontalCollision {
-    Left,
-    Right,
-}
-
-/// The object in question hits a wall at the given side. That means the object is 'free' on the
-/// other side.
-pub enum VerticalCollision {
-    Top,
-    Bottom,
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct CollisionInformation {
+    pub hit_left: bool,
+    pub hit_right: bool,
+    pub hit_top: bool,
+    pub hit_bottom: bool,
+    pub glitched: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -32,6 +27,10 @@ impl CollisionBoard {
         Self {
             board: PlanarVec::new(bounds, CollisionCell::Empty)
         }
+    }
+
+    pub fn bounds(&self) -> Bounds {
+        self.board.bounds()
     }
 
     pub fn expand(&mut self, bounds: Bounds) {
@@ -110,7 +109,10 @@ impl PhysicsEntity2d {
     }
 
     pub fn grounded(&self, collision_board: &mut CollisionBoard) -> bool {
-        let floor_sensor = self.floor_sensor();
+        let mut floor_sensor = self.floor_sensor();
+        // allow for a little bit of leeway
+        // TODO: leeway allows for skipping death hit check
+        floor_sensor.min_y -= 1;
         collision_board.collides_growing(floor_sensor)
     }
 
@@ -121,42 +123,47 @@ impl PhysicsEntity2d {
         self.velocity = (vx + ax * dt, vy + ay * dt);
     }
 
-    pub fn update(&mut self, dt: f64, collision_board: &mut CollisionBoard) {
+    pub fn update(&mut self, dt: f64, collision_board: &mut CollisionBoard) -> CollisionInformation {
         if collision_board.collides_growing(self.bounding_box()) {
             // We are already colliding with something, so we should try and escape by moving up
             self.position.1 += 1.0;
-            return;
+            return CollisionInformation {
+                glitched: true,
+                ..Default::default()
+            }
         }
+
+        let mut collision_info = CollisionInformation::default();
 
         self.update_velocity(dt, (0.0, -40.0));
 
-        let (x, mut y) = self.position;
+        let (x, _) = self.position;
         let (vx, vy) = self.velocity;
 
         let x_tile = x.floor() as i64;
-        let y_tile = y.floor() as i64;
 
         let mut new_x = x + vx * dt;
-        let mut new_y = y + vy * dt;
+        // tracks changes in y in horizonal handling (eg due to stepping)
+        let mut new_y = self.position.1;
 
         // Check if moving would even cause a change in tile position
         let new_x_tile = new_x.floor() as i64;
-        let new_y_tile = new_y.floor() as i64;
 
         let x_diff = new_x_tile - x_tile;
-        let y_diff = new_y_tile - y_tile;
 
         if x_diff != 0 {
             // we're moving across a tile boundary, need to check if we need to adjust new_x
-            let (mut bounds, xds) = if x_diff > 0 {
-                (self.right_sensor(), 0..=x_diff)
+            // our `xds` are an exclusive range, because our sensors are already offset from the self bounding box by 1.
+            let (mut bounds, xds, sign) = if x_diff > 0 {
+                (self.right_sensor(), 0..x_diff, 1)
             } else {
-                (self.left_sensor(), 0..=x_diff.abs())
+                (self.left_sensor(), 0..x_diff.abs(), -1)
             };
 
             let mut collision = false;
 
-            'outer: for xd in xds {
+            'outer: for mut xd in xds {
+                xd *= sign;
                 let mut sensor_bb = bounds;
                 sensor_bb.min_x += xd;
                 sensor_bb.max_x += xd;
@@ -177,123 +184,58 @@ impl PhysicsEntity2d {
                         }
                     }
 
-
                     collision = true;
                     new_x = x + xd as f64;
                     break;
                 }
             }
+
+            collision_info.hit_left = x_diff < 0 && collision;
+            collision_info.hit_right = x_diff > 0 && collision;
         }
 
         self.position.0 = new_x;
+        self.position.1 = new_y;
 
-        // match x_diff {
-        //     _ if x_diff == 0 => {
-        //         // No horizontal movement, so we do not need to do any horizontal collision checking
-        //         self.position.0 = new_x;
-        //     }
-        //     _ if x_diff > 0 => {
-        //         // Moving right
-        //         // let mut collision = false;
-        //         // let right_sensor = self.right_sensor();
-        //         // 'outer: for xd in 0..=x_diff {
-        //         //     let mut future_right_sensor = right_sensor;
-        //         //     future_right_sensor.min_x += xd;
-        //         //     future_right_sensor.max_x += xd;
-        //         //     if collision_board.collides_growing(future_right_sensor) {
-        //         //         // Now check if a step is possible, if so, move it up by yd and continue
-        //         //         for step in 1..=NewPlayerComponent::STEP_SIZE {
-        //         //             let mut right_step_sensor = future_right_sensor;
-        //         //             right_step_sensor.min_y += step;
-        //         //             right_step_sensor.max_y += step;
-        //         //             if !collision_board.collides_growing(right_step_sensor) {
-        //         //                 // TODO: the sensors need to be recomputed now, and
-        //         //                 // y should be persistent. maybe directly update y?
-        //         //                 new_y = y + step as f64;
-        //         //                 continue 'outer;
-        //         //             }
-        //         //         }
-        //         //         new_x = x + xd as f64;
-        //         //         collision = true;
-        //         //         break;
-        //         //     }
-        //         // }
-        //         //
-        //         // self.position.0 = new_x;
-        //
-        //         let ci = handle_horizontal(collision_board, 0..=x_diff, self.right_sensor());
-        //         if let Some(CollisionInformation { xd, yd }) = ci {
-        //             if let Some(xd) = xd {
-        //                 new_x = x + xd as f64;
-        //             }
-        //             if let Some(yd) = yd {
-        //                 // TODO: directly update y?
-        //                 new_y = y + yd as f64;
-        //             }
-        //         }
-        //         self.position.0 = new_x;
-        //     }
-        //     _ if x_diff < 0 => {
-        //         // Moving left
-        //         let mut collision = false;
-        //         let left_sensor = self.left_sensor();
-        //         for xd in 0..=x_diff.abs() {
-        //             let mut future_left_sensor = left_sensor;
-        //             future_left_sensor.min_x -= xd;
-        //             future_left_sensor.max_x -= xd;
-        //             if collision_board.collides_growing(future_left_sensor) {
-        //                 new_x = x - xd as f64;
-        //                 collision = true;
-        //                 break;
-        //             }
-        //         }
-        //
-        //         self.position.0 = new_x;
-        //     }
-        //     _ => unreachable!("x_diff is either 0, positive, or negative"),
-        // }
+        let y = self.position.1;
+        let mut new_y = y + vy * dt;
 
-        match y_diff {
-            _ if y_diff == 0 => {
-                // No vertical movement, so we do not need to do any vertical collision checking
-                self.position.1 = new_y;
-            }
-            _ if y_diff > 0 => {
-                // Moving up
-                let mut collision = false;
-                let top_sensor = self.top_sensor();
-                for yd in 0..=y_diff {
-                    let mut future_top_sensor = top_sensor;
-                    future_top_sensor.min_y += yd;
-                    future_top_sensor.max_y += yd;
-                    if collision_board.collides_growing(future_top_sensor) {
-                        new_y = y + yd as f64;
-                        collision = true;
-                        break;
-                    }
+        let y_tile = y.floor() as i64;
+        let new_y_tile = new_y.floor() as i64;
+
+        let y_diff = new_y_tile - y_tile;
+
+        if y_diff != 0 {
+            let (mut bounds, yds, sign) = if y_diff > 0 {
+                (self.top_sensor(), 0..y_diff, 1)
+            } else {
+                (self.floor_sensor(), 0..y_diff.abs(), -1)
+            };
+
+            let mut collision = false;
+            for mut yd in yds {
+                yd *= sign;
+                let mut future_sensor = bounds;
+                future_sensor.min_y += yd;
+                future_sensor.max_y += yd;
+                if collision_board.collides_growing(future_sensor) {
+                    new_y = y + yd as f64;
+                    collision = true;
+                    break;
                 }
-
-                self.position.1 = new_y;
             }
-            _ if y_diff < 0 => {
-                // Moving down
-                let mut collision = false;
-                let floor_sensor = self.floor_sensor();
-                for yd in 0..=y_diff.abs() {
-                    let mut future_floor_sensor = floor_sensor;
-                    future_floor_sensor.min_y -= yd;
-                    future_floor_sensor.max_y -= yd;
-                    if collision_board.collides_growing(future_floor_sensor) {
-                        new_y = y - yd as f64;
-                        collision = true;
-                        break;
-                    }
-                }
 
-                self.position.1 = new_y;
+            if collision {
+                self.velocity.1 = 0.0;
             }
-            _ => unreachable!("y_diff is either 0, positive, or negative"),
+
+
+            collision_info.hit_top = y_diff > 0 && collision;
+            collision_info.hit_bottom = y_diff < 0 && collision;
         }
+        self.position.1 = new_y;
+        
+        return collision_info;
     }
 
     /// Returns a bounding box that is one unit high and resides directly above the entity.
