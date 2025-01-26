@@ -177,14 +177,17 @@ impl World {
 
         // let noise = noise::Simplex::new(42);
         let mut noise = noise::Fbm::<Simplex>::new(42);
-        noise.octaves = 4;
+        noise.octaves = 5;
+
+        let max_height_deviance = 60.0;
+        let wideness_factor = 150.0;
 
         // go over entire world, find tiles that are ungenerated and generate them
         // go from left to right and generate based on noise function
         self.ground_level.grow(min_x..=max_x, 0);
         for x in min_x..=max_x {
-            let noise_value = noise.get([x as f64 / 70.0, 0.0]);
-            let ground_offset_height = (noise_value * 30.0) as i64;
+            let noise_value = noise.get([x as f64 / wideness_factor, 0.0]);
+            let ground_offset_height = (noise_value * max_height_deviance) as i64;
             // from min_y to ground_offset_height, make it brown ground, above blue sky
 
             self.ground_level[x] = ground_offset_height;
@@ -196,7 +199,7 @@ impl World {
                         self.collision_board[(x, y)] = CollisionCell::Solid;
                         // Pixel::new('█').with_color().with_bg_color([139, 69, 19]);
                         // make it grey:
-                        let yd = y.clamp(-50, 50) as u8;
+                        let yd = y.clamp(-50, 30) as u8;
                         let color = [100 + yd, 100 + yd, 100 + yd];
                         Pixel::new('█').with_color(color).with_bg_color(color)
                     } else {
