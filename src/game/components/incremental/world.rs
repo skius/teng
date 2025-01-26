@@ -8,6 +8,7 @@ use noise::{NoiseFn, Simplex};
 use std::iter::repeat;
 use std::ops::{Index, IndexMut};
 use crate::game::components::incremental::bidivec::BidiVec;
+use crate::game::components::incremental::collisionboard::{CollisionBoard, CollisionCell};
 use crate::game::components::incremental::planarvec::{Bounds, PlanarVec};
 
 #[derive(Debug, Clone)]
@@ -55,6 +56,7 @@ pub struct World {
     screen_height: usize,
     /// For every x, this stores the y value of the ground level.
     ground_level: BidiVec<i64>,
+    pub collision_board: CollisionBoard,
 }
 
 impl World {
@@ -64,24 +66,27 @@ impl World {
 
         let camera_attach = (0, screen_height as i64 / 2);
 
+        let world_bounds = Bounds {
+            min_x: -1,
+            max_x: 1,
+            min_y: -1,
+            max_y: 1,
+        };
+
         let mut world = Self {
-            tiles: PlanarVec::new(Bounds {
-                min_x: -1,
-                max_x: 1,
-                min_y: -1,
-                max_y: 1,
-            }, Tile::Ungenerated),
+            tiles: PlanarVec::new(world_bounds, Tile::Ungenerated),
             camera_attach,
             screen_width,
             screen_height,
             ground_level: BidiVec::new(),
+            collision_board: CollisionBoard::new(world_bounds),
         };
 
         world.expand_to_contain(world.camera_window());
         world
     }
 
-    fn camera_window(&self) -> Bounds {
+    pub fn camera_window(&self) -> Bounds {
         let camera_x = self.camera_attach.0;
         let camera_y = self.camera_attach.1;
 
@@ -98,7 +103,21 @@ impl World {
         }
     }
 
-    fn move_camera(&mut self, dx: i64, dy: i64) {
+    pub fn to_screen_pos(&self, world_x: i64, world_y: i64) -> Option<(usize, usize)> {
+        let camera_x = self.camera_attach.0;
+        let camera_y = self.camera_attach.1;
+
+        let screen_x = (world_x - camera_x) as usize;
+        let screen_y = (camera_y - world_y) as usize;
+
+        if screen_x < self.screen_width && screen_y < self.screen_height {
+            Some((screen_x, screen_y))
+        } else {
+            None
+        }
+    }
+
+    pub fn move_camera(&mut self, dx: i64, dy: i64) {
         self.camera_attach.0 += dx;
         self.camera_attach.1 += dy;
         self.expand_to_contain(self.camera_window());
@@ -107,6 +126,8 @@ impl World {
     /// Expands the world to at the minimum contain the given bounds.
     fn expand_to_contain(&mut self, bounds: Bounds) {
         self.tiles.expand(bounds, Tile::Ungenerated);
+        self.collision_board.expand(bounds);
+        self.regenerate();
     }
 
     fn world_bounds(&self) -> Bounds {
@@ -148,15 +169,16 @@ impl World {
             self.ground_level[x] = ground_offset_height;
 
             for y in min_y..=max_y {
-                if let Some(tile) = self.get_mut(x, y) {
-                    if let Tile::Ungenerated = tile {
-                        let draw = if y <= ground_offset_height {
-                            Pixel::transparent().with_bg_color([139, 69, 19])
-                        } else {
-                            Pixel::transparent().with_bg_color([100, 100, 255])
-                        };
-                        *tile = Tile::Initialized(InitializedTile { draw });
-                    }
+                if self.get_mut(x, y).is_some_and(|t| matches!(t, Tile::Ungenerated)) {
+                    let draw = if y <= ground_offset_height {
+                        // ground
+                        self.collision_board[(x, y)] = CollisionCell::Solid;
+                        Pixel::transparent().with_bg_color([139, 69, 19])
+                    } else {
+                        // air
+                        Pixel::transparent().with_bg_color([100, 100, 255])
+                    };
+                    self[(x,y)] = Tile::Initialized(InitializedTile { draw });
                 }
             }
         }
@@ -195,18 +217,18 @@ impl Component for WorldComponent {
             world.regenerate();
         }
 
-        if shared_state.pressed_keys.contains_key(&KeyCode::Char('w')) {
-            world.move_camera(0, 1);
-        }
-        if shared_state.pressed_keys.contains_key(&KeyCode::Char('s')) {
-            world.move_camera(0, -1);
-        }
-        if shared_state.pressed_keys.contains_key(&KeyCode::Char('a')) {
-            world.move_camera(-1, 0);
-        }
-        if shared_state.pressed_keys.contains_key(&KeyCode::Char('d')) {
-            world.move_camera(1, 0);
-        }
+        // if shared_state.pressed_keys.contains_key(&KeyCode::Char('w')) {
+        //     world.move_camera(0, 1);
+        // }
+        // if shared_state.pressed_keys.contains_key(&KeyCode::Char('s')) {
+        //     world.move_camera(0, -1);
+        // }
+        // if shared_state.pressed_keys.contains_key(&KeyCode::Char('a')) {
+        //     world.move_camera(-1, 0);
+        // }
+        // if shared_state.pressed_keys.contains_key(&KeyCode::Char('d')) {
+        //     world.move_camera(1, 0);
+        // }
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
