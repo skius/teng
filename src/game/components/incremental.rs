@@ -58,6 +58,7 @@ mod bidivec;
 pub mod ui;
 pub mod world;
 mod planarvec;
+mod collisionboard;
 
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 enum GamePhase {
