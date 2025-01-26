@@ -4,9 +4,11 @@ use crate::game::{
     BreakingAction, Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo,
 };
 use crossterm::event::{Event, KeyCode};
-use noise::{NoiseFn, Simplex};
+use noise::{NoiseFn, Perlin, Simplex};
 use std::iter::repeat;
 use std::ops::{Index, IndexMut};
+use std::time::Instant;
+use crate::game::components::incremental::animation::Animation;
 use crate::game::components::incremental::bidivec::BidiVec;
 use crate::game::components::incremental::collisionboard::{CollisionBoard, CollisionCell};
 use crate::game::components::incremental::planarvec::{Bounds, PlanarVec};
@@ -36,6 +38,14 @@ struct WorldIndex {
     x: usize,
 }
 
+
+#[derive(Debug)]
+struct AnimationInWorld {
+    animation: Box<dyn Animation>,
+    world_x: i64,
+    world_y: i64,
+}
+
 /// A world is a 2D grid of tiles.
 ///
 /// The world is divided into four quadrants: top-left, top-right, bottom-left, and bottom-right.
@@ -57,6 +67,7 @@ pub struct World {
     /// For every x, this stores the y value of the ground level.
     ground_level: BidiVec<i64>,
     pub collision_board: CollisionBoard,
+    animations: Vec<AnimationInWorld>
 }
 
 impl World {
@@ -80,10 +91,19 @@ impl World {
             screen_height,
             ground_level: BidiVec::new(),
             collision_board: CollisionBoard::new(world_bounds),
+            animations: vec![],
         };
 
         world.expand_to_contain(world.camera_window());
         world
+    }
+
+    pub fn add_animation(&mut self, animation: Box<dyn Animation>, world_x: i64, world_y: i64) {
+        self.animations.push(AnimationInWorld {
+            animation,
+            world_x,
+            world_y,
+        });
     }
 
     pub fn camera_window(&self) -> Bounds {
@@ -156,7 +176,8 @@ impl World {
         } = self.world_bounds();
 
         // let noise = noise::Simplex::new(42);
-        let noise = noise::Fbm::<Simplex>::new(42);
+        let mut noise = noise::Fbm::<Simplex>::new(42);
+        noise.octaves = 4;
 
         // go over entire world, find tiles that are ungenerated and generate them
         // go from left to right and generate based on noise function
@@ -173,10 +194,42 @@ impl World {
                     let draw = if y <= ground_offset_height {
                         // ground
                         self.collision_board[(x, y)] = CollisionCell::Solid;
-                        Pixel::transparent().with_bg_color([139, 69, 19])
+                        // Pixel::new('█').with_color().with_bg_color([139, 69, 19]);
+                        // make it grey:
+                        let yd = y.clamp(-50, 50) as u8;
+                        let color = [100 + yd, 100 + yd, 100 + yd];
+                        Pixel::new('█').with_color(color).with_bg_color(color)
                     } else {
                         // air
-                        Pixel::transparent().with_bg_color([100, 100, 255])
+                        // this color in rgb: #0178c8
+                        // at y >= 10 make it #0178c8
+                        // until the colors are #b1d7fb, add 1 per y going down
+
+                        let max_sky_threshold = 60;
+
+                        let mut color: [u8; 3] = [0x01, 0x78, 0xc8];
+                        if y < max_sky_threshold {
+                            let dy = max_sky_threshold - y;
+                            let dy = if dy > 255 { 255u8 } else { dy as u8 };
+                            let dcolor = dy * 1;
+                            if color[0].saturating_add(dcolor) < 0xb1 {
+                                color[0] += dcolor;
+                            } else {
+                                color[0] = 0xb1;
+                            }
+                            if color[1].saturating_add(dcolor) < 0xd7 {
+                                color[1] += dcolor;
+                            } else {
+                                color[1] = 0xd7;
+                            }
+                            if color[2].saturating_add(dcolor) < 0xfb {
+                                color[2] += dcolor;
+                            } else {
+                                color[2] = 0xfb;
+                            }
+                        }
+                        Pixel::new('█').with_color(color).with_bg_color(color)
+                        // Pixel::transparent().with_bg_color(color)
                     };
                     self[(x,y)] = Tile::Initialized(InitializedTile { draw });
                 }
@@ -216,7 +269,7 @@ impl Component for WorldComponent {
         if shared_state.pressed_keys.contains_key(&KeyCode::Char('r')) {
             world.regenerate();
         }
-        
+
         world.tiles.expand(world.collision_board.bounds(), Tile::Ungenerated);
 
         // if shared_state.pressed_keys.contains_key(&KeyCode::Char('w')) {
@@ -251,7 +304,7 @@ impl Component for WorldComponent {
                 if world_y == 0 && x == 0 {
                     // special case
                     "ground->".render(&mut renderer, x, y, depth_base);
-                    continue;
+                    // continue;
                 }
 
                 if let Some(tile) = world.get(world_x, world_y) {
@@ -266,6 +319,15 @@ impl Component for WorldComponent {
                 } else {
                     renderer.render_pixel(x, y, Pixel::new('x'), depth_base);
                 }
+            }
+        }
+
+        let current_time = Instant::now();
+        for animation in &world.animations {
+            let Some((screen_x, screen_y)) = world.to_screen_pos(animation.world_x, animation.world_y) else { continue };
+            let delete = animation.animation.render((screen_x, screen_y), current_time, &mut renderer);
+            if delete {
+                // TODO: remove animation
             }
         }
     }

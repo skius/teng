@@ -61,6 +61,7 @@ pub mod world;
 mod planarvec;
 mod collisionboard;
 mod player;
+mod animation;
 
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 enum GamePhase {
@@ -267,7 +268,8 @@ impl PlayerComponent {
 
 impl Component for PlayerComponent {
     fn is_active(&self, shared_state: &SharedState) -> bool {
-        shared_state.extensions.get::<GameState>().unwrap().phase == GamePhase::Moving
+        shared_state.extensions.get::<GameState>().unwrap().phase == GamePhase::Moving;
+        false
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {

@@ -1,5 +1,5 @@
 use crate::game::{renderer::Renderer, Color, Pixel};
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 use std::io::Write;
 
 pub trait Render {

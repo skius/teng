@@ -3,7 +3,7 @@ use crossterm::event::{Event, KeyCode};
 use crate::game::components::incremental::collisionboard::PhysicsEntity2d;
 use crate::game::{BreakingAction, Component, DebugMessage, Render, Renderer, SharedState, Sprite, UpdateInfo};
 use crate::game::components::incremental::{GameState, PlayerState};
-
+use crate::game::components::incremental::animation::CharAnimationSequence;
 // pub struct PlayerState {
 //     entity: PhysicsEntity2d,
 //     sprite: Sprite<3, 2>,
@@ -36,7 +36,7 @@ impl NewPlayerComponent {
             },
             sprite: Sprite::new([['▁', '▄', '▁'], ['▗', '▀', '▖']], 1, 1),
             // dead_sprite: Sprite::new([['▂', '▆', '▆', ' ', '▖']], 2, 0),
-            render_sensors: true,
+            render_sensors: false,
             max_height_since_ground: f64::MIN,
         }
     }
@@ -95,6 +95,23 @@ impl Component for NewPlayerComponent {
             let fall_distance = self.max_height_since_ground - self.entity.position.1;
             if fall_distance > 4.0 {
                 shared_state.debug_messages.push(DebugMessage::new(format!("You fell {} units", fall_distance), Instant::now() + std::time::Duration::from_secs(2)));
+            }
+            if fall_distance > 7.0 {
+                // Add animation at collision point
+                let x =self.entity.position.0.floor() as i64;
+                let y = self.entity.position.1.floor() as i64;
+                let animation1 = CharAnimationSequence {
+                    sequence: vec!['▄', '▟', '▞', '▝'],
+                    start_time: Instant::now(),
+                    time_per_frame: std::time::Duration::from_secs_f64(0.1),
+                };
+                game_state.world.add_animation(Box::new(animation1), x+2, y);
+                let animation2 = CharAnimationSequence {
+                    sequence: vec!['▄', '▙', '▚', '▘'],
+                    start_time: Instant::now(),
+                    time_per_frame: std::time::Duration::from_secs_f64(0.1),
+                };
+                game_state.world.add_animation(Box::new(animation2), x-2, y);
             }
             self.max_height_since_ground = self.entity.position.1;
 
