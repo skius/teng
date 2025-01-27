@@ -24,7 +24,7 @@ that are novel? it still feels kind of dark pattern-y...
 so, rogue like could be worth a try
 
 
-
+need to fix the depths, have some way to override them, maybe a place to define some globals?
 
 
 
