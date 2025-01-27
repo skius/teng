@@ -123,7 +123,7 @@ impl PhysicsEntity2d {
         self.velocity = (vx + ax * dt, vy + ay * dt);
     }
 
-    pub fn update(&mut self, dt: f64, collision_board: &mut CollisionBoard) -> CollisionInformation {
+    pub fn update(&mut self, dt: f64, step_size: i64, collision_board: &mut CollisionBoard) -> CollisionInformation {
         if collision_board.collides_growing(self.bounding_box()) {
             // We are already colliding with something, so we should try and escape by moving up
             self.position.1 += 1.0;
@@ -170,7 +170,7 @@ impl PhysicsEntity2d {
                 if collision_board.collides_growing(sensor_bb) {
                     // Check step, but only if not jumping right now
                     if vy <= 0.0 {
-                        for step in 1..=NewPlayerComponent::STEP_SIZE {
+                        for step in 1..=step_size {
                             let mut step_sensor_bb = sensor_bb;
                             step_sensor_bb.min_y += step;
                             step_sensor_bb.max_y += step;
@@ -234,7 +234,7 @@ impl PhysicsEntity2d {
             collision_info.hit_bottom = y_diff < 0 && collision;
         }
         self.position.1 = new_y;
-        
+
         return collision_info;
     }
 

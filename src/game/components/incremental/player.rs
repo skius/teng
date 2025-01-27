@@ -1,28 +1,24 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use crossterm::event::{Event, KeyCode};
 use crate::game::components::incremental::collisionboard::PhysicsEntity2d;
 use crate::game::{BreakingAction, Component, DebugMessage, Render, Renderer, SharedState, Sprite, UpdateInfo};
-use crate::game::components::incremental::{GameState, PlayerState};
+use crate::game::components::incremental::{GamePhase, GameState, PlayerState};
 use crate::game::components::incremental::animation::CharAnimationSequence;
-// pub struct PlayerState {
-//     entity: PhysicsEntity2d,
-//     sprite: Sprite<3, 2>,
-//     dead_sprite: Sprite<5, 1>,
-//     dead_time: Option<Instant>,
-//     render_sensors: bool,
-//     max_height_since_ground: f64,
-//     next_sample_time: Instant,
-// }
 
 pub struct NewPlayerComponent {
     entity: PhysicsEntity2d,
     sprite: Sprite<3, 2>,
+    dead_sprite: Sprite<5, 1>,
     render_sensors: bool,
     max_height_since_ground: f64,
+    dead_time: Option<Instant>,
+    next_sample_time: Instant,
 }
 
 impl NewPlayerComponent {
-    pub const STEP_SIZE: i64 = 1;
+    const DEATH_HEIGHT: f64 = 3.5;
+    const DEATH_RESPAWN_TIME: f64 = 2.0;
+    const DEATH_STOP_X_MOVE_TIME: f64 = 0.5;
 
     pub fn new() -> Self {
         Self {
@@ -35,118 +31,134 @@ impl NewPlayerComponent {
                 size_right: 1.0,
             },
             sprite: Sprite::new([['▁', '▄', '▁'], ['▗', '▀', '▖']], 1, 1),
-            // dead_sprite: Sprite::new([['▂', '▆', '▆', ' ', '▖']], 2, 0),
+            dead_sprite: Sprite::new([['▂', '▆', '▆', ' ', '▖']], 2, 0),
             render_sensors: false,
             max_height_since_ground: f64::MIN,
+            dead_time: None,
+            next_sample_time: Instant::now(),
+        }
+    }
+}
+
+impl NewPlayerComponent {
+    fn spawn_ground_slam_animation(&self, game_state: &mut GameState) {
+        // Add animation at collision point
+        let x =self.entity.position.0.floor() as i64;
+        let y = self.entity.position.1.floor() as i64;
+        let animation1 = CharAnimationSequence {
+            sequence: vec!['▄', '▟', '▞', '▝'],
+            start_time: Instant::now(),
+            time_per_frame: std::time::Duration::from_secs_f64(0.1),
+        };
+        game_state.world.add_animation(Box::new(animation1), x+2, y);
+        let animation2 = CharAnimationSequence {
+            sequence: vec!['▄', '▙', '▚', '▘'],
+            start_time: Instant::now(),
+            time_per_frame: std::time::Duration::from_secs_f64(0.1),
+        };
+        game_state.world.add_animation(Box::new(animation2), x-2, y);
+    }
+
+    fn on_death(&mut self, fall_distance: f64, yvel_before: f64, game_state: &mut GameState) {
+        let current_time = Instant::now();
+        self.dead_time = Some(current_time);
+
+        self.dead_sprite = if self.entity.velocity.0 >= 0.0 {
+            Sprite::new([['▂', '▆', '▆', ' ', '▖']], 2, 0)
+        } else {
+            Sprite::new([['▗', ' ', '▆', '▆', '▂']], 2, 0)
+        };
+
+        let blocks_f64 = fall_distance.abs().ceil()
+            * game_state.upgrades.block_height as f64
+            * game_state.upgrades.player_weight as f64
+            * yvel_before.powf(game_state.upgrades.velocity_exponent);
+        let blocks = blocks_f64.ceil() as usize;
+        game_state.received_blocks += blocks;
+        game_state.received_blocks_base += blocks;
+    }
+
+    fn horizontal_inputs(&mut self, pressed_keys: &micromap::Map<KeyCode, u8, 16>) {
+        let slow_velocity = 10.0;
+        let fast_velocity = 30.0;
+
+        if pressed_keys.contains_key(&KeyCode::Char('a')) {
+            self.entity.velocity.0 = if self.entity.velocity.0 > 0.0 { 0.0 } else { -slow_velocity };
+        } else if pressed_keys.contains_key(&KeyCode::Char('d')) {
+            self.entity.velocity.0 = if self.entity.velocity.0 < 0.0 { 0.0 } else { slow_velocity };
+        }
+
+        if pressed_keys.contains_key(&KeyCode::Char('A')) {
+            self.entity.velocity.0 = if self.entity.velocity.0 > 0.0 { 0.0 } else { -fast_velocity };
+        } else if pressed_keys.contains_key(&KeyCode::Char('D')) {
+            self.entity.velocity.0 = if self.entity.velocity.0 < 0.0 { 0.0 } else { fast_velocity };
         }
     }
 }
 
 impl Component for NewPlayerComponent {
+    fn is_active(&self, shared_state: &SharedState) -> bool {
+        shared_state.extensions.get::<GameState>().unwrap().phase == GamePhase::Moving
+    }
+
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
-        let dt = update_info.current_time - update_info.last_time;
+        let current_time = update_info.current_time;
+        let dt = current_time - update_info.last_time;
         let dt = dt.as_secs_f64();
 
         let game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
 
-        let slow_velocity = 10.0;
-        let fast_velocity = 30.0;
-
-        if shared_state.pressed_keys.contains_key(&KeyCode::Char('a')) {
-            if self.entity.velocity.0 > 0.0 {
+        if let Some(dead_time) = self.dead_time {
+            let time_since_death = (current_time - dead_time).as_secs_f64();
+            if time_since_death >= Self::DEATH_STOP_X_MOVE_TIME {
                 self.entity.velocity.0 = 0.0;
-            } else if self.entity.velocity.0 == 0.0 {
-                self.entity.velocity.0 = -slow_velocity;
-            } else {
-                self.entity.velocity.0 = -slow_velocity;
             }
-        } else if shared_state.pressed_keys.contains_key(&KeyCode::Char('d')) {
-            if self.entity.velocity.0 < 0.0 {
-                self.entity.velocity.0 = 0.0;
-            } else if self.entity.velocity.0 == 0.0 {
-                self.entity.velocity.0 = slow_velocity;
-            } else {
-                self.entity.velocity.0 = slow_velocity;
-            }
-        }
-        if shared_state.pressed_keys.contains_key(&KeyCode::Char('A')) {
-            if self.entity.velocity.0 > 0.0 {
-                self.entity.velocity.0 = 0.0;
-            } else if self.entity.velocity.0 == 0.0 {
-                self.entity.velocity.0 = -fast_velocity;
-            } else {
-                self.entity.velocity.0 = -fast_velocity;
-            }
-        } else if shared_state.pressed_keys.contains_key(&KeyCode::Char('D')) {
-            if self.entity.velocity.0 < 0.0 {
-                self.entity.velocity.0 = 0.0;
-            } else if self.entity.velocity.0 == 0.0 {
-                self.entity.velocity.0 = fast_velocity;
-            } else {
-                self.entity.velocity.0 = fast_velocity;
+            if time_since_death >= Self::DEATH_RESPAWN_TIME {
+                game_state.phase = GamePhase::MoveToBuilding;
+                self.dead_time = None;
+                // for all ghosts that did not die, add 1 block
+                for ghost in &game_state.player_ghosts {
+                    if ghost.death_time.is_none() {
+                        game_state.received_blocks += game_state.upgrades.ghost_cuteness;
+                    }
+                }
             }
         }
 
-        let collision_info = self.entity.update(dt, &mut game_state.world.collision_board);
+        if self.dead_time.is_none() {
+            self.horizontal_inputs(&shared_state.pressed_keys);
+        }
+
+        let step_size = if self.dead_time.is_some() { 0 } else { 1 };
+        let yvel_before = self.entity.velocity.1;
+        let collision_info = self.entity.update(dt, step_size, &mut game_state.world.collision_board);
 
         if !collision_info.hit_bottom {
             self.max_height_since_ground = self.max_height_since_ground.max(self.entity.position.1);
         } else {
             let fall_distance = self.max_height_since_ground - self.entity.position.1;
-            if fall_distance > 4.0 {
-                shared_state.debug_messages.push(DebugMessage::new(format!("You fell {} units", fall_distance), Instant::now() + std::time::Duration::from_secs(2)));
-            }
             if fall_distance > 7.0 {
-                // Add animation at collision point
-                let x =self.entity.position.0.floor() as i64;
-                let y = self.entity.position.1.floor() as i64;
-                let animation1 = CharAnimationSequence {
-                    sequence: vec!['▄', '▟', '▞', '▝'],
-                    start_time: Instant::now(),
-                    time_per_frame: std::time::Duration::from_secs_f64(0.1),
-                };
-                game_state.world.add_animation(Box::new(animation1), x+2, y);
-                let animation2 = CharAnimationSequence {
-                    sequence: vec!['▄', '▙', '▚', '▘'],
-                    start_time: Instant::now(),
-                    time_per_frame: std::time::Duration::from_secs_f64(0.1),
-                };
-                game_state.world.add_animation(Box::new(animation2), x-2, y);
+                self.spawn_ground_slam_animation(game_state);
             }
-            self.max_height_since_ground = self.entity.position.1;
 
+            if fall_distance >= Self::DEATH_HEIGHT {
+                self.on_death(fall_distance, yvel_before, game_state);
+            }
+
+            self.max_height_since_ground = self.entity.position.1;
         }
 
-        // Now jump input since we need grounded information
-        if shared_state.pressed_keys.contains_key(&KeyCode::Char(' ')) {
-            if self.entity.grounded(&mut game_state.world.collision_board) {
-                self.entity.velocity.1 = 20.0;
+        if self.dead_time.is_none() {
+            // Now jump input since we need grounded information
+            if shared_state.pressed_keys.contains_key(&KeyCode::Char(' ')) {
+                if self.entity.grounded(&mut game_state.world.collision_board) {
+                    self.entity.velocity.1 = 20.0;
+                }
             }
         }
 
         // Update camera
-        // The camera should move if the player is less than 30% from the edge of the screen
-        let camera_bounds = game_state.world.camera_window();
-        let camera_width = camera_bounds.max_x - camera_bounds.min_x;
-        let camera_height = camera_bounds.max_y - camera_bounds.min_y;
-        let x_threshold = (camera_width as f64 * 0.3) as i64;
-        let y_threshold = (camera_height as f64 * 0.3) as i64;
-        let player_world_x = self.entity.position.0 as i64;
-        let player_world_y = self.entity.position.1 as i64;
-        if player_world_x < camera_bounds.min_x + x_threshold {
-            let move_by = camera_bounds.min_x - player_world_x + x_threshold;
-            game_state.world.move_camera(-move_by, 0);
-        } else if player_world_x > camera_bounds.max_x - x_threshold {
-            let move_by = player_world_x - camera_bounds.max_x + x_threshold;
-            game_state.world.move_camera(move_by, 0);
-        }
-        if player_world_y < camera_bounds.min_y + y_threshold {
-            let move_by = camera_bounds.min_y - player_world_y + y_threshold;
-            game_state.world.move_camera(0, -move_by);
-        } else if player_world_y > camera_bounds.max_y - y_threshold {
-            let move_by = player_world_y - camera_bounds.max_y + y_threshold;
-            game_state.world.move_camera(0, move_by);
-        }
+        game_state.world.camera_follow(self.entity.position.0.floor() as i64, self.entity.position.1.floor() as i64);
 
     }
 
@@ -157,7 +169,11 @@ impl Component for NewPlayerComponent {
 
         let player_screen_pos = game_state.world.to_screen_pos(player_world_x, player_world_y);
         if let Some((x,y)) = player_screen_pos {
-            self.sprite.render(&mut renderer, x, y, depth_base);
+            if self.dead_time.is_some() {
+                self.dead_sprite.render(&mut renderer, x, y, depth_base);
+            } else {
+                self.sprite.render(&mut renderer, x, y, depth_base);
+            }
         }
 
         if self.render_sensors {

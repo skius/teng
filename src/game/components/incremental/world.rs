@@ -166,6 +166,27 @@ impl World {
         self.tiles.get_mut(x, y)
     }
 
+    pub fn camera_follow(&mut self, x: i64, y: i64) {
+        let camera_bounds = self.camera_window();
+        // The camera should move if the target is less than 30% from the edge of the screen
+        let x_threshold = (self.screen_width as f64 * 0.3) as i64;
+        let y_threshold = (self.screen_height as f64 * 0.3) as i64;
+        if x < camera_bounds.min_x + x_threshold {
+            let move_by = camera_bounds.min_x - x + x_threshold;
+            self.move_camera(-move_by, 0);
+        } else if x > camera_bounds.max_x - x_threshold {
+            let move_by = x - camera_bounds.max_x + x_threshold;
+            self.move_camera(move_by, 0);
+        }
+        if y < camera_bounds.min_y + y_threshold {
+            let move_by = camera_bounds.min_y - y + y_threshold;
+            self.move_camera(0, -move_by);
+        } else if y > camera_bounds.max_y - y_threshold {
+            let move_by = y - camera_bounds.max_y + y_threshold;
+            self.move_camera(0, move_by);
+        }
+    }
+
     pub fn regenerate(&mut self) {
         // Generates the world
         let Bounds {
