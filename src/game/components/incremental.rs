@@ -53,7 +53,7 @@ use anymap::any::Any;
 use crossterm::event::{Event, KeyCode};
 use smallvec::SmallVec;
 use std::time::{Duration, Instant};
-use crate::game::components::incremental::player::NewPlayerComponent;
+use crate::game::components::incremental::player::{NewPlayerComponent, PlayerGhost};
 
 mod bidivec;
 pub mod ui;
@@ -74,19 +74,19 @@ enum GamePhase {
 
 #[derive(Debug)]
 struct PlayerHistoryElement {
-    x: usize,
-    y: usize,
+    x: i64,
+    y: i64,
     dead: bool,
 }
 
 #[derive(Debug)]
 struct Upgrades {
     auto_play: Option<bool>,
-    block_height: usize,
-    player_weight: usize,
+    block_height: u128,
+    player_weight: u128,
     player_jump_boost_factor: f64,
     fall_speed_factor: f64,
-    ghost_cuteness: usize,
+    ghost_cuteness: u128,
     velocity_exponent: f64,
 }
 
@@ -107,13 +107,13 @@ impl Upgrades {
 #[derive(Debug)]
 struct GameState {
     phase: GamePhase,
-    blocks: usize,
-    max_blocks: usize,
-    received_blocks: usize,
+    blocks: u128,
+    max_blocks: u128,
+    received_blocks: u128,
     // The amount of blocks the main player received, ignoring ghosts.
-    received_blocks_base: usize,
-    max_blocks_per_round: usize,
-    last_received_blocks: usize,
+    received_blocks_base: u128,
+    max_blocks_per_round: u128,
+    last_received_blocks: u128,
     last_round_time: f64,
     player_state: PlayerState,
     player_history: Vec<PlayerHistoryElement>,
@@ -215,7 +215,7 @@ impl Component for GameComponent {
                 }
                 if let Some(true) = game_state.upgrades.auto_play {
                     shared_state.pressed_keys.insert(KeyCode::Char(' '), 1);
-                    shared_state.pressed_keys.insert(KeyCode::Char('d'), 1);
+                    // shared_state.pressed_keys.insert(KeyCode::Char('d'), 1);
                 }
             }
             GamePhase::Moving => {}
@@ -527,7 +527,7 @@ impl Component for PlayerComponent {
                     * game_state.upgrades.block_height as f64
                     * game_state.upgrades.player_weight as f64
                     * death_velocity.powf(game_state.upgrades.velocity_exponent);
-                let blocks = blocks_f64.ceil() as usize;
+                let blocks = blocks_f64.ceil() as u128;
                 shared_state.debug_messages.push(DebugMessage::new(
                     format!(
                         "You fell from {} blocks high and earned {} blocks",
@@ -558,36 +558,36 @@ impl Component for PlayerComponent {
         shared_state.debug_info.bottom_wall = bottom_wall;
         shared_state.debug_info.y_vel = game_state.player_state.y_vel;
 
-        // Sample player
-        if current_time >= game_state.player_state.next_sample_time {
-            let player_history_element = PlayerHistoryElement {
-                x: game_state.player_state.x.floor() as usize,
-                y: game_state.player_state.y.floor() as usize,
-                dead: game_state.player_state.dead_time.is_some(),
-            };
-            game_state.player_history.push(player_history_element);
-            game_state.player_state.next_sample_time = game_state.player_state.next_sample_time
-                + Duration::from_secs_f64(1.0 / PlayerGhost::SAMPLE_RATE);
-            if game_state.player_history.len() as f64 / PlayerGhost::SAMPLE_RATE
-                > PlayerGhost::HISTORY_SIZE_SECS
-            {
-                game_state.player_history.remove(0);
-            }
-            // NOTE: expiry check is not really necessary, as right now ghosts cannot expire:
-            // their death time will come after the player's, at which point we're not in the moving phase
-            // anymore so this code is not run.
-            // A game mechanic could be making the ghosts faster or maybe change the death respawn time
-            // so that all ghosts have time to die. because if the player dies before all ghosts are dead,
-            // the ghosts won't give the player any points.
-            // another way to solve this is  to reduce the delay between individual ghosts.
-            // basically, we just want to reduce the offset from the player to the slowest ghost.
-            for ghost in &mut game_state.player_ghosts {
-                let (just_died, _expired) = ghost.update(&game_state.player_history);
-                if just_died {
-                    game_state.received_blocks += game_state.received_blocks_base;
-                }
-            }
-        }
+        // // Sample player
+        // if current_time >= game_state.player_state.next_sample_time {
+        //     // let player_history_element = PlayerHistoryElement {
+        //     //     x: game_state.player_state.x.floor() as usize,
+        //     //     y: game_state.player_state.y.floor() as usize,
+        //     //     dead: game_state.player_state.dead_time.is_some(),
+        //     // };
+        //     // game_state.player_history.push(player_history_element);
+        //     game_state.player_state.next_sample_time = game_state.player_state.next_sample_time
+        //         + Duration::from_secs_f64(1.0 / PlayerGhost::SAMPLE_RATE);
+        //     if game_state.player_history.len() as f64 / PlayerGhost::SAMPLE_RATE
+        //         > PlayerGhost::HISTORY_SIZE_SECS
+        //     {
+        //         game_state.player_history.remove(0);
+        //     }
+        //     // NOTE: expiry check is not really necessary, as right now ghosts cannot expire:
+        //     // their death time will come after the player's, at which point we're not in the moving phase
+        //     // anymore so this code is not run.
+        //     // A game mechanic could be making the ghosts faster or maybe change the death respawn time
+        //     // so that all ghosts have time to die. because if the player dies before all ghosts are dead,
+        //     // the ghosts won't give the player any points.
+        //     // another way to solve this is  to reduce the delay between individual ghosts.
+        //     // basically, we just want to reduce the offset from the player to the slowest ghost.
+        //     for ghost in &mut game_state.player_ghosts {
+        //         let (just_died, _expired) = ghost.update(&game_state.player_history);
+        //         if just_died {
+        //             game_state.received_blocks += game_state.received_blocks_base;
+        //         }
+        //     }
+        // }
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
@@ -630,98 +630,15 @@ impl Component for PlayerComponent {
             );
         }
 
-        for player_ghost in &game_state.player_ghosts {
-            player_ghost.render(
-                &mut renderer,
-                shared_state,
-                ghost_depth,
-                &game_state.player_state.sprite,
-                &game_state.player_state.dead_sprite,
-            );
-        }
-    }
-}
-
-#[derive(Debug)]
-struct PlayerGhost {
-    offset_secs: f64,
-    was_dead: bool,
-    death_time: Option<Instant>,
-}
-
-impl PlayerGhost {
-    const SAMPLE_RATE: f64 = 160.0;
-    const HISTORY_SIZE_SECS: f64 = 10.0;
-
-    fn new(offset_secs: f64) -> Self {
-        Self {
-            offset_secs,
-            was_dead: false,
-            death_time: None,
-        }
-    }
-
-    fn offset_as_samples(&self) -> usize {
-        (self.offset_secs * Self::SAMPLE_RATE) as usize
-    }
-
-    // returns true if it just died, and if it expired
-    fn update(&mut self, history: &[PlayerHistoryElement]) -> (bool, bool) {
-        let current_time = Instant::now();
-        let history_size = history.len();
-        let offset_samples = self.offset_as_samples();
-        if history_size <= offset_samples {
-            // doesn't exist yet
-            return (false, false);
-        }
-        let render_state = &history[history_size - offset_samples - 1];
-        let dead = render_state.dead;
-        let just_died = dead && !self.was_dead;
-        self.was_dead = dead;
-        if just_died {
-            self.death_time = Some(current_time);
-        }
-
-        let expired = if let Some(death_time) = self.death_time {
-            let time_since_death = (current_time - death_time).as_secs_f64();
-            time_since_death >= PlayerComponent::DEATH_RESPAWN_TIME
-        } else {
-            false
-        };
-
-        (just_died, expired)
-    }
-
-    fn render(
-        &self,
-        mut renderer: &mut dyn Renderer,
-        shared_state: &SharedState,
-        depth_base: i32,
-        player_sprite: &Sprite<3, 2>,
-        death_sprite: &Sprite<5, 1>,
-    ) {
-        let game_state = shared_state.extensions.get::<GameState>().unwrap();
-        let current_time = Instant::now();
-        let history = &game_state.player_history;
-        let history_size = history.len();
-        let offset_samples = self.offset_as_samples();
-        if history_size <= offset_samples {
-            return;
-        }
-        let render_state = &history[history_size - offset_samples - 1];
-        let cuteness = game_state.upgrades.ghost_cuteness;
-        if render_state.dead {
-            death_sprite.with_color([130, 130, 130]).render(
-                &mut renderer,
-                render_state.x,
-                render_state.y,
-                depth_base,
-            );
-        } else {
-            player_sprite
-                .with_color([130 + cuteness as u8, 130, 130])
-                .render(&mut renderer, render_state.x, render_state.y, depth_base);
-        }
+        // for player_ghost in &game_state.player_ghosts {
+        //     player_ghost.render(
+        //         &mut renderer,
+        //         shared_state,
+        //         ghost_depth,
+        //         &game_state.player_state.sprite,
+        //         &game_state.player_state.dead_sprite,
+        //     );
+        // }
     }
 }
 

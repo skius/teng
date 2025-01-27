@@ -89,6 +89,7 @@ pub struct PhysicsEntity2d {
     pub size_bottom: f64,
     pub size_left: f64,
     pub size_right: f64,
+    pub y_accel: f64,
 }
 
 impl PhysicsEntity2d {
@@ -135,7 +136,7 @@ impl PhysicsEntity2d {
 
         let mut collision_info = CollisionInformation::default();
 
-        self.update_velocity(dt, (0.0, -40.0));
+        self.update_velocity(dt, (0.0, self.y_accel));
 
         let (x, _) = self.position;
         let (vx, vy) = self.velocity;

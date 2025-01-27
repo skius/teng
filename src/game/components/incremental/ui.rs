@@ -80,7 +80,7 @@ macro_rules! new_button {
             screen_width: usize,
             screen_height: usize,
             button_text: String,
-            cost: usize,
+            cost: u128,
             $( $field: $field_type ),*
         }
 
@@ -144,7 +144,7 @@ macro_rules! new_button {
                     $game_state.max_blocks -= $self.cost;
                     $game_state.blocks -= $self.cost;
                     $on_click
-                    $self.cost = (($self.cost as f64) * $cost_growth).ceil() as usize;
+                    $self.cost = (($self.cost as f64) * $cost_growth).ceil() as u128;
                 }
             }
 
