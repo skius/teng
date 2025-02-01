@@ -1,5 +1,5 @@
 use crate::game::display::Display;
-use crate::game::{Pixel, Render};
+use crate::game::{Color, Pixel, Render};
 use crossterm::queue;
 use std::io;
 use std::io::{Stdout, Write};

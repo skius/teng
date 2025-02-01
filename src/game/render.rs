@@ -1,6 +1,7 @@
 use crate::game::{renderer::Renderer, Color, Pixel};
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 use std::io::Write;
+use crate::game::display::Display;
 
 pub trait Render {
     /// Render the object at the given position with the given depth
@@ -195,3 +196,64 @@ impl<'a, R: Renderer> Renderer for TransparentRendererAdapter<'a, R> {
         self.renderer.flush()
     }
 }
+
+
+pub struct HalfBlockDisplayRender {
+    pub width: usize,
+    pub height: usize,
+    pub display: Display<Pixel>
+}
+
+impl HalfBlockDisplayRender {
+    pub fn new(width: usize, height: usize) -> Self {
+        let mut pixel = Pixel::default();
+        pixel.color = Color::Transparent;
+        pixel.bg_color = Color::Transparent;
+        Self {
+            width,
+            height,
+            display: Display::new(width, height, pixel),
+        }
+    }
+
+    pub fn set_pixel(&mut self, x: usize, y: usize, pixel: Pixel) {
+        // we support only full block pixels
+        assert!(pixel.c == '█');
+        self.display.set(x, y, pixel);
+    }
+}
+
+impl Render for HalfBlockDisplayRender {
+    fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
+        for y in 0..(self.height/2) {
+            for x in 0..self.width {
+                let color_top = self.display.get(x, 2 * y).unwrap().color;
+                let color_bottom = self.display.get(x, 2 * y + 1).unwrap().color;
+
+                match (color_top, color_bottom) {
+                    // no need to draw anything
+                    (Color::Transparent, Color::Transparent) => continue,
+                    (Color::Transparent, color) => {
+                        let mut pixel = Pixel::new('▄');
+                        pixel.color = color;
+                        pixel.bg_color = Color::Transparent;
+                        renderer.render_pixel(x, y, pixel, depth);
+                    }
+                    (color, Color::Transparent) => {
+                        let mut pixel = Pixel::new('▀');
+                        pixel.color = color;
+                        pixel.bg_color = Color::Transparent;
+                        renderer.render_pixel(x, y, pixel, depth);
+                    }
+                    (color_top, color_bottom) => {
+                        let mut pixel = Pixel::new('▀');
+                        pixel.color = color_top;
+                        pixel.bg_color = color_bottom;
+                        renderer.render_pixel(x, y, pixel, depth);
+                    }
+                }
+            }
+        }
+    }
+}
+

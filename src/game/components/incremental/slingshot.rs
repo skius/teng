@@ -1,7 +1,8 @@
 use std::time::{Duration, Instant};
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
-use crate::game::{BreakingAction, Component, DebugMessage, Pixel, Renderer, SharedState, UpdateInfo};
+use crate::game::{BreakingAction, Component, DebugMessage, HalfBlockDisplayRender, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
 use crate::game::components::incremental::{GamePhase, GameState};
+use crate::game::components::incremental::ui::UiBarComponent;
 use crate::game::components::MouseTrackerComponent;
 
 pub struct SlingshotComponent {
@@ -11,6 +12,7 @@ pub struct SlingshotComponent {
     last_release: Option<(usize, usize)>,
     // relative (x, y) of the slingshot from the player
     slingshot: Option<(i64, i64)>,
+    half_block_display_render: HalfBlockDisplayRender,
 }
 
 impl SlingshotComponent {
@@ -19,14 +21,19 @@ impl SlingshotComponent {
             first_down: None,
             last_release: None,
             slingshot: None,
+            half_block_display_render: HalfBlockDisplayRender::new(0, 0),
         }
     }
 }
 
 impl Component for SlingshotComponent {
+    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
+        self.half_block_display_render = HalfBlockDisplayRender::new(setup_info.width, 2 * setup_info.height);
+    }
+
     fn is_active(&self, shared_state: &SharedState) -> bool {
         let game_state = shared_state.extensions.get::<GameState>().unwrap();
-        game_state.phase == GamePhase::Moving && game_state.new_player_state.dead_time.is_none()
+        game_state.phase == GamePhase::Moving
     }
 
     fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
@@ -43,6 +50,9 @@ impl Component for SlingshotComponent {
                     _ => {}
                 }
             }
+            Event::Resize(width, height) => {
+                self.half_block_display_render.display.resize_discard(width as usize, 2 * (height as usize));
+            }
             _ => {}
         }
         None
@@ -50,6 +60,15 @@ impl Component for SlingshotComponent {
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
         let mut game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
+        // don't do anything except reset if we're dead
+        if game_state.new_player_state.dead_time.is_some() {
+            self.first_down = None;
+            self.last_release = None;
+            self.slingshot = None;
+            self.half_block_display_render.display.clear();
+            return;
+        }
+        
         let mut slingshot = None;
 
         // remove first_down if oob
@@ -102,16 +121,21 @@ impl Component for SlingshotComponent {
             // debug
             shared_state.debug_messages.push(DebugMessage::new(format!("Slingshot: ({}, {})", s_x, s_y), Instant::now() + Duration::from_secs_f64(3.0)));
             game_state.new_player_state.entity.x_drag = 0.6;
-            game_state.new_player_state.entity.velocity.0 += s_x as f64 * 1.0;
-            game_state.new_player_state.entity.velocity.1 += s_y as f64 * 2.0;
+            // add velocity
+            // game_state.new_player_state.entity.velocity.0 += s_x as f64 * 1.0;
+            // game_state.new_player_state.entity.velocity.1 += s_y as f64 * 2.0;
+            // override velocity
+            game_state.new_player_state.entity.velocity.0 = s_x as f64 * 1.0;
+            game_state.new_player_state.entity.velocity.1 = s_y as f64 * 2.0;
 
             self.first_down = None;
             self.last_release = None;
         }
-    }
 
-    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+
+        // prepare render:
         // render a line in screenspace
+        self.half_block_display_render.display.clear();
         if let Some((initial_x, initial_y)) = self.first_down {
             if shared_state.mouse_info.left_mouse_down {
                 let (last_x, last_y) = shared_state.mouse_info.last_mouse_pos;
@@ -123,13 +147,26 @@ impl Component for SlingshotComponent {
                 first_update.last_mouse_pos = (initial_x, initial_y);
                 last_update.last_mouse_pos = (last_x, last_y);
 
+                // adjust y's for the half block display
+                first_update.last_mouse_pos.1 *= 2;
+                last_update.last_mouse_pos.1 *= 2;
+
 
                 // draw a lind from initial to last. use the mouse interpolator
                 MouseTrackerComponent::smooth_two_updates(first_update, last_update, |mi| {
-                    let pixel = Pixel::new('█');
-                    renderer.render_pixel(mi.last_mouse_pos.0, mi.last_mouse_pos.1, pixel, depth_base);
+                    // don't render over UI at all. even if depth was appropriate, because we mess with background etc this could be ugly.
+                    // so just hardcode that we don't render there
+                    if mi.last_mouse_pos.1 / 2 >= shared_state.display_info.height() - UiBarComponent::HEIGHT {
+                        return;
+                    }
+                    let pixel = Pixel::new('█').with_color([255; 3]).with_bg_color([255; 3]);
+                    self.half_block_display_render.set_pixel(mi.last_mouse_pos.0, mi.last_mouse_pos.1, pixel);
                 });
             }
         }
+    }
+
+    fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+        self.half_block_display_render.render(&mut renderer, 0, 0, depth_base);
     }
 }
