@@ -54,6 +54,7 @@ use crossterm::event::{Event, KeyCode};
 use smallvec::SmallVec;
 use std::time::{Duration, Instant};
 use crate::game::components::incremental::player::{NewPlayerComponent, PlayerGhost};
+use crate::game::components::incremental::slingshot::SlingshotComponent;
 
 mod bidivec;
 pub mod ui;
@@ -62,6 +63,7 @@ mod planarvec;
 mod collisionboard;
 mod player;
 mod animation;
+mod slingshot;
 
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 enum GamePhase {
@@ -162,15 +164,18 @@ impl Component for GameComponent {
         shared_state
             .components_to_add
             .push(Box::new(WorldComponent::new()));
-        shared_state
-            .components_to_add
-            .push(Box::new(PlayerComponent::new()));
+        // shared_state
+        //     .components_to_add
+        //     .push(Box::new(PlayerComponent::new()));
         shared_state
             .components_to_add
             .push(Box::new(NewPlayerComponent::new()));
         shared_state
             .components_to_add
             .push(Box::new(BuildingDrawComponent::new()));
+        shared_state
+            .components_to_add
+            .push(Box::new(SlingshotComponent::new()));
         shared_state
             .components_to_add
             .push(Box::new(UiBarComponent::new()));

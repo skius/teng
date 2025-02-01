@@ -137,6 +137,23 @@ impl World {
         }
     }
 
+    pub fn to_world_pos(&self, screen_x: usize, screen_y: usize) -> Option<(i64, i64)> {
+
+
+        let camera_x = self.camera_attach.0;
+        let camera_y = self.camera_attach.1;
+
+        let world_x = camera_x + screen_x as i64;
+        let world_y = camera_y - screen_y as i64;
+
+        // Only return if the world position is inside the cameras windows (in particular, not in UI)
+        if self.camera_window().contains(world_x, world_y) {
+            Some((world_x, world_y))
+        } else {
+            None
+        }
+    }
+
     pub fn move_camera(&mut self, dx: i64, dy: i64) {
         self.camera_attach.0 += dx;
         self.camera_attach.1 += dy;
