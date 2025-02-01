@@ -6,11 +6,7 @@ mod game;
 mod physics;
 
 use crate::game::components::elevator::ElevatorComponent;
-use crate::game::components::{
-    incremental, ClearComponent, DebugInfoComponent, DecayComponent, FPSLockerComponent,
-    FloodFillComponent, ForceApplyComponent, KeyPressRecorderComponent, MouseTrackerComponent,
-    PhysicsComponent, PlayerComponent, QuitterComponent, SimpleDrawComponent,
-};
+use crate::game::components::{incremental, video, ClearComponent, DebugInfoComponent, DecayComponent, FPSLockerComponent, FloodFillComponent, ForceApplyComponent, KeyPressRecorderComponent, MouseTrackerComponent, PhysicsComponent, PlayerComponent, QuitterComponent, SimpleDrawComponent};
 use crate::game::{DisplayRenderer, Game, Pixel, Render, Renderer, Sprite};
 use crossterm::event::{KeyEvent, KeyboardEnhancementFlags, MouseButton, MouseEventKind};
 use crossterm::style::{Color, Colored, Colors};
@@ -28,6 +24,7 @@ use std::ops::Deref;
 use std::thread::sleep;
 use std::time::Instant;
 use std::{io, time::Duration};
+use crate::game::components::video::VideoComponent;
 
 const HELP: &str = r#"Blocking poll() & non-blocking read()
  - Keyboard, mouse and terminal resize events enabled
@@ -608,6 +605,7 @@ fn main() -> io::Result<()> {
     // game.add_component_with(|width, height| Box::new(incremental::PlayerComponent::new(1, height)));
     game.add_component(Box::new(incremental::GameComponent::new()));
     game.add_component(Box::new(DebugInfoComponent::new()));
+    game.add_component(Box::new(VideoComponent::new()));
     // game.add_component_with(|width, height| Box::new(ElevatorComponent::new(width, height)));
 
     if let Err(e) = game.run() {

@@ -1,5 +1,6 @@
 pub mod elevator;
 pub mod incremental;
+pub mod video;
 
 use crate::game::display::Display;
 use crate::game::{
