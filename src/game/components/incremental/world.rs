@@ -136,15 +136,21 @@ impl World {
             None
         }
     }
-
-    pub fn to_world_pos(&self, screen_x: usize, screen_y: usize) -> Option<(i64, i64)> {
-
-
+    
+    /// Converts a screen position to a world position, even if it is out of bounds.
+    pub fn to_world_pos_oob(&self, screen_x: i64, screen_y: i64) -> (i64, i64) {
         let camera_x = self.camera_attach.0;
         let camera_y = self.camera_attach.1;
 
-        let world_x = camera_x + screen_x as i64;
-        let world_y = camera_y - screen_y as i64;
+        let world_x = camera_x + screen_x;
+        let world_y = camera_y - screen_y;
+
+        (world_x, world_y)
+    }
+
+    /// Converts a screen position to a world position, if it is inside the world.
+    pub fn to_world_pos(&self, screen_x: usize, screen_y: usize) -> Option<(i64, i64)> {
+        let (world_x, world_y) = self.to_world_pos_oob(screen_x as i64, screen_y as i64);
 
         // Only return if the world position is inside the cameras windows (in particular, not in UI)
         if self.camera_window().contains(world_x, world_y) {

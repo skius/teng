@@ -53,7 +53,7 @@ use anymap::any::Any;
 use crossterm::event::{Event, KeyCode};
 use smallvec::SmallVec;
 use std::time::{Duration, Instant};
-use crate::game::components::incremental::player::{NewPlayerComponent, PlayerGhost};
+use crate::game::components::incremental::player::{NewPlayerComponent, NewPlayerState, PlayerGhost};
 use crate::game::components::incremental::slingshot::SlingshotComponent;
 
 mod bidivec;
@@ -118,6 +118,7 @@ struct GameState {
     last_received_blocks: u128,
     last_round_time: f64,
     player_state: PlayerState,
+    new_player_state: NewPlayerState,
     player_history: Vec<PlayerHistoryElement>,
     player_ghosts: Vec<PlayerGhost>,
     curr_ghost_delay: f64,
@@ -139,6 +140,7 @@ impl GameState {
             max_blocks_per_round: 0,
             last_received_blocks: 0,
             player_state: PlayerState::new(1, height - UiBarComponent::HEIGHT),
+            new_player_state: NewPlayerState::new(),
             player_history: Vec::new(),
             player_ghosts: vec![],
             curr_ghost_delay: 1.0,

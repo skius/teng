@@ -80,6 +80,7 @@ impl IndexMut<(i64, i64)> for CollisionBoard {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct PhysicsEntity2d {
     pub position: (f64, f64),
     pub velocity: (f64, f64),
@@ -90,6 +91,7 @@ pub struct PhysicsEntity2d {
     pub size_left: f64,
     pub size_right: f64,
     pub y_accel: f64,
+    pub x_drag: f64,
 }
 
 impl PhysicsEntity2d {
@@ -117,11 +119,15 @@ impl PhysicsEntity2d {
         collision_board.collides_growing(floor_sensor)
     }
 
-    fn update_velocity(&mut self, dt: f64, acceleration: (f64, f64)) {
+    fn update_velocity(&mut self, dt: f64, acceleration: (f64, f64), drag: (f64, f64)) {
         let (ax, ay) = acceleration;
         let (vx, vy) = self.velocity;
+        let (drag_x, drag_y) = drag;
+        let drag_x = drag_x.powf(dt);
+        let drag_y = drag_y.powf(dt);
+        
 
-        self.velocity = (vx + ax * dt, vy + ay * dt);
+        self.velocity = (vx * drag_x + ax * dt, vy * drag_y + ay * dt);
     }
 
     pub fn update(&mut self, dt: f64, step_size: i64, collision_board: &mut CollisionBoard) -> CollisionInformation {
@@ -136,7 +142,7 @@ impl PhysicsEntity2d {
 
         let mut collision_info = CollisionInformation::default();
 
-        self.update_velocity(dt, (0.0, self.y_accel));
+        self.update_velocity(dt, (0.0, self.y_accel), (self.x_drag, 1.0));
 
         let (x, _) = self.position;
         let (vx, vy) = self.velocity;
