@@ -46,6 +46,8 @@ impl Component for SlingshotComponent {
                     }
                     MouseEventKind::Down(MouseButton::Left) => {
                         self.first_down.get_or_insert((x, y));
+                        // we have no release for _this down_ yet
+                        self.last_release = None;
                     }
                     _ => {}
                 }
@@ -70,7 +72,7 @@ impl Component for SlingshotComponent {
             self.half_block_display_render.display.clear();
             return;
         }
-        
+
         let mut slingshot = None;
 
         // remove first_down if oob
@@ -85,7 +87,7 @@ impl Component for SlingshotComponent {
         //     self.last_release = Some(shared_state.mouse_info.last_mouse_pos);
         // }
 
-        // if we have an in-bounds first_down and a last_release, set a slingshot
+        // if we have an in-bounds first_down and a last_release (anywhere), set a slingshot
         if let Some((initial_x, initial_y)) = self.first_down {
             if let Some((last_x, last_y)) = self.last_release {
                 let dx = last_x as i64 - initial_x as i64;
@@ -130,8 +132,8 @@ impl Component for SlingshotComponent {
             // game_state.new_player_state.entity.velocity.0 += s_x as f64 * 1.0;
             // game_state.new_player_state.entity.velocity.1 += s_y as f64 * 2.0;
             // override velocity
-            game_state.new_player_state.entity.velocity.0 = s_x as f64 * 1.0;
-            game_state.new_player_state.entity.velocity.1 = s_y as f64 * 2.0;
+            game_state.new_player_state.entity.velocity.0 = s_x as f64 * 4.0;
+            game_state.new_player_state.entity.velocity.1 = s_y as f64 * 4.0;
 
             self.first_down = None;
             self.last_release = None;

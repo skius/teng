@@ -65,6 +65,9 @@ impl NewPlayerState {
         let current_time = Instant::now();
         player.dead_time = Some(current_time);
 
+        // make drag high
+        player.entity.x_drag = 0.2;
+
         player.dead_sprite = if player.entity.velocity.0 >= 0.0 {
             Sprite::new([['▂', '▆', '▆', ' ', '▖']], 2, 0)
         } else {
@@ -83,17 +86,28 @@ impl NewPlayerState {
     fn horizontal_inputs(&mut self, pressed_keys: &micromap::Map<KeyCode, u8, 16>) {
         let slow_velocity = 10.0;
         let fast_velocity = 30.0;
+        
+        let mut did_move = false;
 
         if pressed_keys.contains_key(&KeyCode::Char('a')) {
             self.entity.velocity.0 = if self.entity.velocity.0 > 0.0 { 0.0 } else { -slow_velocity };
+            did_move = true;
         } else if pressed_keys.contains_key(&KeyCode::Char('d')) {
             self.entity.velocity.0 = if self.entity.velocity.0 < 0.0 { 0.0 } else { slow_velocity };
+            did_move = true;
         }
 
         if pressed_keys.contains_key(&KeyCode::Char('A')) {
             self.entity.velocity.0 = if self.entity.velocity.0 > 0.0 { 0.0 } else { -fast_velocity };
+            did_move = true;
         } else if pressed_keys.contains_key(&KeyCode::Char('D')) {
             self.entity.velocity.0 = if self.entity.velocity.0 < 0.0 { 0.0 } else { fast_velocity };
+            did_move = true;
+        }
+        
+        if did_move {
+            // reset drag
+            self.entity.x_drag = 1.0;
         }
     }
 }
@@ -127,12 +141,13 @@ impl Component for NewPlayerComponent {
 
         if let Some(dead_time) = game_state.new_player_state.dead_time {
             let time_since_death = (current_time - dead_time).as_secs_f64();
-            if time_since_death >= Self::DEATH_STOP_X_MOVE_TIME {
-                game_state.new_player_state.entity.velocity.0 = 0.0;
-            }
+            // if time_since_death >= Self::DEATH_STOP_X_MOVE_TIME {
+            //     game_state.new_player_state.entity.velocity.0 = 0.0;
+            // }
             if time_since_death >= Self::DEATH_RESPAWN_TIME {
                 game_state.phase = GamePhase::MoveToBuilding;
                 game_state.new_player_state.dead_time = None;
+                game_state.new_player_state.entity.x_drag = 1.0;
                 // for all ghosts that did not die, add 1 block
                 for ghost in &game_state.player_ghosts {
                     if ghost.death_time.is_none() {
@@ -152,7 +167,7 @@ impl Component for NewPlayerComponent {
             -40.0
         };
         game_state.new_player_state.entity.y_accel = y_accel;
-        
+
         // only update if not paused
         if !game_state.new_player_state.paused {
             ;
