@@ -15,6 +15,7 @@ pub struct NewPlayerState {
     pub max_height_since_ground: f64,
     pub dead_time: Option<Instant>,
     pub next_sample_time: Instant,
+    pub paused: bool,
 }
 
 impl NewPlayerState {
@@ -36,6 +37,7 @@ impl NewPlayerState {
             max_height_since_ground: f64::MIN,
             dead_time: None,
             next_sample_time: Instant::now(),
+            paused: false,
         }
     }
 
@@ -151,30 +153,35 @@ impl Component for NewPlayerComponent {
         };
         game_state.new_player_state.entity.y_accel = y_accel;
         
-        let step_size = if game_state.new_player_state.dead_time.is_some() { 0 } else { 1 };
-        let yvel_before = game_state.new_player_state.entity.velocity.1;
-        let collision_info = game_state.new_player_state.entity.update(dt, step_size, &mut game_state.world.collision_board);
+        // only update if not paused
+        if !game_state.new_player_state.paused {
+            ;
 
-        if !collision_info.hit_bottom {
-            game_state.new_player_state.max_height_since_ground = game_state.new_player_state.max_height_since_ground.max(game_state.new_player_state.entity.position.1);
-        } else {
-            let fall_distance = game_state.new_player_state.max_height_since_ground - game_state.new_player_state.entity.position.1;
-            if fall_distance > 7.0 {
-                game_state.new_player_state.spawn_ground_slam_animation(&mut game_state.world);
+            let step_size = if game_state.new_player_state.dead_time.is_some() { 0 } else { 1 };
+            let yvel_before = game_state.new_player_state.entity.velocity.1;
+            let collision_info = game_state.new_player_state.entity.update(dt, step_size, &mut game_state.world.collision_board);
+
+            if !collision_info.hit_bottom {
+                game_state.new_player_state.max_height_since_ground = game_state.new_player_state.max_height_since_ground.max(game_state.new_player_state.entity.position.1);
+            } else {
+                let fall_distance = game_state.new_player_state.max_height_since_ground - game_state.new_player_state.entity.position.1;
+                if fall_distance > 7.0 {
+                    game_state.new_player_state.spawn_ground_slam_animation(&mut game_state.world);
+                }
+
+                if fall_distance >= Self::DEATH_HEIGHT {
+                    NewPlayerState::on_death(fall_distance, yvel_before, game_state);
+                }
+
+                game_state.new_player_state.max_height_since_ground = game_state.new_player_state.entity.position.1;
             }
 
-            if fall_distance >= Self::DEATH_HEIGHT {
-                NewPlayerState::on_death(fall_distance, yvel_before, game_state);
-            }
-
-            game_state.new_player_state.max_height_since_ground = game_state.new_player_state.entity.position.1;
-        }
-
-        if game_state.new_player_state.dead_time.is_none() {
-            // Now jump input since we need grounded information
-            if shared_state.pressed_keys.contains_key(&KeyCode::Char(' ')) {
-                if game_state.new_player_state.entity.grounded(&mut game_state.world.collision_board) {
-                    game_state.new_player_state.entity.velocity.1 = 20.0 * game_state.upgrades.player_jump_boost_factor;
+            if game_state.new_player_state.dead_time.is_none() {
+                // Now jump input since we need grounded information
+                if shared_state.pressed_keys.contains_key(&KeyCode::Char(' ')) {
+                    if game_state.new_player_state.entity.grounded(&mut game_state.world.collision_board) {
+                        game_state.new_player_state.entity.velocity.1 = 20.0 * game_state.upgrades.player_jump_boost_factor;
+                    }
                 }
             }
         }

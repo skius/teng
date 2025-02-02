@@ -52,6 +52,8 @@ impl Component for SlingshotComponent {
             }
             Event::Resize(width, height) => {
                 self.half_block_display_render.display.resize_discard(width as usize, 2 * (height as usize));
+                self.half_block_display_render.height = 2 * (height as usize);
+                self.half_block_display_render.width = width as usize;
             }
             _ => {}
         }
@@ -93,6 +95,9 @@ impl Component for SlingshotComponent {
 
                 // invert because we want to apply 'slingshot' force
                 slingshot = Some((-dx, -dy));
+            } else {
+                // we must still be pressing
+                game_state.new_player_state.paused = true;
             }
         }
 
@@ -130,6 +135,7 @@ impl Component for SlingshotComponent {
 
             self.first_down = None;
             self.last_release = None;
+            game_state.new_player_state.paused = false;
         }
 
 
