@@ -136,7 +136,7 @@ impl World {
             None
         }
     }
-    
+
     /// Converts a screen position to a world position, even if it is out of bounds.
     pub fn to_world_pos_oob(&self, screen_x: i64, screen_y: i64) -> (i64, i64) {
         let camera_x = self.camera_attach.0;
@@ -168,8 +168,16 @@ impl World {
 
     /// Expands the world to at the minimum contain the given bounds.
     fn expand_to_contain(&mut self, bounds: Bounds) {
+        let current_bounds = self.world_bounds();
+        if current_bounds.contains_bounds(bounds) {
+            return;
+        }
+        
         self.tiles.expand(bounds, Tile::Ungenerated);
         self.collision_board.expand(bounds);
+        // TODO: only regenerate the portions that are new.
+        // Could solve this by keeping track of the generated bounds, and then only regenerating
+        // the four bounds you get by subtracting the new world bounds from the generated bounds
         self.regenerate();
     }
 
@@ -339,10 +347,11 @@ impl Component for WorldComponent {
             .unwrap()
             .world;
 
-        if shared_state.pressed_keys.contains_key(&KeyCode::Char('r')) {
-            world.regenerate();
-        }
-
+        // if shared_state.pressed_keys.contains_key(&KeyCode::Char('r')) {
+        //     world.regenerate();
+        // }
+        
+        // In case the collision board grew from physics
         world.tiles.expand(world.collision_board.bounds(), Tile::Ungenerated);
 
         // if shared_state.pressed_keys.contains_key(&KeyCode::Char('w')) {

@@ -4,7 +4,7 @@ use crate::game::components::incremental::bidivec::BidiVec;
 /// Bounds for a 2D plane. Includes all indices.
 /// x values range from min_x..=max_x
 /// y values range from min_y..=max_y
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Bounds {
     pub max_x: i64,
     pub min_x: i64,
@@ -15,6 +15,10 @@ pub struct Bounds {
 impl Bounds {
     pub fn contains(&self, x: i64, y: i64) -> bool {
         x >= self.min_x && x <= self.max_x && y >= self.min_y && y <= self.max_y
+    }
+    
+    pub fn contains_bounds(&self, other: Bounds) -> bool {
+        self.contains(other.min_x, other.min_y) && self.contains(other.max_x, other.max_y)
     }
 }
 
@@ -76,6 +80,10 @@ impl<T> PlanarVec<T> {
             min_y: self.bounds.min_y.min(bounds.min_y),
             max_y: self.bounds.max_y.max(bounds.max_y),
         };
+        
+        if union_bounds == self.bounds {
+            return;
+        }
 
         self.data.grow(union_bounds.min_x..=union_bounds.max_x, BidiVec::new());
         for row in self.data.iter_mut() {
