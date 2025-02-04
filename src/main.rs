@@ -24,6 +24,7 @@ use std::ops::Deref;
 use std::thread::sleep;
 use std::time::Instant;
 use std::{io, time::Duration};
+use crate::game::components::incremental::falling::FallingSimulationComponent;
 use crate::game::components::video::VideoComponent;
 
 const HELP: &str = r#"Blocking poll() & non-blocking read()
@@ -607,6 +608,7 @@ fn main() -> io::Result<()> {
     game.add_component(Box::new(DebugInfoComponent::new()));
     // game.add_component(Box::new(VideoComponent::new()));
     // game.add_component_with(|width, height| Box::new(ElevatorComponent::new(width, height)));
+    game.add_component(Box::new(FallingSimulationComponent::new()));
 
     if let Err(e) = game.run() {
         println!("Error: {:?}", e);

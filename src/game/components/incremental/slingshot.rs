@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
-use crate::game::{BreakingAction, Component, DebugMessage, HalfBlockDisplayRender, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
+use crate::game::{BreakingAction, Color, Component, DebugMessage, HalfBlockDisplayRender, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
 use crate::game::components::incremental::{GamePhase, GameState};
 use crate::game::components::incremental::ui::UiBarComponent;
 use crate::game::components::MouseTrackerComponent;
@@ -167,8 +167,7 @@ impl Component for SlingshotComponent {
                     if mi.last_mouse_pos.1 / 2 >= shared_state.display_info.height() - UiBarComponent::HEIGHT {
                         return;
                     }
-                    let pixel = Pixel::new('█').with_color([255; 3]).with_bg_color([255; 3]);
-                    self.half_block_display_render.set_pixel(mi.last_mouse_pos.0, mi.last_mouse_pos.1, pixel);
+                    self.half_block_display_render.set_color(mi.last_mouse_pos.0, mi.last_mouse_pos.1, Color::Rgb([255; 3]));
                 });
             }
         }

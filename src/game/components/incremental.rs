@@ -64,6 +64,7 @@ mod collisionboard;
 mod player;
 mod animation;
 mod slingshot;
+pub mod falling;
 
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 enum GamePhase {
