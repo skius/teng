@@ -30,7 +30,6 @@ struct FallingSimulationData {
     secs_passed: f64,
     total_pieces: usize,
     world: PlanarVec<Piece>,
-    old_world: PlanarVec<Piece>,
     has_moved: PlanarVec<bool>,
 }
 
@@ -47,8 +46,105 @@ impl FallingSimulationData {
             secs_passed: 0.0,
             total_pieces: 0,
             world: PlanarVec::new(bounds, Piece { kind: PieceKind::Air }),
-            old_world: PlanarVec::new(bounds, Piece { kind: PieceKind::Air }),
             has_moved: PlanarVec::new(bounds, false),
+        }
+    }
+
+    fn swap(&mut self, (x1, y1): (i64, i64), (x2, y2): (i64, i64)) {
+        let temp = self.world[(x1, y1)];
+        self.world[(x1, y1)] = self.world[(x2, y2)];
+        self.world[(x2, y2)] = temp;
+    }
+
+    fn sim_sand(&mut self, (x, y): (i64, i64)) {
+        let piece = self.world[(x, y)];
+
+        // check below
+        if let Some(&below) = self.world.get(x, y - 1) {
+            if below.kind.density() < piece.kind.density() {
+                self.swap((x, y), (x, y - 1));
+                self.has_moved[(x, y)] = true;
+                self.has_moved[(x, y - 1)] = true;
+                // moved, no more sim
+                return;
+            }
+        }
+        // check below and right
+        if let Some(&below_right) = self.world.get(x + 1, y - 1) {
+            if below_right.kind.density() < piece.kind.density() {
+                self.swap((x, y), (x + 1, y - 1));
+                self.has_moved[(x, y)] = true;
+                self.has_moved[(x + 1, y - 1)] = true;
+                // moved, no more sim
+                return;
+            }
+        }
+        // check below and left
+        if let Some(&below_left) = self.world.get(x - 1, y - 1) {
+            if below_left.kind.density() < piece.kind.density() {
+                self.swap((x, y), (x - 1, y - 1));
+                self.has_moved[(x, y)] = true;
+                self.has_moved[(x - 1, y - 1)] = true;
+                // moved, no more sim
+                return;
+            }
+        }
+    }
+
+    fn sim_water(&mut self, (x, y): (i64, i64)) {
+        let piece = self.world[(x, y)];
+
+        // check below
+        if let Some(&below) = self.world.get(x, y - 1) {
+            if below.kind.density() < piece.kind.density() {
+                self.swap((x, y), (x, y - 1));
+                self.has_moved[(x, y)] = true;
+                self.has_moved[(x, y - 1)] = true;
+                // moved, no more sim
+                return;
+            }
+        }
+        // check below and right
+        if let Some(&below_right) = self.world.get(x + 1, y - 1) {
+            if below_right.kind.density() < piece.kind.density() {
+                self.swap((x, y), (x + 1, y - 1));
+                self.has_moved[(x, y)] = true;
+                self.has_moved[(x + 1, y - 1)] = true;
+                // moved, no more sim
+                return;
+            }
+        }
+        // check below and left
+        if let Some(&below_left) = self.world.get(x - 1, y - 1) {
+            if below_left.kind.density() < piece.kind.density() {
+                self.swap((x, y), (x - 1, y - 1));
+                self.has_moved[(x, y)] = true;
+                self.has_moved[(x - 1, y - 1)] = true;
+                // moved, no more sim
+                return;
+            }
+        }
+        // check right
+        if let Some(&right) = self.world.get(x + 1, y) {
+            // note: we are not checking densities anymore, since this is on the horizontal axis.
+            if right.kind == PieceKind::Air {
+                self.swap((x, y), (x + 1, y));
+                self.has_moved[(x, y)] = true;
+                self.has_moved[(x + 1, y)] = true;
+                // moved, no more sim
+                return;
+            }
+        }
+        // check left
+        if let Some(&left) = self.world.get(x - 1, y) {
+            // note: we are not checking densities anymore, since this is on the horizontal axis.
+            if left.kind == PieceKind::Air {
+                self.swap((x, y), (x - 1, y));
+                self.has_moved[(x, y)] = true;
+                self.has_moved[(x - 1, y)] = true;
+                // moved, no more sim
+                return;
+            }
         }
     }
 }
@@ -96,8 +192,8 @@ impl FallingSimulationComponent {
         data.secs_passed += Self::UPDATE_INTERVAL;
 
 
-        std::mem::swap(&mut data.world, &mut data.old_world);
-        data.world.clear(Piece { kind: PieceKind::Air });
+        // std::mem::swap(&mut data.world, &mut data.old_world);
+        // data.world.clear(Piece { kind: PieceKind::Air });
 
         data.has_moved.clear(false);
 
@@ -108,66 +204,38 @@ impl FallingSimulationComponent {
         data.total_pieces = 0;
 
         // go over every piece (that is not air) and update it
-
-        for x in data.old_world.x_range() {
-            for y in data.old_world.y_range() {
-                if data.old_world[(x, y)].kind != PieceKind::Air {
-                    data.total_pieces += 1;
-                }
+        for x in data.world.x_range() {
+            for y in data.world.y_range().rev() {
                 if data.has_moved[(x, y)] {
                     continue;
                 }
-                let piece = data.old_world[(x, y)];
+                let piece = data.world[(x, y)];
                 if piece.kind == PieceKind::Air {
                     continue;
                 }
 
-                // if the piece below has less density, move the piece down
-                if let Some(&below) = data.old_world.get(x, y - 1) {
-                    if below.kind == PieceKind::Air || below.kind.density() < piece.kind.density() {
-                        data.world[(x, y)] = below.clone();
-                        data.world[(x, y - 1)] = piece.clone();
-                        data.has_moved[(x, y)] = true;
-                        data.has_moved[(x, y - 1)] = true;
-                        // moved, no more sim
-                        continue;
-                    }
-                }
-
-                // do falling sand
                 match piece.kind {
-                    PieceKind::Sand => {
-                        // we know there is nothing below it.
-                        // check below and right
-                        if let Some(&below_right) = data.old_world.get(x + 1, y - 1) {
-                            if below_right.kind.density() < piece.kind.density() {
-                                data.world[(x + 1, y)] = below_right.clone();
-                                data.world[(x + 1, y - 1)] = piece.clone();
-                                data.has_moved[(x + 1, y)] = true;
-                                data.has_moved[(x + 1, y - 1)] = true;
-                                // moved, no more sim
-                                continue;
-                            }
-                        }
-                        // check below and left
-                        if let Some(&below_left) = data.old_world.get(x - 1, y - 1) {
-                            if below_left.kind.density() < piece.kind.density() {
-                                data.world[(x - 1, y)] = below_left.clone();
-                                data.world[(x - 1, y - 1)] = piece.clone();
-                                data.has_moved[(x - 1, y)] = true;
-                                data.has_moved[(x - 1, y - 1)] = true;
-                                // moved, no more sim
-                                continue;
-                            }
-                        }
+                    PieceKind::Air => {
+                        // do nothing
                     }
-                    _ => {}
+                    PieceKind::Sand => {
+                        data.sim_sand((x, y));
+                    }
+                    PieceKind::Water => {
+                        data.sim_water((x, y));
+                    }
+
                 }
-
-                // otherwise keep it
-                data.world[(x, y)] = piece.clone();
                 data.has_moved[(x, y)] = true;
+            }
+        }
 
+        for x in data.world.x_range() {
+            for y in data.world.y_range() {
+                let piece = data.world[(x, y)];
+                if piece.kind != PieceKind::Air {
+                    data.total_pieces += 1;
+                }
             }
         }
 
@@ -195,7 +263,7 @@ impl Component for FallingSimulationComponent {
         // add sand from mouse events
         let data = shared_state.extensions.get_mut::<FallingSimulationData>().unwrap();
 
-        if shared_state.mouse_info.left_mouse_down {
+        if shared_state.mouse_info.left_mouse_down || shared_state.mouse_info.right_mouse_down || shared_state.mouse_info.middle_mouse_down {
             let (s_x, s_y) = shared_state.mouse_info.last_mouse_pos;
 
             let x = s_x as i64 - 100;
@@ -205,7 +273,14 @@ impl Component for FallingSimulationComponent {
             let y = (y * 2) - 100;
 
             if let Some(piece) = data.world.get_mut(x, y) {
-                piece.kind = PieceKind::Sand;
+                let kind = if shared_state.mouse_info.left_mouse_down {
+                    PieceKind::Sand
+                } else if shared_state.mouse_info.right_mouse_down {
+                    PieceKind::Water
+                } else {
+                    PieceKind::Air
+                };
+                piece.kind = kind;
             }
         }
 
@@ -219,7 +294,7 @@ impl Component for FallingSimulationComponent {
         let depth_base = i32::MAX - 99;
         let data = shared_state.extensions.get::<FallingSimulationData>().unwrap();
         format!("FallingSimulationComponent: {}", data.secs_passed).render(&mut renderer, 0, 0, depth_base);
-        format!("sands: {}", data.total_pieces).render(&mut renderer, 0, 1, depth_base);
+        format!("sands: [{}]", data.total_pieces).render(&mut renderer, 0, 1, depth_base);
 
 
         self.hb_display.render(&mut renderer, 0, 0, depth_base);
