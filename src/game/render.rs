@@ -199,9 +199,9 @@ impl<'a, R: Renderer> Renderer for TransparentRendererAdapter<'a, R> {
 
 
 pub struct HalfBlockDisplayRender {
-    pub width: usize,
-    pub height: usize,
-    pub display: Display<Color>
+    width: usize,
+    height: usize,
+    display: Display<Color>
 }
 
 impl HalfBlockDisplayRender {
@@ -215,6 +215,16 @@ impl HalfBlockDisplayRender {
 
     pub fn set_color(&mut self, x: usize, y: usize, color: Color) {
         self.display.set(x, y, color);
+    }
+
+    pub fn resize_discard(&mut self, width: usize, height: usize) {
+        self.width = width;
+        self.height = height;
+        self.display.resize_discard(width, height);
+    }
+
+    pub fn clear(&mut self) {
+        self.display.clear();
     }
 }
 

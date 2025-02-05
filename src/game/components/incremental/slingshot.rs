@@ -53,9 +53,7 @@ impl Component for SlingshotComponent {
                 }
             }
             Event::Resize(width, height) => {
-                self.half_block_display_render.display.resize_discard(width as usize, 2 * (height as usize));
-                self.half_block_display_render.height = 2 * (height as usize);
-                self.half_block_display_render.width = width as usize;
+                self.half_block_display_render.resize_discard(width as usize, 2 * (height as usize));
             }
             _ => {}
         }
@@ -69,7 +67,7 @@ impl Component for SlingshotComponent {
             self.first_down = None;
             self.last_release = None;
             self.slingshot = None;
-            self.half_block_display_render.display.clear();
+            self.half_block_display_render.clear();
             return;
         }
 
@@ -143,7 +141,7 @@ impl Component for SlingshotComponent {
 
         // prepare render:
         // render a line in screenspace
-        self.half_block_display_render.display.clear();
+        self.half_block_display_render.clear();
         if let Some((initial_x, initial_y)) = self.first_down {
             if shared_state.mouse_info.left_mouse_down {
                 let (last_x, last_y) = shared_state.mouse_info.last_mouse_pos;

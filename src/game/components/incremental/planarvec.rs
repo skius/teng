@@ -50,7 +50,28 @@ impl<T> PlanarVec<T> {
     pub fn bounds(&self) -> Bounds {
         self.bounds
     }
-
+    
+    /// Returns the x range
+    pub fn x_range(&self) -> impl Iterator<Item = i64> {
+        self.bounds.min_x..=self.bounds.max_x
+    }
+    
+    /// Returns the y range
+    pub fn y_range(&self) -> impl Iterator<Item = i64> {
+        self.bounds.min_y..=self.bounds.max_y
+    }
+    
+    /// Clear the entire PlanarVec to the default value.
+    pub fn clear(&mut self, default: T)
+    where
+        T: Clone,
+    {
+        for row in self.data.iter_mut() {
+            row.fill(default.clone());
+        }
+    }
+    
+    
     /// Gets the value at the given position.
     pub fn get(&self, x: i64, y: i64) -> Option<&T> {
         if !self.bounds.contains(x, y) {

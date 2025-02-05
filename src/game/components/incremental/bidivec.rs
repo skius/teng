@@ -31,6 +31,15 @@ impl<T> BidiVec<T> {
         self.pos.clear();
         self.neg.clear();
     }
+    
+    /// Set the entire BidiVec to the given value.
+    pub fn fill(&mut self, value: T)
+    where
+        T: Clone,
+    {
+        self.pos.fill(value.clone());
+        self.neg.fill(value);
+    }
 
     /// Returns a reference to the element at the given index, or `None` if the index is out of bounds.
     pub fn get(&self, index: i64) -> Option<&T> {
