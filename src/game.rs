@@ -305,6 +305,8 @@ impl<W: Write> Game<W> {
         // Game loop
         let mut last_frame = Instant::now();
         let mut now = Instant::now();
+        // how much longer the last sleep() slept than expected.
+        let mut last_overhead = Duration::from_nanos(0);
         // this didn't end up working nicely. Could try an adaptive approach like here:
         // https://stackoverflow.com/a/6942771
         // let mut last_nanos_per_frame = 1;
@@ -334,26 +336,23 @@ impl<W: Write> Game<W> {
             self.display_renderer.reset_screen();
 
             // Sleep until the next frame
-
             let current = Instant::now();
             let this_frame_so_far = current.duration_since(now);
             let remaining_time =
                 Duration::from_nanos(nanos_per_frame).saturating_sub(this_frame_so_far);
-            // // note: 'last' from perspective of this iteration
-            // let remaining_time_overhead_adjusted = remaining_time.saturating_sub(
-            //     Duration::from_nanos(last_frame_overhead+frame_delay)
-            // );
+            // sleep less by last frame's overhead
+            let remaining_time = remaining_time.saturating_sub(last_overhead);
             std::thread::sleep(remaining_time);
             let new_now = Instant::now();
+
+            let time_slept = new_now.duration_since(current);
+            let overhead = time_slept.saturating_sub(remaining_time);
+            last_overhead = overhead;
+
+
             // // note: 'last' from perspective of next iteration
-            // last_frame_nanos = new_now.duration_since(now).as_nanos() as u64;
             last_frame = now;
             now = new_now;
-            // last_nanos_per_frame = nanos_per_frame;
-            // last_frame_overhead = last_frame_nanos.saturating_sub(last_nanos_per_frame);
-            // if last_frame_overhead > 0 {
-            //     frame_delay += 1;
-            // }
         }
 
         self.cleanup();
