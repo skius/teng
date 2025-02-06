@@ -239,12 +239,14 @@ impl Component for FPSLockerComponent {
 
 pub struct MouseEvents {
     events: Vec<MouseInfo>,
+    has_new_this_frame: bool,
 }
 
 impl MouseEvents {
     pub fn new() -> Self {
         Self {
             events: vec![],
+            has_new_this_frame: false,
         }
     }
 
@@ -252,6 +254,24 @@ impl MouseEvents {
         self.events.push(event);
     }
 
+    pub fn has_new_this_frame(&self) -> bool {
+        self.has_new_this_frame
+    }
+
+    /// Calls the passed closure with a new mouse info for every interpolated mouse info since last frame.
+    /// Only calls the closure if there has been a new event this frame.
+    pub fn for_each_linerp_only_fresh(&self, f: impl FnMut(MouseInfo)) {
+        if !self.has_new_this_frame {
+            return;
+        }
+
+        self.for_each_linerp(f);
+    }
+
+    /// Calls the passed closure with a new mouse info for every interpolated mouse info 
+    /// since last frame. The closure is also called with the last mouse info if no event
+    /// has been received this frame.
+    /// To only get fresh events, use `for_each_linerp_only_fresh`.
     pub fn for_each_linerp(&self, mut f: impl FnMut(MouseInfo)) {
         if self.events.len() < 2 {
             self.events.first().map(|mi| f(*mi));
@@ -324,13 +344,20 @@ impl MouseTrackerComponent {
         let end_y = second.last_mouse_pos.1 as i64;
 
         for_coord_in_line(exclude_start, (start_x, start_y), (end_x, end_y), |x, y| {
+            // important, use first mouse info to determine mouse button state, avoids edge cases
+            // when entering and leaving terminal/process
+            // however, use second mouse info for the end point
+            let mi = if (x, y) == (end_x, end_y) {
+                second
+            } else {
+                first
+            };
+
             f(MouseInfo {
                 last_mouse_pos: (x as usize, y as usize),
-                // important, use first mouse info to determine mouse button state, avoids edge cases
-                // when entering and leaving terminal/process
-                left_mouse_down: first.left_mouse_down,
-                right_mouse_down: first.right_mouse_down,
-                middle_mouse_down: first.middle_mouse_down,
+                left_mouse_down: mi.left_mouse_down,
+                right_mouse_down: mi.right_mouse_down,
+                middle_mouse_down: mi.middle_mouse_down,
             });
         });
         //
@@ -374,6 +401,7 @@ impl Component for MouseTrackerComponent {
         if let Event::Mouse(event) = event {
             Self::fill_mouse_info(event, &mut self.last_mouse_info);
             self.mouse_events.push(self.last_mouse_info);
+            self.mouse_events.has_new_this_frame = true;
             match event {
                 MouseEvent {
                     kind: MouseEventKind::Down(button),
@@ -400,10 +428,11 @@ impl Component for MouseTrackerComponent {
         shared_state.mouse_pressed.right = self.did_press_right;
         shared_state.mouse_pressed.left = self.did_press_left;
         shared_state.mouse_pressed.middle = self.did_press_middle;
-        std::mem::swap(&mut self.mouse_events.events, &mut shared_state.mouse_events.events);
+        std::mem::swap(&mut self.mouse_events, &mut shared_state.mouse_events);
         self.mouse_events.events.clear();
         // always have the last mouse info in the queue
         self.mouse_events.push(self.last_mouse_info);
+        self.mouse_events.has_new_this_frame = false;
 
         self.did_press_left = false;
         self.did_press_right = false;
@@ -566,7 +595,7 @@ impl Component for FloodFillComponent {
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
         let mut content_changed = false;
-        shared_state.mouse_events.for_each_linerp(|mouse_info| {
+        shared_state.mouse_events.for_each_linerp_only_fresh(|mouse_info| {
             if mouse_info.right_mouse_down {
                 let (x, y) = mouse_info.last_mouse_pos;
                 // only set if we actually change something
@@ -575,12 +604,16 @@ impl Component for FloodFillComponent {
                 self.board.set(x, y, true);
             }
         });
+        // shared_state.debug_messages.push(DebugMessage {
+        //     message: "has new frame things".to_string(),
+        //     expiry_time: update_info.current_time + Duration::from_secs(1),
+        // });
 
         if content_changed {
-            shared_state.debug_messages.push(DebugMessage {
-                message: "has content".to_string(),
-                expiry_time: update_info.current_time + Duration::from_secs(1),
-            });
+            // shared_state.debug_messages.push(DebugMessage {
+            //     message: "has content".to_string(),
+            //     expiry_time: update_info.current_time + Duration::from_secs(1),
+            // });
             // only flood fill if we have new content
 
             // Tracking and updating of board state happens on event handling as to not skip any
