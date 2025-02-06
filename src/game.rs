@@ -17,7 +17,7 @@ mod util;
 
 use crate::game::components::elevator::ElevatorComponent;
 use crate::game::components::incremental::ui::UiBarComponent;
-use crate::game::components::{DebugInfo, DebugInfoComponent, DecayElement};
+use crate::game::components::{DebugInfo, DebugInfoComponent, DecayElement, MouseEvents};
 use crate::game::display::Display;
 use crate::game::Color::Transparent;
 use crate::physics::PhysicsBoard;
@@ -178,6 +178,7 @@ pub struct MousePressedInfo {
 pub struct SharedState {
     mouse_info: MouseInfo,
     mouse_pressed: MousePressedInfo,
+    mouse_events: MouseEvents,
     target_fps: Option<f64>,
     decay_board: Display<DecayElement>,
     collision_board: Display<bool>,
@@ -195,6 +196,7 @@ impl SharedState {
         Self {
             mouse_info: MouseInfo::default(),
             mouse_pressed: MousePressedInfo::default(),
+            mouse_events: MouseEvents::new(),
             target_fps: Some(150.0),
             decay_board: Display::new(
                 width,

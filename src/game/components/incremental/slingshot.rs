@@ -151,7 +151,7 @@ impl Component for SlingshotComponent {
                 let end = (last_x as i64, last_y as i64 * 2);
 
                 // draw a lind from initial to last. use the mouse interpolator
-                for_coord_in_line(start, end, |x, y| {
+                for_coord_in_line(false, start, end, |x, y| {
                     let x = x as usize;
                     let y = y as usize;
                     // don't render over UI at all. even if depth was appropriate, because we mess with background etc this could be ugly.

@@ -1,4 +1,4 @@
-pub fn for_coord_in_line((start_x, start_y): (i64, i64), (end_x, end_y): (i64, i64), mut f: impl FnMut(i64, i64)) {
+pub fn for_coord_in_line(exclude_start: bool, (start_x, start_y): (i64, i64), (end_x, end_y): (i64, i64), mut f: impl FnMut(i64, i64)) {
     let dx = (end_x - start_x).abs();
     let dy = (end_y - start_y).abs();
     let sx = if start_x < end_x { 1 } else { -1 };
@@ -7,7 +7,9 @@ pub fn for_coord_in_line((start_x, start_y): (i64, i64), (end_x, end_y): (i64, i
     let mut x = start_x;
     let mut y = start_y;
     loop {
-        f(x, y);
+        if !exclude_start || x != start_x || y != start_y {
+            f(x, y);
+        }
         if x == end_x && y == end_y {
             break;
         }

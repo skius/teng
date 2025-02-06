@@ -3,9 +3,7 @@ pub mod incremental;
 pub mod video;
 
 use crate::game::display::Display;
-use crate::game::{
-    BreakingAction, Component, MouseInfo, Pixel, Render, Renderer, SharedState, Sprite, UpdateInfo,
-};
+use crate::game::{BreakingAction, Component, DebugMessage, MouseInfo, Pixel, Render, Renderer, SharedState, Sprite, UpdateInfo};
 use crate::physics::PhysicsBoard;
 use crossterm::event::{Event, KeyCode, KeyEvent, MouseEvent, MouseEventKind};
 use smallvec::SmallVec;
@@ -239,11 +237,41 @@ impl Component for FPSLockerComponent {
     }
 }
 
+pub struct MouseEvents {
+    events: Vec<MouseInfo>,
+}
+
+impl MouseEvents {
+    pub fn new() -> Self {
+        Self {
+            events: vec![],
+        }
+    }
+
+    pub fn push(&mut self, event: MouseInfo) {
+        self.events.push(event);
+    }
+
+    pub fn for_each_linerp(&self, mut f: impl FnMut(MouseInfo)) {
+        if self.events.len() < 2 {
+            self.events.first().map(|mi| f(*mi));
+            return;
+        }
+        // do the start
+        f(*self.events.first().unwrap());
+        for i in 0..self.events.len() - 1 {
+            // and then every pair excluding the starts.
+            MouseTrackerComponent::smooth_two_updates(true, self.events[i], self.events[i + 1], &mut f);
+        }
+    }
+}
+
 pub struct MouseTrackerComponent {
     last_mouse_info: MouseInfo,
     did_press_left: bool,
     did_press_right: bool,
     did_press_middle: bool,
+    mouse_events: MouseEvents,
 }
 
 impl MouseTrackerComponent {
@@ -253,6 +281,7 @@ impl MouseTrackerComponent {
             did_press_left: false,
             did_press_right: false,
             did_press_middle: false,
+            mouse_events: MouseEvents::new(),
         }
     }
 
@@ -269,7 +298,7 @@ impl MouseTrackerComponent {
             } => (button, false),
             _ => return,
         };
-        
+
         match button {
             crossterm::event::MouseButton::Left => {
                 mouse_info.left_mouse_down = down;
@@ -285,7 +314,7 @@ impl MouseTrackerComponent {
 
     /// Calls the passed closure with a new mouse info for every interpolated mouse info between
     /// the two passed mouse infos. Also includes the endpoints.
-    pub fn smooth_two_updates(first: MouseInfo, second: MouseInfo, mut f: impl FnMut(MouseInfo)) {
+    pub fn smooth_two_updates(exclude_start: bool, first: MouseInfo, second: MouseInfo, mut f: impl FnMut(MouseInfo)) {
         // linearly interpolate from first to second pixel.
         // so, rasterize a line connecting the two points
 
@@ -293,8 +322,8 @@ impl MouseTrackerComponent {
         let start_y = first.last_mouse_pos.1 as i64;
         let end_x = second.last_mouse_pos.0 as i64;
         let end_y = second.last_mouse_pos.1 as i64;
-        
-        for_coord_in_line((start_x, start_y), (end_x, end_y), |x, y| {
+
+        for_coord_in_line(exclude_start, (start_x, start_y), (end_x, end_y), |x, y| {
             f(MouseInfo {
                 last_mouse_pos: (x as usize, y as usize),
                 // important, use first mouse info to determine mouse button state, avoids edge cases
@@ -304,8 +333,8 @@ impl MouseTrackerComponent {
                 middle_mouse_down: first.middle_mouse_down,
             });
         });
-        // 
-        // 
+        //
+        //
         // // TODO: Understand this code
         // let dx = (end_x - start_x).abs();
         // let dy = (end_y - start_y).abs();
@@ -314,7 +343,7 @@ impl MouseTrackerComponent {
         // let mut err = dx - dy;
         // let mut x = start_x;
         // let mut y = start_y;
-        // 
+        //
         // while x != end_x || y != end_y {
         //     f(MouseInfo {
         //         last_mouse_pos: (x as usize, y as usize),
@@ -324,7 +353,7 @@ impl MouseTrackerComponent {
         //         right_mouse_down: first.right_mouse_down,
         //         middle_mouse_down: first.middle_mouse_down,
         //     });
-        // 
+        //
         //     let e2 = 2 * err;
         //     if e2 > -dy {
         //         err -= dy;
@@ -335,7 +364,7 @@ impl MouseTrackerComponent {
         //         y += sy;
         //     }
         // }
-        // 
+        //
         // f(second);
     }
 }
@@ -344,6 +373,7 @@ impl Component for MouseTrackerComponent {
     fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         if let Event::Mouse(event) = event {
             Self::fill_mouse_info(event, &mut self.last_mouse_info);
+            self.mouse_events.push(self.last_mouse_info);
             match event {
                 MouseEvent {
                     kind: MouseEventKind::Down(button),
@@ -370,6 +400,11 @@ impl Component for MouseTrackerComponent {
         shared_state.mouse_pressed.right = self.did_press_right;
         shared_state.mouse_pressed.left = self.did_press_left;
         shared_state.mouse_pressed.middle = self.did_press_middle;
+        std::mem::swap(&mut self.mouse_events.events, &mut shared_state.mouse_events.events);
+        self.mouse_events.events.clear();
+        // always have the last mouse info in the queue
+        self.mouse_events.push(self.last_mouse_info);
+
         self.did_press_left = false;
         self.did_press_right = false;
         self.did_press_middle = false;
@@ -501,37 +536,53 @@ impl Component for FloodFillComponent {
                 self.board.resize_discard(width as usize, height as usize);
                 self.visited.resize_discard(width as usize, height as usize);
             }
-            Event::Mouse(event) => {
-                let mut new_mouse_info = self.last_mouse_info;
-                MouseTrackerComponent::fill_mouse_info(event, &mut new_mouse_info);
-                MouseTrackerComponent::smooth_two_updates(
-                    self.last_mouse_info,
-                    new_mouse_info,
-                    |mouse_info| {
-                        if mouse_info.right_mouse_down {
-                            let (x, y) = mouse_info.last_mouse_pos;
-                            self.board.set(x, y, true);
-                        }
-                    },
-                );
-                self.last_mouse_info = new_mouse_info;
-                // if self.last_mouse_info.right_mouse_down {
-                //     let (x, y) = self.last_mouse_info.last_mouse_pos;
-                //     self.board.set(x, y, true);
-                // }
-                if self.last_mouse_info.right_mouse_down {
-                    self.received_down_event_this_frame = true;
-                }
-            }
+            // Event::Mouse(event) => {
+            //     let mut new_mouse_info = self.last_mouse_info;
+            //     MouseTrackerComponent::fill_mouse_info(event, &mut new_mouse_info);
+            //     MouseTrackerComponent::smooth_two_updates(
+            //         false,
+            //         self.last_mouse_info,
+            //         new_mouse_info,
+            //         |mouse_info| {
+            //             if mouse_info.right_mouse_down {
+            //                 let (x, y) = mouse_info.last_mouse_pos;
+            //                 self.board.set(x, y, true);
+            //             }
+            //         },
+            //     );
+            //     self.last_mouse_info = new_mouse_info;
+            //     // if self.last_mouse_info.right_mouse_down {
+            //     //     let (x, y) = self.last_mouse_info.last_mouse_pos;
+            //     //     self.board.set(x, y, true);
+            //     // }
+            //     if self.last_mouse_info.right_mouse_down {
+            //         self.received_down_event_this_frame = true;
+            //     }
+            // }
             _ => {}
         }
         None
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
-        if self.received_down_event_this_frame {
-            // We must have received some mouse events since last release.
-            self.has_content = true;
+        let mut content_changed = false;
+        shared_state.mouse_events.for_each_linerp(|mouse_info| {
+            if mouse_info.right_mouse_down {
+                let (x, y) = mouse_info.last_mouse_pos;
+                // only set if we actually change something
+                content_changed |= !self.board[(x, y)];
+                self.has_content |= content_changed;
+                self.board.set(x, y, true);
+            }
+        });
+
+        if content_changed {
+            shared_state.debug_messages.push(DebugMessage {
+                message: "has content".to_string(),
+                expiry_time: update_info.current_time + Duration::from_secs(1),
+            });
+            // only flood fill if we have new content
+
             // Tracking and updating of board state happens on event handling as to not skip any
             // pixels at low frame rates (i.e., being able to update more than one pixel per frame).
             // For performance reasons, flood fill still only happens once per frame.
@@ -539,6 +590,7 @@ impl Component for FloodFillComponent {
                 // TODO: Print debug message
             }
         }
+
         // if we are in released state and have unprocessed content, process
         if !shared_state.mouse_info.right_mouse_down && self.has_content {
             self.has_content = false;
@@ -579,6 +631,7 @@ impl Component for SimpleDrawComponent {
             let mut new_mouse_info = self.last_mouse_info;
             MouseTrackerComponent::fill_mouse_info(event, &mut new_mouse_info);
             MouseTrackerComponent::smooth_two_updates(
+                false,
                 self.last_mouse_info,
                 new_mouse_info,
                 |mouse_info| {

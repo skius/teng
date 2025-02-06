@@ -162,9 +162,9 @@ impl GameComponent {
 
 impl Component for GameComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
-        shared_state
-            .components_to_add
-            .push(Box::new(WorldComponent::new()));
+        // shared_state
+        //     .components_to_add
+        //     .push(Box::new(WorldComponent::new()));
         // shared_state
         //     .components_to_add
         //     .push(Box::new(PlayerComponent::new()));
@@ -251,6 +251,7 @@ impl Component for BuildingDrawComponent {
             let mut new_mouse_info = self.last_mouse_info;
             MouseTrackerComponent::fill_mouse_info(event, &mut new_mouse_info);
             MouseTrackerComponent::smooth_two_updates(
+                false,
                 self.last_mouse_info,
                 new_mouse_info,
                 |mouse_info| {
