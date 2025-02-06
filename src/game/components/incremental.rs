@@ -164,9 +164,9 @@ impl GameComponent {
 
 impl Component for GameComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
-        // shared_state
-        //     .components_to_add
-        //     .push(Box::new(WorldComponent::new()));
+        shared_state
+            .components_to_add
+            .push(Box::new(WorldComponent::new()));
         // shared_state
         //     .components_to_add
         //     .push(Box::new(PlayerComponent::new()));

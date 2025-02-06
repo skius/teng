@@ -128,10 +128,10 @@ impl Component for SlingshotComponent {
 
         if let Some((s_x, s_y)) = self.slingshot {
             // debug
-            shared_state.debug_messages.push(DebugMessage::new(
-                format!("Slingshot: ({}, {})", s_x, s_y),
-                Instant::now() + Duration::from_secs_f64(3.0),
-            ));
+            // shared_state.debug_messages.push(DebugMessage::new(
+            //     format!("Slingshot: ({}, {})", s_x, s_y),
+            //     Instant::now() + Duration::from_secs_f64(3.0),
+            // ));
             game_state.new_player_state.entity.x_drag = 0.6;
             // add velocity
             // game_state.new_player_state.entity.velocity.0 += s_x as f64 * 1.0;

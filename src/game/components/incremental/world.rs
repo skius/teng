@@ -400,6 +400,12 @@ impl Component for WorldComponent {
                     "ground->".render(&mut renderer, x, y, depth_base);
                     // continue;
                 }
+                
+                if world_y % 10 == 0 && x == 0 {
+                    // special case
+                    format!("{:?}", world_y).render(&mut renderer, x, y, depth_base);
+                    // continue;
+                }
 
                 if let Some(tile) = world.get(world_x, world_y) {
                     match tile {
