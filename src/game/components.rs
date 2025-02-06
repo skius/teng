@@ -167,12 +167,13 @@ impl Component for DebugInfoComponent {
         };
         format!("FPS: {:.2} ({})", self.fps, target_str).render(&mut renderer, 0, y, depth_base);
         y += 1;
-        format!("Achievable FPS: {:.2}", self.last_actual_fps_computed).render(
-            &mut renderer,
-            0,
-            y,
-            depth_base,
-        );
+        // format!("Achievable FPS: {:.2}", self.last_actual_fps_computed).render(
+        //     &mut renderer,
+        //     0,
+        //     y,
+        //     depth_base,
+        // );
+        // y += 1;
         // let debug_string = format!("DebugInfo: {:#?}", shared_state.debug_info);
         // for line in debug_string.lines() {
         //     line.render(&mut renderer, 0, y, depth_base);
@@ -274,14 +275,14 @@ impl MouseEvents {
             return;
         }
 
-        self.for_each_linerp(f);
+        self.for_each_linerp_sticky(f);
     }
 
     /// Calls the passed closure with a new mouse info for every interpolated mouse info
     /// since last frame. The closure is also called with the last mouse info if no event
     /// has been received this frame.
     /// To only get fresh events, use `for_each_linerp_only_fresh`.
-    pub fn for_each_linerp(&self, mut f: impl FnMut(MouseInfo)) {
+    pub fn for_each_linerp_sticky(&self, mut f: impl FnMut(MouseInfo)) {
         if self.events.len() < 2 {
             self.events.first().map(|mi| f(*mi));
             return;

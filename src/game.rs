@@ -166,6 +166,10 @@ impl DebugMessage {
             expiry_time,
         }
     }
+
+    pub fn new_3s(message: impl Into<String>) -> Self {
+        Self::new(message.into(), Instant::now() + Duration::from_secs(3))
+    }
 }
 
 #[derive(Default, Debug, PartialEq)]

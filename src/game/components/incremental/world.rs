@@ -16,6 +16,7 @@ use std::time::Instant;
 #[derive(Debug, Clone)]
 pub struct InitializedTile {
     pub draw: Pixel,
+    pub solid: bool,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -23,6 +24,15 @@ pub enum Tile {
     #[default]
     Ungenerated,
     Initialized(InitializedTile),
+}
+
+impl Tile {
+    pub fn is_solid(&self) -> bool {
+        match self {
+            Tile::Ungenerated => false,
+            Tile::Initialized(tile) => tile.solid,
+        }
+    }
 }
 
 enum Quadrant {
@@ -62,6 +72,7 @@ pub struct World {
     /// The world position at which the top-left corner of the camera is located.
     camera_attach: (i64, i64),
     screen_width: usize,
+    /// The height of the world's viewport, so excluding the UI bar.
     screen_height: usize,
     /// For every x, this stores the y value of the ground level.
     ground_level: BidiVec<i64>,
@@ -254,7 +265,7 @@ impl World {
                     .get_mut(x, y)
                     .is_some_and(|t| matches!(t, Tile::Ungenerated))
                 {
-                    let draw = if y <= ground_offset_height {
+                    let (draw, solid) = if y <= ground_offset_height {
                         // ground
                         self.collision_board[(x, y)] = CollisionCell::Solid;
                         // Pixel::new('█').with_color().with_bg_color([139, 69, 19]);
@@ -289,7 +300,7 @@ impl World {
                             }
                         }
 
-                        final_pixel
+                        (final_pixel, true)
                     } else {
                         // air
                         // this color in rgb: #0178c8
@@ -319,10 +330,10 @@ impl World {
                                 color[2] = 0xfb;
                             }
                         }
-                        Pixel::new('█').with_color(color).with_bg_color(color)
+                        (Pixel::new('█').with_color(color).with_bg_color(color), false)
                         // Pixel::transparent().with_bg_color(color)
                     };
-                    self[(x, y)] = Tile::Initialized(InitializedTile { draw });
+                    self[(x, y)] = Tile::Initialized(InitializedTile { draw, solid });
                 }
             }
         }
@@ -400,7 +411,7 @@ impl Component for WorldComponent {
                     "ground->".render(&mut renderer, x, y, depth_base);
                     // continue;
                 }
-                
+
                 if world_y % 10 == 0 && x == 0 {
                     // special case
                     format!("{:?}", world_y).render(&mut renderer, x, y, depth_base);

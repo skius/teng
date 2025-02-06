@@ -422,6 +422,28 @@ impl Component for UiBarComponent {
                     )
                 },
             ),
+            new_button!(
+                SlingshotButton,
+                cost_growth: 1.0,
+                cost_start: 100_000,
+                help_text: "Help: Drag across screen to slingshot player.",
+                allow_in_moving: true,
+                on_click: |self, game_state| {
+                    game_state.upgrades.slingshot = true;
+                    self.change_button_text("");
+                    self.cost = 0;
+                },
+                render: |self, game_state| {
+                    if self.cost > 0 {
+                        format!(
+                            "Slingshot for {} ",
+                            self.cost
+                        )
+                    } else {
+                        "Slingshot (purchased)".to_string()
+                    }
+                },
+            ),
         );
     }
 

@@ -93,6 +93,7 @@ struct Upgrades {
     fall_speed_factor: f64,
     ghost_cuteness: u128,
     velocity_exponent: f64,
+    slingshot: bool,
 }
 
 impl Upgrades {
@@ -105,6 +106,7 @@ impl Upgrades {
             fall_speed_factor: 1.0,
             ghost_cuteness: 1,
             velocity_exponent: 0.0,
+            slingshot: false,
         }
     }
 }
@@ -173,9 +175,9 @@ impl Component for GameComponent {
         shared_state
             .components_to_add
             .push(Box::new(NewPlayerComponent::new()));
-        shared_state
-            .components_to_add
-            .push(Box::new(BuildingDrawComponent::new()));
+        // shared_state
+        //     .components_to_add
+        //     .push(Box::new(BuildingDrawComponent::new()));
         shared_state
             .components_to_add
             .push(Box::new(SlingshotComponent::new()));
@@ -187,6 +189,15 @@ impl Component for GameComponent {
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
         let mut game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
+        
+        // cheats
+        if shared_state.pressed_keys.contains_key(&KeyCode::Char('b')) {
+            game_state.max_blocks += 1;
+            game_state.max_blocks *= 1000000;
+            game_state.blocks = game_state.max_blocks;
+            shared_state.debug_messages.push(DebugMessage::new_3s("Cheated blocks!"));
+        }
+        
         match game_state.phase {
             GamePhase::MoveToBuilding => {
                 game_state.phase = GamePhase::Building;
@@ -229,16 +240,11 @@ impl Component for GameComponent {
 }
 
 struct BuildingDrawComponent {
-    last_mouse_info: MouseInfo,
-    // small queue for multiple events in one frame
-    draw_queue: SmallVec<[(u16, u16); 20]>,
 }
 
 impl BuildingDrawComponent {
     pub fn new() -> Self {
         Self {
-            last_mouse_info: MouseInfo::default(),
-            draw_queue: SmallVec::new(),
         }
     }
 }
@@ -248,99 +254,40 @@ impl Component for BuildingDrawComponent {
         shared_state.extensions.get::<GameState>().unwrap().phase == GamePhase::Building
     }
 
-    // fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
-    //     if let Event::Mouse(event) = event {
-    //         let mut new_mouse_info = self.last_mouse_info;
-    //         MouseTrackerComponent::fill_mouse_info(event, &mut new_mouse_info);
-    //         MouseTrackerComponent::smooth_two_updates(
-    //             false,
-    //             self.last_mouse_info,
-    //             new_mouse_info,
-    //             |mouse_info| {
-    //                 if mouse_info.left_mouse_down {
-    //                     let x = mouse_info.last_mouse_pos.0 as u16;
-    //                     let y = mouse_info.last_mouse_pos.1 as u16;
-    //                     if y >= shared_state.display_info.height() as u16
-    //                         - UiBarComponent::HEIGHT as u16
-    //                     {
-    //                         return;
-    //                     }
-    //                     if self.draw_queue.contains(&(x, y)) {
-    //                         return;
-    //                     }
-    //                     // if decay board already has this pixel, we don't need to count it towards our blocks
-    //                     let exists_already =
-    //                         shared_state.decay_board[(x as usize, y as usize)].c != ' ';
-    //                     // draw only if it either exists, or we have enough blocks
-    //                     if exists_already
-    //                         || shared_state.extensions.get::<GameState>().unwrap().blocks > 0
-    //                     {
-    //                         if !exists_already {
-    //                             shared_state
-    //                                 .extensions
-    //                                 .get_mut::<GameState>()
-    //                                 .unwrap()
-    //                                 .blocks -= 1;
-    //                         }
-    //                         self.draw_queue.push((x, y));
-    //                     }
-    //                 }
-    //             },
-    //         );
-    //         self.last_mouse_info = new_mouse_info;
-    //     }
-    //     None
-    // }
-
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
-        shared_state.mouse_events.for_each_linerp(|mi| {
+        let game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
+
+        // We use _sticky, because we want to keep drawing a pixel if we keep the mouse pressed.
+        shared_state.mouse_events.for_each_linerp_sticky(|mi| {
             if mi.left_mouse_down {
-                let x = mi.last_mouse_pos.0 as u16;
-                let y = mi.last_mouse_pos.1 as u16;
-                if y >= shared_state.display_info.height() as u16 - UiBarComponent::HEIGHT as u16 {
+                let x = mi.last_mouse_pos.0;
+                let y = mi.last_mouse_pos.1;
+
+                if let Some((w_x, w_y)) = game_state.world.to_world_pos(x, y) {
+                    if game_state.world[(w_x, w_y)].is_solid() {
+                        return;
+                    }
+                } else {
                     return;
                 }
-                // if self.draw_queue.contains(&(x, y)) {
-                //     return;
-                // }
+
+                if y >= shared_state.display_info.height() - UiBarComponent::HEIGHT {
+                    return;
+                }
                 // if decay board already has this pixel, we don't need to count it towards our blocks
                 let exists_already = shared_state.decay_board[(x as usize, y as usize)].c != ' ';
                 // draw only if it either exists, or we have enough blocks
-                if exists_already || shared_state.extensions.get::<GameState>().unwrap().blocks > 0
+                if exists_already || game_state.blocks > 0
                 {
                     if !exists_already {
-                        shared_state
-                            .extensions
-                            .get_mut::<GameState>()
-                            .unwrap()
-                            .blocks -= 1;
+                        game_state.blocks -= 1;
                     }
                     // self.draw_queue.push((x, y));
-                    shared_state.decay_board[(x as usize, y as usize)] =
+                    shared_state.decay_board[(x, y)] =
                         DecayElement::new_with_time('█', update_info.current_time);
                 }
             }
         });
 
-        // our mouse info gets outdated because we're not active all the time.
-        // so we copy it from the shared state where the responsible component is hopefully active all the time.
-        // another fix would be to never deactivate this component, and just have it check in update()
-        // if it should draw or not.
-        // self.last_mouse_info = shared_state.mouse_info;
-        // for (x, y) in self.draw_queue.drain(..) {
-        //     shared_state.decay_board[(x as usize, y as usize)] =
-        //         DecayElement::new_with_time('█', update_info.current_time);
-        // }
-        // // also current pixel, in case we're holding the button and not moving
-        // if self.last_mouse_info.left_mouse_down {
-        //     let (x, y) = self.last_mouse_info.last_mouse_pos;
-        //     if y < (shared_state.display_info.height() - UiBarComponent::HEIGHT)
-        //         && shared_state.decay_board[(x, y)].c != ' '
-        //     {
-        //         // refresh the decay time
-        //         shared_state.decay_board[(x, y)] =
-        //             DecayElement::new_with_time('█', update_info.current_time);
-        //     }
-        // }
     }
 }

@@ -255,8 +255,15 @@ impl Component for NewPlayerComponent {
                 dead: game_state.new_player_state.dead_time.is_some(),
             };
             game_state.player_history.push(phe);
-            if game_state.player_history.len() as f64 / PlayerGhost::SAMPLE_RATE
-                > PlayerGhost::HISTORY_SIZE_SECS
+            
+            // only keep as many history samples as we need according to the amount of ghosts we have
+            // and their delay
+            let max_history_size_needed = game_state.player_ghosts.len() as f64 * game_state.curr_ghost_delay;
+            
+            let current_history_size_secs = game_state.player_history.len() as f64 / PlayerGhost::SAMPLE_RATE;
+            
+            if current_history_size_secs
+                > max_history_size_needed.ceil()
             {
                 game_state.player_history.remove(0);
             }

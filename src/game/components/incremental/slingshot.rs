@@ -38,7 +38,7 @@ impl Component for SlingshotComponent {
 
     fn is_active(&self, shared_state: &SharedState) -> bool {
         let game_state = shared_state.extensions.get::<GameState>().unwrap();
-        game_state.phase == GamePhase::Moving
+        game_state.phase == GamePhase::Moving && game_state.upgrades.slingshot
     }
 
     fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
