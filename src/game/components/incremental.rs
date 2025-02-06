@@ -135,8 +135,8 @@ impl GameState {
         let height = setup_info.height;
         Self {
             phase: GamePhase::default(),
-            blocks: 100,
-            max_blocks: 100,
+            blocks: 0,
+            max_blocks: 0,
             received_blocks: 0,
             received_blocks_base: 0,
             max_blocks_per_round: 0,

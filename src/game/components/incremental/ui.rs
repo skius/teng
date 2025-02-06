@@ -3,7 +3,7 @@ use crate::game::{
     BreakingAction, Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo,
 };
 use anymap::any::Any;
-use crossterm::event::Event;
+use crossterm::event::{Event, MouseEventKind};
 
 #[derive(Clone, Copy)]
 enum OffsetX {
@@ -192,14 +192,21 @@ macro_rules! new_button {
 }
 
 macro_rules! add_buttons {
-    ($buttons:expr, $x:expr, $y:expr, $screen_height:expr, $screen_width:expr, $($button:expr),*$(,)?) => {
+    ($buttons:expr, $pages:expr, $buttons_per_page:expr, $x:expr, $y:expr, $initial_y_offset:expr, $screen_height:expr, $screen_width:expr, $($button:expr),*$(,)?) => {
         {
-                $(
-    {
+            $(
+                {
+                    let i = $buttons.len();
+                    if i % $buttons_per_page == 0 {
+                        $pages.push(vec![]);
+                        // first button on page
+                        $y = $initial_y_offset;
+                    }
                     $buttons.push(($button)($x, OffsetY::Bottom($y), $screen_height, $screen_width));
+                    $pages.last_mut().unwrap().push(i);
                     $y -= 1;
-        }
-                )*
+                }
+            )*
         }
     };
 }
@@ -230,14 +237,19 @@ impl UiBarComponent {
 impl Component for UiBarComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
         let mut y_offset = Self::HEIGHT - 2;
+        let mut initial_y_offset = y_offset;
         let x_offset = 1;
         let x_offset = OffsetX::Right(x_offset);
         let screen_height = setup_info.height;
         let screen_width = setup_info.width;
+        let buttons_per_page = 8;
         add_buttons!(
             self.buttons,
+            self.pages,
+            buttons_per_page,
             x_offset,
             y_offset,
+            initial_y_offset,
             screen_height,
             screen_width,
             new_button!(
@@ -419,6 +431,18 @@ impl Component for UiBarComponent {
                 button.update_screen_dimensions(height as usize, width as usize);
             });
         }
+        if let Event::Mouse(me) = event {
+            // only change if we're in the UI bar range
+            let (x, y) = (me.column as usize, me.row as usize);
+            if y > shared_state.display_info.height() - Self::HEIGHT {
+                let idx_change = match me.kind {
+                    MouseEventKind::ScrollUp => -1,
+                    MouseEventKind::ScrollDown => 1,
+                    _ => 0,
+                };
+                self.active_page_idx = (self.active_page_idx as i32 + idx_change) as usize % self.pages.len();
+            }
+        }
         None
     }
 
@@ -428,7 +452,8 @@ impl Component for UiBarComponent {
         // Check if we're hovering a button
         let (x, y) = last_mouse_info.last_mouse_pos;
         let mut hovering = false;
-        for (i, button) in self.buttons.iter().enumerate() {
+        for &i in &self.pages[self.active_page_idx] {
+            let button = &self.buttons[i];
             if button.mouse_hover(x, y) {
                 self.hover_button = Some(i);
                 hovering = true;
@@ -566,8 +591,18 @@ impl Component for UiBarComponent {
         controls_str.render(&mut renderer, x, y, content_depth);
 
         // render buttons
-        for button in &self.buttons {
-            button.render(&mut renderer, shared_state, button_depth);
+        for &button_idx in &self.pages[self.active_page_idx] {
+            self.buttons[button_idx].render(&mut renderer, shared_state, button_depth);
         }
+        
+        // Render page navigation
+        let page_str = format!(
+            "Page {}/{} (scroll to change)",
+            self.active_page_idx + 1,
+            self.pages.len()
+        );
+        let page_str_len = page_str.len();
+        let page_str_x = shared_state.display_info.width() - page_str_len - 1;
+        page_str.render(&mut renderer, page_str_x, bottom_y - 1, content_depth);
     }
 }
