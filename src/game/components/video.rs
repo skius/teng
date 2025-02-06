@@ -71,8 +71,6 @@ impl VideoComponent {
 
 impl Component for VideoComponent {
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
-        let dt = (update_info.current_time - update_info.last_time).as_secs_f64();
-
         let frame_duration = 1.0 / self.fps;
         let frame_idx = (update_info.current_time - self.start_time).as_secs_f64() / frame_duration;
         self.render_frame_idx = frame_idx as usize % self.frames.len();

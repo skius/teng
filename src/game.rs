@@ -113,6 +113,9 @@ impl Default for Pixel {
 pub struct UpdateInfo {
     last_time: Instant,
     current_time: Instant,
+    dt: f64,
+    // the dt that the computations took without sleeping
+    actual_dt: f64,
 }
 
 pub enum BreakingAction {
@@ -307,6 +310,10 @@ impl<W: Write> Game<W> {
         let mut now = Instant::now();
         // how much longer the last sleep() slept than expected.
         let mut last_overhead = Duration::from_nanos(0);
+        
+        // how long the last frame's computations took
+        let mut last_actual_dt = 1.0;
+        
         // this didn't end up working nicely. Could try an adaptive approach like here:
         // https://stackoverflow.com/a/6942771
         // let mut last_nanos_per_frame = 1;
@@ -323,6 +330,8 @@ impl<W: Write> Game<W> {
             let update_info = UpdateInfo {
                 last_time: last_frame,
                 current_time: now,
+                dt: (now - last_frame).as_secs_f64(),
+                actual_dt: last_actual_dt,
             };
 
             if let Some(action) = self.consume_events()? {
@@ -337,6 +346,7 @@ impl<W: Write> Game<W> {
 
             // Sleep until the next frame
             let current = Instant::now();
+            last_actual_dt = current.duration_since(now).as_secs_f64();
             let this_frame_so_far = current.duration_since(now);
             let remaining_time =
                 Duration::from_nanos(nanos_per_frame).saturating_sub(this_frame_so_far);

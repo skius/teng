@@ -257,7 +257,7 @@ impl Component for FallingSimulationComponent {
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
-        let dt = (update_info.current_time - update_info.last_time).as_secs_f64();
+        let dt = update_info.dt;
         self.dt_budget += dt;
 
         // add sand from mouse events

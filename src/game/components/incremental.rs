@@ -306,10 +306,7 @@ impl Component for PlayerComponent {
             }
         }
 
-        let dt = update_info
-            .current_time
-            .saturating_duration_since(update_info.last_time)
-            .as_secs_f64();
+        let dt = update_info.dt;
 
         // Player inputs, only if not dead
         if game_state.player_state.dead_time.is_none() {

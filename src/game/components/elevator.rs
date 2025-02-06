@@ -65,8 +65,7 @@ impl Component for ElevatorComponent {
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
         let height = shared_state.display_info.height();
         // TODO: this needs more changes for resizing to work properly
-        let dt = update_info.current_time - update_info.last_time;
-        let dt = dt.as_secs_f64();
+        let dt = update_info.dt;
         self.elevator.update(dt);
         shared_state.debug_info.target_queue = self.elevator.target_queue.clone();
 

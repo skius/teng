@@ -52,6 +52,8 @@ pub struct DebugInfoComponent {
     frames_since_last_fps: u32,
     num_events: u64,
     num_update_calls: u64,
+    sum_actual_dts: f64,
+    last_actual_fps_computed: f64,
 }
 
 impl DebugInfoComponent {
@@ -67,6 +69,8 @@ impl DebugInfoComponent {
             frames_since_last_fps: 0,
             num_events: 0,
             num_update_calls: 0,
+            sum_actual_dts: 0.0,
+            last_actual_fps_computed: 0.0,
         }
     }
 }
@@ -87,8 +91,10 @@ impl Component for DebugInfoComponent {
         let UpdateInfo {
             last_time,
             current_time,
+            actual_dt,
             ..
         } = update_info;
+        self.sum_actual_dts += actual_dt;
 
         let delta_time_ns = current_time.duration_since(last_time).as_nanos();
         self.frametime_ns = delta_time_ns;
@@ -110,7 +116,9 @@ impl Component for DebugInfoComponent {
         if current_time - self.last_fps_time > Self::FPS_UPDATE_INTERVAL {
             self.fps = (self.frames_since_last_fps as f64)
                 / (current_time - self.last_fps_time).as_secs_f64();
+            self.last_actual_fps_computed = 1.0 / (self.sum_actual_dts / self.frames_since_last_fps as f64);
             self.frames_since_last_fps = 0;
+            self.sum_actual_dts = 0.0;
             self.last_fps_time = current_time;
         }
         self.target_fps = shared_state.target_fps;
@@ -156,6 +164,7 @@ impl Component for DebugInfoComponent {
         };
         format!("FPS: {:.2} ({})", self.fps, target_str).render(&mut renderer, 0, y, depth_base);
         y += 1;
+        format!("Achievable FPS: {:.2}", self.last_actual_fps_computed).render(&mut renderer, 0, y, depth_base);
         // let debug_string = format!("DebugInfo: {:#?}", shared_state.debug_info);
         // for line in debug_string.lines() {
         //     line.render(&mut renderer, 0, y, depth_base);
@@ -678,10 +687,7 @@ impl PhysicsComponent {
 impl Component for PhysicsComponent {
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
         shared_state.collision_board.clear();
-        let dt = update_info
-            .current_time
-            .saturating_duration_since(update_info.last_time)
-            .as_secs_f64();
+        let dt = update_info.dt;
         shared_state
             .physics_board
             .update(dt, shared_state.decay_board.height(), |s| {
@@ -921,10 +927,7 @@ impl Component for PlayerComponent {
         //     self.dead = true;
         // }
 
-        let dt = update_info
-            .current_time
-            .saturating_duration_since(update_info.last_time)
-            .as_secs_f64();
+        let dt = update_info.dt;
         self.bullets.retain_mut(|bullet| {
             let delete = bullet.update(
                 dt,

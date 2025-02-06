@@ -134,8 +134,7 @@ impl Component for NewPlayerComponent {
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
         let current_time = update_info.current_time;
-        let dt = current_time - update_info.last_time;
-        let dt = dt.as_secs_f64();
+        let dt = update_info.dt;
 
         let game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
 

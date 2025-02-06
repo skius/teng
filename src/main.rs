@@ -608,7 +608,7 @@ fn main() -> io::Result<()> {
     game.add_component(Box::new(DebugInfoComponent::new()));
     // game.add_component(Box::new(VideoComponent::new()));
     // game.add_component_with(|width, height| Box::new(ElevatorComponent::new(width, height)));
-    game.add_component(Box::new(FallingSimulationComponent::new()));
+    // game.add_component(Box::new(FallingSimulationComponent::new()));
 
     if let Err(e) = game.run() {
         println!("Error: {:?}", e);
