@@ -1,10 +1,12 @@
-use std::time::{Duration, Instant};
-use crossterm::event::{Event, KeyCode};
-use crate::game::components::incremental::collisionboard::PhysicsEntity2d;
-use crate::game::{BreakingAction, Component, DebugMessage, Render, Renderer, SharedState, Sprite, UpdateInfo};
-use crate::game::components::incremental::{GamePhase, GameState, PlayerHistoryElement};
 use crate::game::components::incremental::animation::CharAnimationSequence;
+use crate::game::components::incremental::collisionboard::PhysicsEntity2d;
 use crate::game::components::incremental::world::World;
+use crate::game::components::incremental::{GamePhase, GameState, PlayerHistoryElement};
+use crate::game::{
+    BreakingAction, Component, DebugMessage, Render, Renderer, SharedState, Sprite, UpdateInfo,
+};
+use crossterm::event::{Event, KeyCode};
+use std::time::{Duration, Instant};
 
 #[derive(Debug)]
 pub struct NewPlayerState {
@@ -50,13 +52,13 @@ impl NewPlayerState {
             start_time: Instant::now(),
             time_per_frame: std::time::Duration::from_secs_f64(0.1),
         };
-        world.add_animation(Box::new(animation1), x+2, y);
+        world.add_animation(Box::new(animation1), x + 2, y);
         let animation2 = CharAnimationSequence {
             sequence: vec!['▄', '▙', '▚', '▘'],
             start_time: Instant::now(),
             time_per_frame: std::time::Duration::from_secs_f64(0.1),
         };
-        world.add_animation(Box::new(animation2), x-2, y);
+        world.add_animation(Box::new(animation2), x - 2, y);
     }
 
     fn on_death(fall_distance: f64, yvel_before: f64, game_state: &mut GameState) {
@@ -77,7 +79,9 @@ impl NewPlayerState {
         let blocks_f64 = fall_distance.abs().ceil()
             * game_state.upgrades.block_height as f64
             * game_state.upgrades.player_weight as f64
-            * yvel_before.abs().powf(game_state.upgrades.velocity_exponent);
+            * yvel_before
+                .abs()
+                .powf(game_state.upgrades.velocity_exponent);
         let blocks = blocks_f64.ceil() as u128;
         game_state.received_blocks += blocks;
         game_state.received_blocks_base += blocks;
@@ -90,18 +94,34 @@ impl NewPlayerState {
         let mut did_move = false;
 
         if pressed_keys.contains_key(&KeyCode::Char('a')) {
-            self.entity.velocity.0 = if self.entity.velocity.0 > 0.0 { 0.0 } else { -slow_velocity };
+            self.entity.velocity.0 = if self.entity.velocity.0 > 0.0 {
+                0.0
+            } else {
+                -slow_velocity
+            };
             did_move = true;
         } else if pressed_keys.contains_key(&KeyCode::Char('d')) {
-            self.entity.velocity.0 = if self.entity.velocity.0 < 0.0 { 0.0 } else { slow_velocity };
+            self.entity.velocity.0 = if self.entity.velocity.0 < 0.0 {
+                0.0
+            } else {
+                slow_velocity
+            };
             did_move = true;
         }
 
         if pressed_keys.contains_key(&KeyCode::Char('A')) {
-            self.entity.velocity.0 = if self.entity.velocity.0 > 0.0 { 0.0 } else { -fast_velocity };
+            self.entity.velocity.0 = if self.entity.velocity.0 > 0.0 {
+                0.0
+            } else {
+                -fast_velocity
+            };
             did_move = true;
         } else if pressed_keys.contains_key(&KeyCode::Char('D')) {
-            self.entity.velocity.0 = if self.entity.velocity.0 < 0.0 { 0.0 } else { fast_velocity };
+            self.entity.velocity.0 = if self.entity.velocity.0 < 0.0 {
+                0.0
+            } else {
+                fast_velocity
+            };
             did_move = true;
         }
 
@@ -112,9 +132,7 @@ impl NewPlayerState {
     }
 }
 
-pub struct NewPlayerComponent {
-
-}
+pub struct NewPlayerComponent {}
 
 impl NewPlayerComponent {
     const DEATH_HEIGHT: f64 = 3.5;
@@ -122,8 +140,7 @@ impl NewPlayerComponent {
     const DEATH_STOP_X_MOVE_TIME: f64 = 0.5;
 
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 }
 
@@ -158,7 +175,9 @@ impl Component for NewPlayerComponent {
         }
 
         if game_state.new_player_state.dead_time.is_none() {
-            game_state.new_player_state.horizontal_inputs(&shared_state.pressed_keys);
+            game_state
+                .new_player_state
+                .horizontal_inputs(&shared_state.pressed_keys);
         }
 
         let y_accel = if game_state.new_player_state.entity.velocity.1 < 0.0 {
@@ -170,43 +189,66 @@ impl Component for NewPlayerComponent {
 
         // only update if not paused
         if !game_state.new_player_state.paused {
-            ;
 
-            let step_size = if game_state.new_player_state.dead_time.is_some() { 0 } else { 1 };
+            let step_size = if game_state.new_player_state.dead_time.is_some() {
+                0
+            } else {
+                1
+            };
             let yvel_before = game_state.new_player_state.entity.velocity.1;
-            let collision_info = game_state.new_player_state.entity.update(dt, step_size, &mut game_state.world.collision_board);
+            let collision_info = game_state.new_player_state.entity.update(
+                dt,
+                step_size,
+                &mut game_state.world.collision_board,
+            );
 
             if !collision_info.hit_bottom {
-                game_state.new_player_state.max_height_since_ground = game_state.new_player_state.max_height_since_ground.max(game_state.new_player_state.entity.position.1);
+                game_state.new_player_state.max_height_since_ground = game_state
+                    .new_player_state
+                    .max_height_since_ground
+                    .max(game_state.new_player_state.entity.position.1);
             } else {
-                let fall_distance = game_state.new_player_state.max_height_since_ground - game_state.new_player_state.entity.position.1;
+                let fall_distance = game_state.new_player_state.max_height_since_ground
+                    - game_state.new_player_state.entity.position.1;
                 if fall_distance > 7.0 {
-                    game_state.new_player_state.spawn_ground_slam_animation(&mut game_state.world);
+                    game_state
+                        .new_player_state
+                        .spawn_ground_slam_animation(&mut game_state.world);
                 }
 
                 if fall_distance >= Self::DEATH_HEIGHT {
                     NewPlayerState::on_death(fall_distance, yvel_before, game_state);
                 }
 
-                game_state.new_player_state.max_height_since_ground = game_state.new_player_state.entity.position.1;
+                game_state.new_player_state.max_height_since_ground =
+                    game_state.new_player_state.entity.position.1;
             }
 
             if game_state.new_player_state.dead_time.is_none() {
                 // Now jump input since we need grounded information
                 if shared_state.pressed_keys.contains_key(&KeyCode::Char(' ')) {
-                    if game_state.new_player_state.entity.grounded(&mut game_state.world.collision_board) {
-                        game_state.new_player_state.entity.velocity.1 = 20.0 * game_state.upgrades.player_jump_boost_factor;
+                    if game_state
+                        .new_player_state
+                        .entity
+                        .grounded(&mut game_state.world.collision_board)
+                    {
+                        game_state.new_player_state.entity.velocity.1 =
+                            20.0 * game_state.upgrades.player_jump_boost_factor;
                     }
                 }
             }
         }
 
         // Update camera
-        game_state.world.camera_follow(game_state.new_player_state.entity.position.0.floor() as i64, game_state.new_player_state.entity.position.1.floor() as i64);
+        game_state.world.camera_follow(
+            game_state.new_player_state.entity.position.0.floor() as i64,
+            game_state.new_player_state.entity.position.1.floor() as i64,
+        );
 
         if current_time >= game_state.new_player_state.next_sample_time {
-            game_state.new_player_state.next_sample_time = game_state.new_player_state.next_sample_time
-                + Duration::from_secs_f64(1.0 / PlayerGhost::SAMPLE_RATE);
+            game_state.new_player_state.next_sample_time =
+                game_state.new_player_state.next_sample_time
+                    + Duration::from_secs_f64(1.0 / PlayerGhost::SAMPLE_RATE);
             let phe = PlayerHistoryElement {
                 x: game_state.new_player_state.entity.position.0.floor() as i64,
                 y: game_state.new_player_state.entity.position.1.floor() as i64,
@@ -237,8 +279,10 @@ impl Component for NewPlayerComponent {
         let player_depth = ghost_depth + 1;
         let debug_depth = player_depth + 1;
 
-        let player_screen_pos = game_state.world.to_screen_pos(player_world_x, player_world_y);
-        if let Some((x,y)) = player_screen_pos {
+        let player_screen_pos = game_state
+            .world
+            .to_screen_pos(player_world_x, player_world_y);
+        if let Some((x, y)) = player_screen_pos {
             if player.dead_time.is_some() {
                 player.dead_sprite.render(&mut renderer, x, y, player_depth);
             } else {
@@ -268,7 +312,9 @@ impl Component for NewPlayerComponent {
                     for y in bounds.min_y..=bounds.max_y {
                         let screen_pos = game_state.world.to_screen_pos(x, y);
                         if let Some((x, y)) = screen_pos {
-                            '░'.with_color([0,0,200]).render(&mut renderer, x, y, debug_depth);
+                            '░'
+                                .with_color([0, 0, 200])
+                                .render(&mut renderer, x, y, debug_depth);
                         }
                     }
                 }
@@ -361,16 +407,15 @@ impl PlayerGhost {
         let render_state = &history[history_size - offset_samples - 1];
         let cuteness = game_state.upgrades.ghost_cuteness;
 
-        let screen_pos = game_state.world.to_screen_pos(render_state.x, render_state.y);
+        let screen_pos = game_state
+            .world
+            .to_screen_pos(render_state.x, render_state.y);
 
         if let Some((x, y)) = screen_pos {
             if render_state.dead {
-                death_sprite.with_color([130, 130, 130]).render(
-                    &mut renderer,
-                    x,
-                    y,
-                    depth_base,
-                );
+                death_sprite
+                    .with_color([130, 130, 130])
+                    .render(&mut renderer, x, y, depth_base);
             } else {
                 player_sprite
                     .with_color([130u8.saturating_add(cuteness as u8), 130, 130])

@@ -3,12 +3,15 @@ pub mod incremental;
 pub mod video;
 
 use crate::game::display::Display;
-use crate::game::{BreakingAction, Component, DebugMessage, MouseInfo, Pixel, Render, Renderer, SharedState, Sprite, UpdateInfo};
+use crate::game::util::for_coord_in_line;
+use crate::game::{
+    BreakingAction, Component, DebugMessage, MouseInfo, Pixel, Render, Renderer, SharedState,
+    Sprite, UpdateInfo,
+};
 use crate::physics::PhysicsBoard;
 use crossterm::event::{Event, KeyCode, KeyEvent, MouseEvent, MouseEventKind};
 use smallvec::SmallVec;
 use std::time::{Duration, Instant};
-use crate::game::util::for_coord_in_line;
 
 #[derive(Debug, Default, Clone)]
 pub struct ElevatorInfo {
@@ -115,7 +118,8 @@ impl Component for DebugInfoComponent {
         if current_time - self.last_fps_time > Self::FPS_UPDATE_INTERVAL {
             self.fps = (self.frames_since_last_fps as f64)
                 / (current_time - self.last_fps_time).as_secs_f64();
-            self.last_actual_fps_computed = 1.0 / (self.sum_actual_dts / self.frames_since_last_fps as f64);
+            self.last_actual_fps_computed =
+                1.0 / (self.sum_actual_dts / self.frames_since_last_fps as f64);
             self.frames_since_last_fps = 0;
             self.sum_actual_dts = 0.0;
             self.last_fps_time = current_time;
@@ -163,7 +167,12 @@ impl Component for DebugInfoComponent {
         };
         format!("FPS: {:.2} ({})", self.fps, target_str).render(&mut renderer, 0, y, depth_base);
         y += 1;
-        format!("Achievable FPS: {:.2}", self.last_actual_fps_computed).render(&mut renderer, 0, y, depth_base);
+        format!("Achievable FPS: {:.2}", self.last_actual_fps_computed).render(
+            &mut renderer,
+            0,
+            y,
+            depth_base,
+        );
         // let debug_string = format!("DebugInfo: {:#?}", shared_state.debug_info);
         // for line in debug_string.lines() {
         //     line.render(&mut renderer, 0, y, depth_base);
@@ -268,7 +277,7 @@ impl MouseEvents {
         self.for_each_linerp(f);
     }
 
-    /// Calls the passed closure with a new mouse info for every interpolated mouse info 
+    /// Calls the passed closure with a new mouse info for every interpolated mouse info
     /// since last frame. The closure is also called with the last mouse info if no event
     /// has been received this frame.
     /// To only get fresh events, use `for_each_linerp_only_fresh`.
@@ -281,7 +290,12 @@ impl MouseEvents {
         f(*self.events.first().unwrap());
         for i in 0..self.events.len() - 1 {
             // and then every pair excluding the starts.
-            MouseTrackerComponent::smooth_two_updates(true, self.events[i], self.events[i + 1], &mut f);
+            MouseTrackerComponent::smooth_two_updates(
+                true,
+                self.events[i],
+                self.events[i + 1],
+                &mut f,
+            );
         }
     }
 }
@@ -334,7 +348,12 @@ impl MouseTrackerComponent {
 
     /// Calls the passed closure with a new mouse info for every interpolated mouse info between
     /// the two passed mouse infos. Also includes the endpoints.
-    pub fn smooth_two_updates(exclude_start: bool, first: MouseInfo, second: MouseInfo, mut f: impl FnMut(MouseInfo)) {
+    pub fn smooth_two_updates(
+        exclude_start: bool,
+        first: MouseInfo,
+        second: MouseInfo,
+        mut f: impl FnMut(MouseInfo),
+    ) {
         // linearly interpolate from first to second pixel.
         // so, rasterize a line connecting the two points
 
@@ -595,15 +614,17 @@ impl Component for FloodFillComponent {
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
         let mut content_changed = false;
-        shared_state.mouse_events.for_each_linerp_only_fresh(|mouse_info| {
-            if mouse_info.right_mouse_down {
-                let (x, y) = mouse_info.last_mouse_pos;
-                // only set if we actually change something
-                content_changed |= !self.board[(x, y)];
-                self.has_content |= content_changed;
-                self.board.set(x, y, true);
-            }
-        });
+        shared_state
+            .mouse_events
+            .for_each_linerp_only_fresh(|mouse_info| {
+                if mouse_info.right_mouse_down {
+                    let (x, y) = mouse_info.last_mouse_pos;
+                    // only set if we actually change something
+                    content_changed |= !self.board[(x, y)];
+                    self.has_content |= content_changed;
+                    self.board.set(x, y, true);
+                }
+            });
         // shared_state.debug_messages.push(DebugMessage {
         //     message: "has new frame things".to_string(),
         //     expiry_time: update_info.current_time + Duration::from_secs(1),

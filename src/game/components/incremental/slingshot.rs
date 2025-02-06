@@ -1,10 +1,13 @@
-use std::time::{Duration, Instant};
-use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
-use crate::game::{BreakingAction, Color, Component, DebugMessage, HalfBlockDisplayRender, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
-use crate::game::components::incremental::{GamePhase, GameState};
 use crate::game::components::incremental::ui::UiBarComponent;
+use crate::game::components::incremental::{GamePhase, GameState};
 use crate::game::components::MouseTrackerComponent;
 use crate::game::util::for_coord_in_line;
+use crate::game::{
+    BreakingAction, Color, Component, DebugMessage, HalfBlockDisplayRender, Pixel, Render,
+    Renderer, SetupInfo, SharedState, UpdateInfo,
+};
+use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
+use std::time::{Duration, Instant};
 
 pub struct SlingshotComponent {
     // 'Some' with screen coords of the first mouse down event during this slingshot
@@ -29,7 +32,8 @@ impl SlingshotComponent {
 
 impl Component for SlingshotComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
-        self.half_block_display_render = HalfBlockDisplayRender::new(setup_info.width, 2 * setup_info.height);
+        self.half_block_display_render =
+            HalfBlockDisplayRender::new(setup_info.width, 2 * setup_info.height);
     }
 
     fn is_active(&self, shared_state: &SharedState) -> bool {
@@ -54,7 +58,8 @@ impl Component for SlingshotComponent {
                 }
             }
             Event::Resize(width, height) => {
-                self.half_block_display_render.resize_discard(width as usize, 2 * (height as usize));
+                self.half_block_display_render
+                    .resize_discard(width as usize, 2 * (height as usize));
             }
             _ => {}
         }
@@ -75,9 +80,8 @@ impl Component for SlingshotComponent {
         let mut slingshot = None;
 
         // remove first_down if oob
-        self.first_down.take_if(|(x, y)| {
-            game_state.world.to_world_pos(*x, *y).is_none()
-        });
+        self.first_down
+            .take_if(|(x, y)| game_state.world.to_world_pos(*x, *y).is_none());
 
         // hack for when the user exits the window while dragging
         // TODO: this doesn't work because the mouse tracker component also doesn't see mouseup events when the
@@ -102,7 +106,6 @@ impl Component for SlingshotComponent {
             }
         }
 
-
         // if shared_state.mouse_info.left_mouse_down {
         //     let (s_x, s_y) = shared_state.mouse_info.last_mouse_pos;
         // if let Some((s_x, s_y)) = self.last_release.take() {
@@ -125,7 +128,10 @@ impl Component for SlingshotComponent {
 
         if let Some((s_x, s_y)) = self.slingshot {
             // debug
-            shared_state.debug_messages.push(DebugMessage::new(format!("Slingshot: ({}, {})", s_x, s_y), Instant::now() + Duration::from_secs_f64(3.0)));
+            shared_state.debug_messages.push(DebugMessage::new(
+                format!("Slingshot: ({}, {})", s_x, s_y),
+                Instant::now() + Duration::from_secs_f64(3.0),
+            ));
             game_state.new_player_state.entity.x_drag = 0.6;
             // add velocity
             // game_state.new_player_state.entity.velocity.0 += s_x as f64 * 1.0;
@@ -138,7 +144,6 @@ impl Component for SlingshotComponent {
             self.last_release = None;
             game_state.new_player_state.paused = false;
         }
-
 
         // prepare render:
         // render a line in screenspace
@@ -159,13 +164,15 @@ impl Component for SlingshotComponent {
                     if y / 2 >= shared_state.display_info.height() - UiBarComponent::HEIGHT {
                         return;
                     }
-                    self.half_block_display_render.set_color(x, y, Color::Rgb([255; 3]));
+                    self.half_block_display_render
+                        .set_color(x, y, Color::Rgb([255; 3]));
                 });
             }
         }
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
-        self.half_block_display_render.render(&mut renderer, 0, 0, depth_base);
+        self.half_block_display_render
+            .render(&mut renderer, 0, 0, depth_base);
     }
 }

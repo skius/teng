@@ -42,6 +42,10 @@
 //! - At high fall gravities, the red background screen starts flashing when the player is on the floor.
 //!    maybe add override for when the player is on the floor and skip it?
 
+use crate::game::components::incremental::player::{
+    NewPlayerComponent, NewPlayerState, PlayerGhost,
+};
+use crate::game::components::incremental::slingshot::SlingshotComponent;
 use crate::game::components::incremental::ui::UiBarComponent;
 use crate::game::components::incremental::world::{World, WorldComponent};
 use crate::game::components::{DecayElement, MouseTrackerComponent};
@@ -53,18 +57,16 @@ use anymap::any::Any;
 use crossterm::event::{Event, KeyCode};
 use smallvec::SmallVec;
 use std::time::{Duration, Instant};
-use crate::game::components::incremental::player::{NewPlayerComponent, NewPlayerState, PlayerGhost};
-use crate::game::components::incremental::slingshot::SlingshotComponent;
 
+mod animation;
 mod bidivec;
+mod collisionboard;
+pub mod falling;
+mod planarvec;
+mod player;
+mod slingshot;
 pub mod ui;
 pub mod world;
-mod planarvec;
-mod collisionboard;
-mod player;
-mod animation;
-mod slingshot;
-pub mod falling;
 
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 enum GamePhase {
@@ -295,20 +297,16 @@ impl Component for BuildingDrawComponent {
             if mi.left_mouse_down {
                 let x = mi.last_mouse_pos.0 as u16;
                 let y = mi.last_mouse_pos.1 as u16;
-                if y >= shared_state.display_info.height() as u16
-                    - UiBarComponent::HEIGHT as u16
-                {
+                if y >= shared_state.display_info.height() as u16 - UiBarComponent::HEIGHT as u16 {
                     return;
                 }
                 // if self.draw_queue.contains(&(x, y)) {
                 //     return;
                 // }
                 // if decay board already has this pixel, we don't need to count it towards our blocks
-                let exists_already =
-                    shared_state.decay_board[(x as usize, y as usize)].c != ' ';
+                let exists_already = shared_state.decay_board[(x as usize, y as usize)].c != ' ';
                 // draw only if it either exists, or we have enough blocks
-                if exists_already
-                    || shared_state.extensions.get::<GameState>().unwrap().blocks > 0
+                if exists_already || shared_state.extensions.get::<GameState>().unwrap().blocks > 0
                 {
                     if !exists_already {
                         shared_state

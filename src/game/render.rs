@@ -1,7 +1,7 @@
+use crate::game::display::Display;
 use crate::game::{renderer::Renderer, Color, Pixel};
 use std::fmt::Debug;
 use std::io::Write;
-use crate::game::display::Display;
 
 pub trait Render {
     /// Render the object at the given position with the given depth
@@ -197,11 +197,10 @@ impl<'a, R: Renderer> Renderer for TransparentRendererAdapter<'a, R> {
     }
 }
 
-
 pub struct HalfBlockDisplayRender {
     width: usize,
     height: usize,
-    display: Display<Color>
+    display: Display<Color>,
 }
 
 impl HalfBlockDisplayRender {
@@ -230,7 +229,7 @@ impl HalfBlockDisplayRender {
 
 impl Render for HalfBlockDisplayRender {
     fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
-        for y in 0..(self.height/2) {
+        for y in 0..(self.height / 2) {
             for x in 0..self.width {
                 let color_top = *self.display.get(x, 2 * y).unwrap();
                 let color_bottom = *self.display.get(x, 2 * y + 1).unwrap();
@@ -261,4 +260,3 @@ impl Render for HalfBlockDisplayRender {
         }
     }
 }
-

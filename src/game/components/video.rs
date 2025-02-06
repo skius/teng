@@ -1,7 +1,7 @@
+use crate::game::{Component, Pixel, Renderer, SharedState, UpdateInfo};
 use rust_embed::Embed;
 use tempfile::env::temp_dir;
 use video_rs::Decoder;
-use crate::game::{Component, Pixel, Renderer, SharedState, UpdateInfo};
 
 #[derive(Embed)]
 #[folder = "assets/"]
@@ -28,7 +28,6 @@ impl VideoComponent {
         let temp_dir = temp_dir();
         let temp_file = temp_dir.join("output4-small.mp4");
         std::fs::write(&temp_file, bytes).unwrap();
-
 
         let mut decoder = Decoder::new(temp_file).unwrap();
 
@@ -80,10 +79,10 @@ impl Component for VideoComponent {
         let offset_x = (shared_state.display_info.width() - self.width) / 2;
         let frame = &self.frames[self.render_frame_idx];
 
-        for y in 0..(self.height/2) {
+        for y in 0..(self.height / 2) {
             for x in 0..self.width {
                 let color_top = frame.0[2 * y * self.width + x];
-                let color_bottom = frame.0[(2 * y+1) * self.width + x];
+                let color_bottom = frame.0[(2 * y + 1) * self.width + x];
 
                 let mut pixel = Pixel::new('▄');
                 let pixel = pixel.with_color(color_bottom).with_bg_color(color_top);

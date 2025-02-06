@@ -1,5 +1,5 @@
-use std::ops::{Index, IndexMut};
 use crate::game::components::incremental::bidivec::BidiVec;
+use std::ops::{Index, IndexMut};
 
 /// Bounds for a 2D plane. Includes all indices.
 /// x values range from min_x..=max_x
@@ -16,7 +16,7 @@ impl Bounds {
     pub fn contains(&self, x: i64, y: i64) -> bool {
         x >= self.min_x && x <= self.max_x && y >= self.min_y && y <= self.max_y
     }
-    
+
     pub fn contains_bounds(&self, other: Bounds) -> bool {
         self.contains(other.min_x, other.min_y) && self.contains(other.max_x, other.max_y)
     }
@@ -45,22 +45,22 @@ impl<T> PlanarVec<T> {
 
         Self { data, bounds }
     }
-    
+
     /// Returns the world bounds
     pub fn bounds(&self) -> Bounds {
         self.bounds
     }
-    
+
     /// Returns the x range
     pub fn x_range(&self) -> impl DoubleEndedIterator<Item = i64> {
         self.bounds.min_x..=self.bounds.max_x
     }
-    
+
     /// Returns the y range
     pub fn y_range(&self) -> impl DoubleEndedIterator<Item = i64> {
         self.bounds.min_y..=self.bounds.max_y
     }
-    
+
     /// Clear the entire PlanarVec to the default value.
     pub fn clear(&mut self, default: T)
     where
@@ -70,8 +70,7 @@ impl<T> PlanarVec<T> {
             row.fill(default.clone());
         }
     }
-    
-    
+
     /// Gets the value at the given position.
     pub fn get(&self, x: i64, y: i64) -> Option<&T> {
         if !self.bounds.contains(x, y) {
@@ -101,12 +100,13 @@ impl<T> PlanarVec<T> {
             min_y: self.bounds.min_y.min(bounds.min_y),
             max_y: self.bounds.max_y.max(bounds.max_y),
         };
-        
+
         if union_bounds == self.bounds {
             return;
         }
 
-        self.data.grow(union_bounds.min_x..=union_bounds.max_x, BidiVec::new());
+        self.data
+            .grow(union_bounds.min_x..=union_bounds.max_x, BidiVec::new());
         for row in self.data.iter_mut() {
             row.grow(union_bounds.min_y..=union_bounds.max_y, default.clone());
         }
@@ -148,7 +148,6 @@ mod tests {
         planar_vec[(1, 1)] = 1;
 
         assert_eq!(planar_vec[(1, 1)], 1);
-
 
         planar_vec.expand(
             Bounds {

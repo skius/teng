@@ -1,6 +1,6 @@
-use std::ops::{Index, IndexMut};
 use crate::game::components::incremental::planarvec::{Bounds, PlanarVec};
 use crate::game::components::incremental::player::NewPlayerComponent;
+use std::ops::{Index, IndexMut};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CollisionCell {
@@ -19,13 +19,13 @@ pub struct CollisionInformation {
 
 #[derive(Debug, Clone)]
 pub struct CollisionBoard {
-    board: PlanarVec<CollisionCell>
+    board: PlanarVec<CollisionCell>,
 }
 
 impl CollisionBoard {
     pub fn new(bounds: Bounds) -> Self {
         Self {
-            board: PlanarVec::new(bounds, CollisionCell::Empty)
+            board: PlanarVec::new(bounds, CollisionCell::Empty),
         }
     }
 
@@ -47,7 +47,12 @@ impl CollisionBoard {
 
     pub fn collides_growing(&mut self, bounding_box: Bounds) -> bool {
         self.expand(bounding_box);
-        let Bounds { min_x, max_x, min_y, max_y } = bounding_box;
+        let Bounds {
+            min_x,
+            max_x,
+            min_y,
+            max_y,
+        } = bounding_box;
 
         // let bottom_cutoff = min_y + (max_y - min_y) / 2;
         // let left_cutoff = min_x + (max_x - min_x) / 2;
@@ -95,7 +100,6 @@ pub struct PhysicsEntity2d {
 }
 
 impl PhysicsEntity2d {
-
     pub fn bounding_box(&self) -> Bounds {
         let (x, y) = self.position;
         let min_x = (x - self.size_left).floor() as i64;
@@ -125,19 +129,23 @@ impl PhysicsEntity2d {
         let (drag_x, drag_y) = drag;
         let drag_x = drag_x.powf(dt);
         let drag_y = drag_y.powf(dt);
-        
 
         self.velocity = (vx * drag_x + ax * dt, vy * drag_y + ay * dt);
     }
 
-    pub fn update(&mut self, dt: f64, step_size: i64, collision_board: &mut CollisionBoard) -> CollisionInformation {
+    pub fn update(
+        &mut self,
+        dt: f64,
+        step_size: i64,
+        collision_board: &mut CollisionBoard,
+    ) -> CollisionInformation {
         if collision_board.collides_growing(self.bounding_box()) {
             // We are already colliding with something, so we should try and escape by moving up
             self.position.1 += 1.0;
             return CollisionInformation {
                 glitched: true,
                 ..Default::default()
-            }
+            };
         }
 
         let mut collision_info = CollisionInformation::default();
@@ -236,7 +244,6 @@ impl PhysicsEntity2d {
                 self.velocity.1 = 0.0;
             }
 
-
             collision_info.hit_top = y_diff > 0 && collision;
             collision_info.hit_bottom = y_diff < 0 && collision;
         }
@@ -247,7 +254,12 @@ impl PhysicsEntity2d {
 
     /// Returns a bounding box that is one unit high and resides directly above the entity.
     pub fn top_sensor(&self) -> Bounds {
-        let Bounds { min_x, max_x, mut min_y, mut max_y } = self.bounding_box();
+        let Bounds {
+            min_x,
+            max_x,
+            mut min_y,
+            mut max_y,
+        } = self.bounding_box();
 
         max_y += 1;
         min_y = max_y;
@@ -262,7 +274,12 @@ impl PhysicsEntity2d {
 
     /// Returns a bounding box that is one unit high and resides directly below the entity.
     pub fn floor_sensor(&self) -> Bounds {
-        let Bounds { min_x, max_x, mut min_y, mut max_y } = self.bounding_box();
+        let Bounds {
+            min_x,
+            max_x,
+            mut min_y,
+            mut max_y,
+        } = self.bounding_box();
 
         min_y -= 1;
         max_y = min_y;
@@ -277,7 +294,12 @@ impl PhysicsEntity2d {
 
     /// Returns a bounding box that is one unit wide and resides directly to the left of the entity.
     pub fn left_sensor(&self) -> Bounds {
-        let Bounds { mut min_x, mut max_x, min_y, max_y } = self.bounding_box();
+        let Bounds {
+            mut min_x,
+            mut max_x,
+            min_y,
+            max_y,
+        } = self.bounding_box();
 
         min_x -= 1;
         max_x = min_x;
@@ -292,7 +314,12 @@ impl PhysicsEntity2d {
 
     /// Returns a bounding box that is one unit wide and resides directly to the right of the entity.
     pub fn right_sensor(&self) -> Bounds {
-        let Bounds { mut min_x, mut max_x, min_y, max_y } = self.bounding_box();
+        let Bounds {
+            mut min_x,
+            mut max_x,
+            min_y,
+            max_y,
+        } = self.bounding_box();
 
         max_x += 1;
         min_x = max_x;

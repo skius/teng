@@ -206,7 +206,10 @@ macro_rules! add_buttons {
 
 pub struct UiBarComponent {
     buttons: Vec<Box<dyn UiButton>>,
+    // indices of buttons that are on the corresponding pages
+    pages: Vec<Vec<usize>>,
     hover_button: Option<usize>,
+    active_page_idx: usize,
 }
 
 impl UiBarComponent {
@@ -217,7 +220,9 @@ impl UiBarComponent {
     pub fn new() -> Self {
         Self {
             buttons: vec![],
+            pages: vec![],
             hover_button: None,
+            active_page_idx: 0,
         }
     }
 }

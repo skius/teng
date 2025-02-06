@@ -1,8 +1,11 @@
-use std::time::{Duration, Instant};
-use crossterm::event::Event;
-use crate::game::{BreakingAction, Color, Component, DisplayInfo, HalfBlockDisplayRender, MouseInfo, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
 use crate::game::components::incremental::planarvec::{Bounds, PlanarVec};
 use crate::game::components::MouseTrackerComponent;
+use crate::game::{
+    BreakingAction, Color, Component, DisplayInfo, HalfBlockDisplayRender, MouseInfo, Render,
+    Renderer, SetupInfo, SharedState, UpdateInfo,
+};
+use crossterm::event::Event;
+use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum PieceKind {
@@ -45,7 +48,12 @@ impl FallingSimulationData {
         Self {
             secs_passed: 0.0,
             total_pieces: 0,
-            world: PlanarVec::new(bounds, Piece { kind: PieceKind::Air }),
+            world: PlanarVec::new(
+                bounds,
+                Piece {
+                    kind: PieceKind::Air,
+                },
+            ),
             has_moved: PlanarVec::new(bounds, false),
         }
     }
@@ -163,7 +171,7 @@ impl FallingSimulationComponent {
         Self {
             dt_budget: 0.0,
             last_mouse_info: MouseInfo::default(),
-            hb_display: HalfBlockDisplayRender::new(10,10),
+            hb_display: HalfBlockDisplayRender::new(10, 10),
         }
     }
 
@@ -188,9 +196,11 @@ impl FallingSimulationComponent {
     }
 
     fn update_simulation(&mut self, shared_state: &mut SharedState) {
-        let data = shared_state.extensions.get_mut::<FallingSimulationData>().unwrap();
+        let data = shared_state
+            .extensions
+            .get_mut::<FallingSimulationData>()
+            .unwrap();
         data.secs_passed += Self::UPDATE_INTERVAL;
-
 
         // std::mem::swap(&mut data.world, &mut data.old_world);
         // data.world.clear(Piece { kind: PieceKind::Air });
@@ -224,7 +234,6 @@ impl FallingSimulationComponent {
                     PieceKind::Water => {
                         data.sim_water((x, y));
                     }
-
                 }
                 data.has_moved[(x, y)] = true;
             }
@@ -245,13 +254,13 @@ impl FallingSimulationComponent {
 
 impl Component for FallingSimulationComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
-        self.hb_display.resize_discard(setup_info.width, setup_info.height * 2);
+        self.hb_display
+            .resize_discard(setup_info.width, setup_info.height * 2);
         shared_state.extensions.insert(FallingSimulationData::new());
     }
 
     fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         // // get mouse and set everything to 'sand' on LMB
-
 
         None
     }
@@ -261,9 +270,15 @@ impl Component for FallingSimulationComponent {
         self.dt_budget += dt;
 
         // add sand from mouse events
-        let data = shared_state.extensions.get_mut::<FallingSimulationData>().unwrap();
+        let data = shared_state
+            .extensions
+            .get_mut::<FallingSimulationData>()
+            .unwrap();
 
-        if shared_state.mouse_info.left_mouse_down || shared_state.mouse_info.right_mouse_down || shared_state.mouse_info.middle_mouse_down {
+        if shared_state.mouse_info.left_mouse_down
+            || shared_state.mouse_info.right_mouse_down
+            || shared_state.mouse_info.middle_mouse_down
+        {
             let (s_x, s_y) = shared_state.mouse_info.last_mouse_pos;
 
             let x = s_x as i64 - 100;
@@ -292,10 +307,17 @@ impl Component for FallingSimulationComponent {
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let depth_base = i32::MAX - 99;
-        let data = shared_state.extensions.get::<FallingSimulationData>().unwrap();
-        format!("FallingSimulationComponent: {}", data.secs_passed).render(&mut renderer, 0, 0, depth_base);
+        let data = shared_state
+            .extensions
+            .get::<FallingSimulationData>()
+            .unwrap();
+        format!("FallingSimulationComponent: {}", data.secs_passed).render(
+            &mut renderer,
+            0,
+            0,
+            depth_base,
+        );
         format!("sands: [{}]", data.total_pieces).render(&mut renderer, 0, 1, depth_base);
-
 
         self.hb_display.render(&mut renderer, 0, 0, depth_base);
     }

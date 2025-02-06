@@ -6,7 +6,13 @@ mod game;
 mod physics;
 
 use crate::game::components::elevator::ElevatorComponent;
-use crate::game::components::{incremental, video, ClearComponent, DebugInfoComponent, DecayComponent, FPSLockerComponent, FloodFillComponent, ForceApplyComponent, KeyPressRecorderComponent, MouseTrackerComponent, PhysicsComponent, PlayerComponent, QuitterComponent, SimpleDrawComponent};
+use crate::game::components::incremental::falling::FallingSimulationComponent;
+use crate::game::components::video::VideoComponent;
+use crate::game::components::{
+    incremental, video, ClearComponent, DebugInfoComponent, DecayComponent, FPSLockerComponent,
+    FloodFillComponent, ForceApplyComponent, KeyPressRecorderComponent, MouseTrackerComponent,
+    PhysicsComponent, PlayerComponent, QuitterComponent, SimpleDrawComponent,
+};
 use crate::game::{DisplayRenderer, Game, Pixel, Render, Renderer, Sprite};
 use crossterm::event::{KeyEvent, KeyboardEnhancementFlags, MouseButton, MouseEventKind};
 use crossterm::style::{Color, Colored, Colors};
@@ -24,8 +30,6 @@ use std::ops::Deref;
 use std::thread::sleep;
 use std::time::Instant;
 use std::{io, time::Duration};
-use crate::game::components::incremental::falling::FallingSimulationComponent;
-use crate::game::components::video::VideoComponent;
 
 const HELP: &str = r#"Blocking poll() & non-blocking read()
  - Keyboard, mouse and terminal resize events enabled

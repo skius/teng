@@ -1,3 +1,7 @@
+use crate::game::components::incremental::animation::Animation;
+use crate::game::components::incremental::bidivec::BidiVec;
+use crate::game::components::incremental::collisionboard::{CollisionBoard, CollisionCell};
+use crate::game::components::incremental::planarvec::{Bounds, PlanarVec};
 use crate::game::components::incremental::ui::UiBarComponent;
 use crate::game::components::incremental::GameState;
 use crate::game::{
@@ -8,10 +12,6 @@ use noise::{NoiseFn, Perlin, Simplex};
 use std::iter::repeat;
 use std::ops::{Index, IndexMut};
 use std::time::Instant;
-use crate::game::components::incremental::animation::Animation;
-use crate::game::components::incremental::bidivec::BidiVec;
-use crate::game::components::incremental::collisionboard::{CollisionBoard, CollisionCell};
-use crate::game::components::incremental::planarvec::{Bounds, PlanarVec};
 
 #[derive(Debug, Clone)]
 pub struct InitializedTile {
@@ -37,7 +37,6 @@ struct WorldIndex {
     y: usize,
     x: usize,
 }
-
 
 #[derive(Debug)]
 struct AnimationInWorld {
@@ -67,7 +66,7 @@ pub struct World {
     /// For every x, this stores the y value of the ground level.
     ground_level: BidiVec<i64>,
     pub collision_board: CollisionBoard,
-    animations: Vec<AnimationInWorld>
+    animations: Vec<AnimationInWorld>,
 }
 
 impl World {
@@ -172,7 +171,7 @@ impl World {
         if current_bounds.contains_bounds(bounds) {
             return;
         }
-        
+
         self.tiles.expand(bounds, Tile::Ungenerated);
         self.collision_board.expand(bounds);
         // TODO: only regenerate the portions that are new.
@@ -251,7 +250,10 @@ impl World {
             self.ground_level[x] = ground_offset_height;
 
             for y in min_y..=max_y {
-                if self.get_mut(x, y).is_some_and(|t| matches!(t, Tile::Ungenerated)) {
+                if self
+                    .get_mut(x, y)
+                    .is_some_and(|t| matches!(t, Tile::Ungenerated))
+                {
                     let draw = if y <= ground_offset_height {
                         // ground
                         self.collision_board[(x, y)] = CollisionCell::Solid;
@@ -259,23 +261,31 @@ impl World {
                         // make it grey:
                         let yd = y.clamp(-50, 30) as u8;
                         let color = [100 + yd, 100 + yd, 100 + yd];
-                        let mut final_pixel = Pixel::new('█').with_color(color).with_bg_color(color);
+                        let mut final_pixel =
+                            Pixel::new('█').with_color(color).with_bg_color(color);
 
                         // Check if the ground height is below the dirt level
-                        let dirt_val = dirt_noise.get([x as f64 / dirt_wideness_factor, y as f64 / (dirt_wideness_factor * 2.0)]);
+                        let dirt_val = dirt_noise.get([
+                            x as f64 / dirt_wideness_factor,
+                            y as f64 / (dirt_wideness_factor * 2.0),
+                        ]);
                         // removal factor goes from 1.0 at y <= 0 to 0.0 at y >= 10
                         let dirt_removal_factor = 1.0 - ((y - (-5)) as f64 / 10.0).clamp(0.0, 1.0);
                         // if y is more than 6 below ground level, increase factor to 1.0 until 16 below ground
-                        let below_ground_removal_factor = 1.0 - ((ground_offset_height - 6 - y) as f64 / 10.0).clamp(0.0, 1.0);
+                        let below_ground_removal_factor =
+                            1.0 - ((ground_offset_height - 6 - y) as f64 / 10.0).clamp(0.0, 1.0);
                         let dirt_val = dirt_val * dirt_removal_factor * below_ground_removal_factor;
                         if dirt_val > 0.3 {
                             // Add some dirt
                             let dirt_color = [139, 69, 19];
-                            final_pixel = final_pixel.with_color(dirt_color).with_bg_color(dirt_color);
+                            final_pixel =
+                                final_pixel.with_color(dirt_color).with_bg_color(dirt_color);
                             if y == ground_offset_height {
                                 // Add some grass
                                 let grass_color = [0, 150, 0];
-                                final_pixel = final_pixel.with_color(grass_color).with_bg_color(grass_color);
+                                final_pixel = final_pixel
+                                    .with_color(grass_color)
+                                    .with_bg_color(grass_color);
                             }
                         }
 
@@ -312,7 +322,7 @@ impl World {
                         Pixel::new('█').with_color(color).with_bg_color(color)
                         // Pixel::transparent().with_bg_color(color)
                     };
-                    self[(x,y)] = Tile::Initialized(InitializedTile { draw });
+                    self[(x, y)] = Tile::Initialized(InitializedTile { draw });
                 }
             }
         }
@@ -350,9 +360,11 @@ impl Component for WorldComponent {
         // if shared_state.pressed_keys.contains_key(&KeyCode::Char('r')) {
         //     world.regenerate();
         // }
-        
+
         // In case the collision board grew from physics
-        world.tiles.expand(world.collision_board.bounds(), Tile::Ungenerated);
+        world
+            .tiles
+            .expand(world.collision_board.bounds(), Tile::Ungenerated);
 
         // if shared_state.pressed_keys.contains_key(&KeyCode::Char('w')) {
         //     world.move_camera(0, 1);
@@ -406,8 +418,15 @@ impl Component for WorldComponent {
 
         let current_time = Instant::now();
         for animation in &world.animations {
-            let Some((screen_x, screen_y)) = world.to_screen_pos(animation.world_x, animation.world_y) else { continue };
-            let delete = animation.animation.render((screen_x, screen_y), current_time, &mut renderer);
+            let Some((screen_x, screen_y)) =
+                world.to_screen_pos(animation.world_x, animation.world_y)
+            else {
+                continue;
+            };
+            let delete =
+                animation
+                    .animation
+                    .render((screen_x, screen_y), current_time, &mut renderer);
             if delete {
                 // TODO: remove animation
             }

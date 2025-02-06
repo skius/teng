@@ -313,10 +313,10 @@ impl<W: Write> Game<W> {
         let mut now = Instant::now();
         // how much longer the last sleep() slept than expected.
         let mut last_overhead = Duration::from_nanos(0);
-        
+
         // how long the last frame's computations took
         let mut last_actual_dt = 1.0;
-        
+
         // this didn't end up working nicely. Could try an adaptive approach like here:
         // https://stackoverflow.com/a/6942771
         // let mut last_nanos_per_frame = 1;
@@ -361,7 +361,6 @@ impl<W: Write> Game<W> {
             let time_slept = new_now.duration_since(current);
             let overhead = time_slept.saturating_sub(remaining_time);
             last_overhead = overhead;
-
 
             // // note: 'last' from perspective of next iteration
             last_frame = now;

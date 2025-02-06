@@ -1,7 +1,12 @@
-pub fn for_coord_in_line(exclude_start: bool, (start_x, start_y): (i64, i64), (end_x, end_y): (i64, i64), mut f: impl FnMut(i64, i64)) {
+pub fn for_coord_in_line(
+    exclude_start: bool,
+    (start_x, start_y): (i64, i64),
+    (end_x, end_y): (i64, i64),
+    mut f: impl FnMut(i64, i64),
+) {
     // only exclude start if it's not the same as end
     let exclude_start = exclude_start && (start_x != end_x || start_y != end_y);
-    
+
     let dx = (end_x - start_x).abs();
     let dy = (end_y - start_y).abs();
     let sx = if start_x < end_x { 1 } else { -1 };
