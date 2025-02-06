@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 use crossterm::event::{Event, KeyCode};
 use crate::game::components::incremental::collisionboard::PhysicsEntity2d;
 use crate::game::{BreakingAction, Component, DebugMessage, Render, Renderer, SharedState, Sprite, UpdateInfo};
-use crate::game::components::incremental::{GamePhase, GameState, PlayerComponent, PlayerHistoryElement, PlayerState};
+use crate::game::components::incremental::{GamePhase, GameState, PlayerHistoryElement};
 use crate::game::components::incremental::animation::CharAnimationSequence;
 use crate::game::components::incremental::world::World;
 
@@ -86,7 +86,7 @@ impl NewPlayerState {
     fn horizontal_inputs(&mut self, pressed_keys: &micromap::Map<KeyCode, u8, 16>) {
         let slow_velocity = 10.0;
         let fast_velocity = 30.0;
-        
+
         let mut did_move = false;
 
         if pressed_keys.contains_key(&KeyCode::Char('a')) {
@@ -104,7 +104,7 @@ impl NewPlayerState {
             self.entity.velocity.0 = if self.entity.velocity.0 < 0.0 { 0.0 } else { fast_velocity };
             did_move = true;
         }
-        
+
         if did_move {
             // reset drag
             self.entity.x_drag = 1.0;
@@ -147,6 +147,7 @@ impl Component for NewPlayerComponent {
                 game_state.phase = GamePhase::MoveToBuilding;
                 game_state.new_player_state.dead_time = None;
                 game_state.new_player_state.entity.x_drag = 1.0;
+                game_state.new_player_state.entity.velocity = (0.0, 0.0);
                 // for all ghosts that did not die, add 1 block
                 for ghost in &game_state.player_ghosts {
                     if ghost.death_time.is_none() {
@@ -250,8 +251,8 @@ impl Component for NewPlayerComponent {
                 &mut renderer,
                 shared_state,
                 ghost_depth,
-                &game_state.player_state.sprite,
-                &game_state.player_state.dead_sprite,
+                &game_state.new_player_state.sprite,
+                &game_state.new_player_state.dead_sprite,
             );
         }
 
@@ -333,7 +334,7 @@ impl PlayerGhost {
 
         let expired = if let Some(death_time) = self.death_time {
             let time_since_death = (current_time - death_time).as_secs_f64();
-            time_since_death >= PlayerComponent::DEATH_RESPAWN_TIME
+            time_since_death >= NewPlayerComponent::DEATH_RESPAWN_TIME
         } else {
             false
         };
