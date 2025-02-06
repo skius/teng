@@ -10,6 +10,7 @@ use crate::physics::PhysicsBoard;
 use crossterm::event::{Event, KeyCode, KeyEvent, MouseEvent, MouseEventKind};
 use smallvec::SmallVec;
 use std::time::{Duration, Instant};
+use crate::game::util::for_coord_in_line;
 
 #[derive(Debug, Default, Clone)]
 pub struct ElevatorInfo {
@@ -257,36 +258,28 @@ impl MouseTrackerComponent {
 
     pub fn fill_mouse_info(event: MouseEvent, mouse_info: &mut MouseInfo) {
         mouse_info.last_mouse_pos = (event.column as usize, event.row as usize);
-        match event {
+        let (button, down) = match event {
             MouseEvent {
                 kind: MouseEventKind::Down(button),
                 ..
-            } => match button {
-                crossterm::event::MouseButton::Left => {
-                    mouse_info.left_mouse_down = true;
-                }
-                crossterm::event::MouseButton::Right => {
-                    mouse_info.right_mouse_down = true;
-                }
-                crossterm::event::MouseButton::Middle => {
-                    mouse_info.middle_mouse_down = true;
-                }
-            },
+            } => (button, true),
             MouseEvent {
                 kind: MouseEventKind::Up(button),
                 ..
-            } => match button {
-                crossterm::event::MouseButton::Left => {
-                    mouse_info.left_mouse_down = false;
-                }
-                crossterm::event::MouseButton::Right => {
-                    mouse_info.right_mouse_down = false;
-                }
-                crossterm::event::MouseButton::Middle => {
-                    mouse_info.middle_mouse_down = false;
-                }
-            },
-            _ => {}
+            } => (button, false),
+            _ => return,
+        };
+        
+        match button {
+            crossterm::event::MouseButton::Left => {
+                mouse_info.left_mouse_down = down;
+            }
+            crossterm::event::MouseButton::Right => {
+                mouse_info.right_mouse_down = down;
+            }
+            crossterm::event::MouseButton::Middle => {
+                mouse_info.middle_mouse_down = down;
+            }
         }
     }
 
@@ -296,21 +289,12 @@ impl MouseTrackerComponent {
         // linearly interpolate from first to second pixel.
         // so, rasterize a line connecting the two points
 
-        let start_x = first.last_mouse_pos.0 as i32;
-        let start_y = first.last_mouse_pos.1 as i32;
-        let end_x = second.last_mouse_pos.0 as i32;
-        let end_y = second.last_mouse_pos.1 as i32;
-
-        // TODO: Understand this code
-        let dx = (end_x - start_x).abs();
-        let dy = (end_y - start_y).abs();
-        let sx = if start_x < end_x { 1 } else { -1 };
-        let sy = if start_y < end_y { 1 } else { -1 };
-        let mut err = dx - dy;
-        let mut x = start_x;
-        let mut y = start_y;
-
-        while x != end_x || y != end_y {
+        let start_x = first.last_mouse_pos.0 as i64;
+        let start_y = first.last_mouse_pos.1 as i64;
+        let end_x = second.last_mouse_pos.0 as i64;
+        let end_y = second.last_mouse_pos.1 as i64;
+        
+        for_coord_in_line((start_x, start_y), (end_x, end_y), |x, y| {
             f(MouseInfo {
                 last_mouse_pos: (x as usize, y as usize),
                 // important, use first mouse info to determine mouse button state, avoids edge cases
@@ -319,19 +303,40 @@ impl MouseTrackerComponent {
                 right_mouse_down: first.right_mouse_down,
                 middle_mouse_down: first.middle_mouse_down,
             });
-
-            let e2 = 2 * err;
-            if e2 > -dy {
-                err -= dy;
-                x += sx;
-            }
-            if e2 < dx {
-                err += dx;
-                y += sy;
-            }
-        }
-
-        f(second);
+        });
+        // 
+        // 
+        // // TODO: Understand this code
+        // let dx = (end_x - start_x).abs();
+        // let dy = (end_y - start_y).abs();
+        // let sx = if start_x < end_x { 1 } else { -1 };
+        // let sy = if start_y < end_y { 1 } else { -1 };
+        // let mut err = dx - dy;
+        // let mut x = start_x;
+        // let mut y = start_y;
+        // 
+        // while x != end_x || y != end_y {
+        //     f(MouseInfo {
+        //         last_mouse_pos: (x as usize, y as usize),
+        //         // important, use first mouse info to determine mouse button state, avoids edge cases
+        //         // when entering and leaving terminal/process
+        //         left_mouse_down: first.left_mouse_down,
+        //         right_mouse_down: first.right_mouse_down,
+        //         middle_mouse_down: first.middle_mouse_down,
+        //     });
+        // 
+        //     let e2 = 2 * err;
+        //     if e2 > -dy {
+        //         err -= dy;
+        //         x += sx;
+        //     }
+        //     if e2 < dx {
+        //         err += dx;
+        //         y += sy;
+        //     }
+        // }
+        // 
+        // f(second);
     }
 }
 
@@ -361,12 +366,6 @@ impl Component for MouseTrackerComponent {
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
-        // if shared_state.mouse_info != self.last_mouse_info {
-        //     shared_state.debug_messages.push(DebugMessage::new(
-        //         format!("Mouse: {:?}", self.last_mouse_info),
-        //         update_info.current_time + Duration::from_secs(5),
-        //     ));
-        // }
         shared_state.mouse_info = self.last_mouse_info;
         shared_state.mouse_pressed.right = self.did_press_right;
         shared_state.mouse_pressed.left = self.did_press_left;

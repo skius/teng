@@ -4,6 +4,7 @@ use crate::game::{BreakingAction, Color, Component, DebugMessage, HalfBlockDispl
 use crate::game::components::incremental::{GamePhase, GameState};
 use crate::game::components::incremental::ui::UiBarComponent;
 use crate::game::components::MouseTrackerComponent;
+use crate::game::util::for_coord_in_line;
 
 pub struct SlingshotComponent {
     // 'Some' with screen coords of the first mouse down event during this slingshot
@@ -146,26 +147,19 @@ impl Component for SlingshotComponent {
             if shared_state.mouse_info.left_mouse_down {
                 let (last_x, last_y) = shared_state.mouse_info.last_mouse_pos;
 
-                let mut first_update = shared_state.mouse_info;
-                let mut last_update = shared_state.mouse_info;
-
-                // we only care about the position smoothing
-                first_update.last_mouse_pos = (initial_x, initial_y);
-                last_update.last_mouse_pos = (last_x, last_y);
-
-                // adjust y's for the half block display
-                first_update.last_mouse_pos.1 *= 2;
-                last_update.last_mouse_pos.1 *= 2;
-
+                let start = (initial_x as i64, initial_y as i64 * 2);
+                let end = (last_x as i64, last_y as i64 * 2);
 
                 // draw a lind from initial to last. use the mouse interpolator
-                MouseTrackerComponent::smooth_two_updates(first_update, last_update, |mi| {
+                for_coord_in_line(start, end, |x, y| {
+                    let x = x as usize;
+                    let y = y as usize;
                     // don't render over UI at all. even if depth was appropriate, because we mess with background etc this could be ugly.
                     // so just hardcode that we don't render there
-                    if mi.last_mouse_pos.1 / 2 >= shared_state.display_info.height() - UiBarComponent::HEIGHT {
+                    if y / 2 >= shared_state.display_info.height() - UiBarComponent::HEIGHT {
                         return;
                     }
-                    self.half_block_display_render.set_color(mi.last_mouse_pos.0, mi.last_mouse_pos.1, Color::Rgb([255; 3]));
+                    self.half_block_display_render.set_color(x, y, Color::Rgb([255; 3]));
                 });
             }
         }
