@@ -45,6 +45,8 @@ pub struct DisplayRenderer<W: Write> {
     prev_display: Display<Pixel>,
     // larger values are closer and get preference
     depth_buffer: Display<i32>,
+    // same as above, but for the bg color.
+    bg_depth_buffer: Display<i32>,
     default_fg_color: [u8; 3],
     last_fg_color: [u8; 3],
     default_bg_color: [u8; 3],
@@ -73,6 +75,7 @@ impl<W: Write> DisplayRenderer<W> {
             display: Display::new(width, height, Pixel::default()),
             prev_display,
             depth_buffer: Display::new(width, height, i32::MIN),
+            bg_depth_buffer: Display::new(width, height, i32::MIN),
             sink,
             default_fg_color: [255, 255, 255],
             last_fg_color: [255, 255, 255],
@@ -114,6 +117,7 @@ impl<W: Write> DisplayRenderer<W> {
             self.prev_display.resize_keep(width, height);
         }
         self.depth_buffer.resize_discard(width, height);
+        self.bg_depth_buffer.resize_discard(width, height);
     }
 
     /// Resizes the display and keeps the existing contents.
@@ -123,6 +127,7 @@ impl<W: Write> DisplayRenderer<W> {
         self.display.resize_keep(width, height);
         self.prev_display.resize_keep(width, height);
         self.depth_buffer.resize_keep(width, height);
+        self.bg_depth_buffer.resize_keep(width, height);
     }
 
     /// Higher depths have higher priority. At same depth, first write wins.
@@ -130,7 +135,10 @@ impl<W: Write> DisplayRenderer<W> {
         if x >= self.width || y >= self.height {
             return;
         }
+        
 
+        
+        
         let old_depth = self.depth_buffer[(x, y)];
         if old_depth == i32::MIN {
             // This is the first pixel arriving for this position, so we do not want to do any blending.
@@ -140,12 +148,22 @@ impl<W: Write> DisplayRenderer<W> {
         }
         let old_pixel = self.display[(x, y)];
 
+        // for the background, keep track of the 'depth' that was associated with the first non-transparent pixel
+        let old_bg_depth = self.bg_depth_buffer[(x, y)];
+        let mut new_bg_color = old_pixel.bg_color;
+        if old_bg_depth < new_depth && new_pixel.bg_color.is_solid() {
+            self.bg_depth_buffer[(x, y)] = new_depth;
+            new_bg_color = new_pixel.bg_color;
+        }
+        
         let (lower_pixel, upper_pixel) = if old_depth < new_depth {
             (old_pixel, new_pixel)
         } else {
             (new_pixel, old_pixel)
         };
-        self.display[(x, y)] = upper_pixel.put_over(lower_pixel);
+        let mut created_pixel = upper_pixel.put_over(lower_pixel);
+        created_pixel.bg_color = new_bg_color;
+        self.display[(x, y)] = created_pixel;
         self.depth_buffer[(x, y)] = old_depth.max(new_depth);
     }
 
@@ -153,6 +171,7 @@ impl<W: Write> DisplayRenderer<W> {
         // needed because otherwise we get the 'solitaire bouncing cards' effect
         self.display.clear();
         self.depth_buffer.clear();
+        self.bg_depth_buffer.clear();
     }
 
     pub fn flush(&mut self) -> io::Result<()> {

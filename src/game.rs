@@ -43,6 +43,14 @@ impl Color {
             Color::Rgb(c) => c,
         }
     }
+    
+    pub fn is_solid(self) -> bool {
+        match self {
+            Color::Default => true,
+            Color::Transparent => false,
+            Color::Rgb(_) => true,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

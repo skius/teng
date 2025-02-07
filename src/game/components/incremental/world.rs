@@ -444,6 +444,24 @@ impl Component for WorldComponent {
         let screen_height = screen_height - UiBarComponent::HEIGHT;
 
         for y in 0..screen_height {
+            let world_y = camera_y - y as i64;
+            // render this text latest, so we get the appropriate background color.
+            // nope! by introducing bg_depth into renderer we can render it whenever we want.
+
+            if world_y == 0 {
+                // special case
+                "ground->".render(&mut renderer, 0, y, depth_ground_level);
+                // continue;
+            }
+
+            if world_y % 10 == 0 {
+                // special case
+                format!("{:?}", world_y).render(&mut renderer, 0, y, depth_ground_level);
+                // continue;
+            }
+        }
+
+        for y in 0..screen_height {
             for x in 0..screen_width {
                 let world_x = camera_x + x as i64;
                 let world_y = camera_y - y as i64;
@@ -458,7 +476,8 @@ impl Component for WorldComponent {
 
                             // if sky, draw stars with parallax effect
                             if !tile.solid {
-                                for pl in &world.parallax_layers {
+                                // reversed iter because we want to draw closest first for priority
+                                for pl in world.parallax_layers.iter().rev() {
                                     /*
                                     ok so we have the parallax formula: adjusted = original + camera * parallax
                                     so original = adjusted - camera * parallax
@@ -513,23 +532,6 @@ impl Component for WorldComponent {
                 } else {
                     renderer.render_pixel(x, y, Pixel::new('x'), depth_base);
                 }
-            }
-        }
-
-        for y in 0..screen_height {
-            let world_y = camera_y - y as i64;
-            // render this text latest, so we get the appropriate background color.
-            
-            if world_y == 0 {
-                // special case
-                "ground->".render(&mut renderer, 0, y, depth_ground_level);
-                // continue;
-            }
-
-            if world_y % 10 == 0 {
-                // special case
-                format!("{:?}", world_y).render(&mut renderer, 0, y, depth_ground_level);
-                // continue;
             }
         }
 
