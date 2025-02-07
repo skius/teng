@@ -432,6 +432,7 @@ impl Component for WorldComponent {
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let depth_parallax_stars = depth_base + 1;
         let depth_parallax_mountains = depth_base + 2;
+        let depth_ground_level = depth_base + 3;
 
         let world = &shared_state.extensions.get::<GameState>().unwrap().world;
 
@@ -446,18 +447,6 @@ impl Component for WorldComponent {
             for x in 0..screen_width {
                 let world_x = camera_x + x as i64;
                 let world_y = camera_y - y as i64;
-
-                if world_y == 0 && x == 0 {
-                    // special case
-                    "ground->".render(&mut renderer, x, y, depth_base);
-                    // continue;
-                }
-
-                if world_y % 10 == 0 && x == 0 {
-                    // special case
-                    format!("{:?}", world_y).render(&mut renderer, x, y, depth_base);
-                    // continue;
-                }
 
                 if let Some(tile) = world.get(world_x, world_y) {
                     match tile {
@@ -524,6 +513,23 @@ impl Component for WorldComponent {
                 } else {
                     renderer.render_pixel(x, y, Pixel::new('x'), depth_base);
                 }
+            }
+        }
+
+        for y in 0..screen_height {
+            let world_y = camera_y - y as i64;
+            // render this text latest, so we get the appropriate background color.
+            
+            if world_y == 0 {
+                // special case
+                "ground->".render(&mut renderer, 0, y, depth_ground_level);
+                // continue;
+            }
+
+            if world_y % 10 == 0 {
+                // special case
+                format!("{:?}", world_y).render(&mut renderer, 0, y, depth_ground_level);
+                // continue;
             }
         }
 
