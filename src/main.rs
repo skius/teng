@@ -30,6 +30,7 @@ use std::ops::Deref;
 use std::thread::sleep;
 use std::time::Instant;
 use std::{io, time::Duration};
+use crate::game::components::incremental::boundschecker::BoundsCheckerComponent;
 use crate::game::seeds::set_seed;
 
 const HELP: &str = r#"Blocking poll() & non-blocking read()
@@ -621,6 +622,7 @@ fn main() -> io::Result<()> {
     // game.add_component_with(|width, height| Box::new(incremental::PlayerComponent::new(1, height)));
     game.add_component(Box::new(incremental::GameComponent::new()));
     game.add_component(Box::new(DebugInfoComponent::new()));
+    // game.add_component(Box::new(BoundsCheckerComponent::new()));
     // game.add_component(Box::new(VideoComponent::new()));
     // game.add_component_with(|width, height| Box::new(ElevatorComponent::new(width, height)));
     // game.add_component(Box::new(FallingSimulationComponent::new()));

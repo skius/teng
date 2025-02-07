@@ -5,7 +5,7 @@ pub mod video;
 use crate::game::display::Display;
 use crate::game::util::for_coord_in_line;
 use crate::game::{
-    BreakingAction, Component, DebugMessage, MouseInfo, Pixel, Render, Renderer, SharedState,
+    BreakingAction, Component, MouseInfo, Pixel, Render, Renderer, SharedState,
     Sprite, UpdateInfo,
 };
 use crate::physics::PhysicsBoard;
