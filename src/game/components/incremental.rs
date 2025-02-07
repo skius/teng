@@ -189,15 +189,17 @@ impl Component for GameComponent {
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
         let mut game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
-        
+
         // cheats
         if shared_state.pressed_keys.contains_key(&KeyCode::Char('b')) {
             game_state.max_blocks += 1;
             game_state.max_blocks *= 1000000;
             game_state.blocks = game_state.max_blocks;
-            shared_state.debug_messages.push(DebugMessage::new_3s("Cheated blocks!"));
+            shared_state
+                .debug_messages
+                .push(DebugMessage::new_3s("Cheated blocks!"));
         }
-        
+
         match game_state.phase {
             GamePhase::MoveToBuilding => {
                 game_state.phase = GamePhase::Building;
@@ -239,13 +241,11 @@ impl Component for GameComponent {
     }
 }
 
-struct BuildingDrawComponent {
-}
+struct BuildingDrawComponent {}
 
 impl BuildingDrawComponent {
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 }
 
@@ -277,8 +277,7 @@ impl Component for BuildingDrawComponent {
                 // if decay board already has this pixel, we don't need to count it towards our blocks
                 let exists_already = shared_state.decay_board[(x as usize, y as usize)].c != ' ';
                 // draw only if it either exists, or we have enough blocks
-                if exists_already || game_state.blocks > 0
-                {
+                if exists_already || game_state.blocks > 0 {
                     if !exists_already {
                         game_state.blocks -= 1;
                     }
@@ -288,6 +287,5 @@ impl Component for BuildingDrawComponent {
                 }
             }
         });
-
     }
 }

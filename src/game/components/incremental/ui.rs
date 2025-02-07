@@ -462,7 +462,8 @@ impl Component for UiBarComponent {
                     MouseEventKind::ScrollDown => 1,
                     _ => 0,
                 };
-                self.active_page_idx = (self.active_page_idx as i32 + idx_change) as usize % self.pages.len();
+                self.active_page_idx =
+                    (self.active_page_idx as i32 + idx_change) as usize % self.pages.len();
             }
         }
         None
@@ -616,7 +617,7 @@ impl Component for UiBarComponent {
         for &button_idx in &self.pages[self.active_page_idx] {
             self.buttons[button_idx].render(&mut renderer, shared_state, button_depth);
         }
-        
+
         // Render page navigation
         let page_str = format!(
             "Page {}/{} (scroll to change)",
