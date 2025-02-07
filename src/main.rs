@@ -30,6 +30,7 @@ use std::ops::Deref;
 use std::thread::sleep;
 use std::time::Instant;
 use std::{io, time::Duration};
+use std::hash::{DefaultHasher, Hash, Hasher};
 use crate::game::components::incremental::boundschecker::BoundsCheckerComponent;
 use crate::game::seeds::set_seed;
 
@@ -599,9 +600,14 @@ fn main() -> io::Result<()> {
     // read the seed from args or use default "42"
     let seed = std::env::args().nth(1).unwrap_or("42".to_string());
     let seed = seed.parse::<u64>().unwrap_or_else(|_| {
-        // if the seed is not a number, generate a random seed
-        println!("Invalid seed, using random seed");
-        rand::random()
+        // if the seed is not a number, hash or generate random
+        if seed == "random" {
+            return rand::random();
+        } else {
+            let mut hasher = DefaultHasher::new();
+            seed.hash(&mut hasher);
+            hasher.finish()
+        }
     });
     set_seed(seed);
 
