@@ -43,3 +43,5 @@ BUT WHERE IS THE SKILL??
  - there could be some hurdles to overcome to reach the point of recordings in the first place,
    like falling meteors that kill you without giving you a lot of money or something
 
+
+Add seed passing to commandline for worldgen.
