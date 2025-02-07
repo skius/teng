@@ -861,9 +861,9 @@ impl ParallaxMountains {
         //     max_y: (world_bounds.max_y as f64 * self.parallax_factor).ceil() as i64,
         // };
         // or not?
-        let bounds = world_bounds;
-        self.ground_level.grow(bounds.min_x..=bounds.max_x, None);
-        self.world_bounds = bounds;
+        let new_bounds = self.world_bounds.union(world_bounds);
+        self.ground_level.grow(new_bounds.min_x..=new_bounds.max_x, None);
+        self.world_bounds = new_bounds;
         self.regenerate();
     }
 

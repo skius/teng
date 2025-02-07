@@ -595,7 +595,7 @@ fn main() -> io::Result<()> {
         cleanup();
         eprintln!("{}", pinfo);
     }));
-    
+
     // read the seed from args or use default "42"
     let seed = std::env::args().nth(1).unwrap_or("42".to_string());
     let seed = seed.parse::<u64>().unwrap_or_else(|_| {
@@ -604,7 +604,7 @@ fn main() -> io::Result<()> {
         rand::random()
     });
     set_seed(seed);
-    
+
 
     let sink = CustomBufWriter::new();
     let mut game = Game::new(sink);

@@ -127,5 +127,17 @@ impl Component for BoundsCheckerComponent {
                 }
             }
         }
+        
+        // match (first_bounds, sub_bounds) {
+        //     (Some(b1), Some(b2)) => {
+        //         let bound = b1.union(b2);
+        //         for x in bound.min_x..=bound.max_x {
+        //             for y in bound.min_y..=bound.max_y {
+        //                 renderer.render_pixel(x as usize, y as usize, Pixel::new('█'), depth_base);
+        //             }
+        //         }
+        //     }
+        //     _ => {}
+        // }
     }
 }

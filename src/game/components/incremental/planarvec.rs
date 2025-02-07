@@ -86,6 +86,23 @@ impl Bounds {
 
         bounds
     }
+    
+    /// Returns the bounds containing both self and other bounds.
+    pub fn union(&self, other: Bounds) -> Bounds {
+        if self.is_empty() {
+            return other;
+        }
+        if other.is_empty() {
+            return *self;
+        }
+
+        Bounds {
+            min_x: self.min_x.min(other.min_x),
+            max_x: self.max_x.max(other.max_x),
+            min_y: self.min_y.min(other.min_y),
+            max_y: self.max_y.max(other.max_y),
+        }
+    }
 }
 
 /// A data structure capable of storing a 2D plane indexed by a pair of i64s, (x, y).
