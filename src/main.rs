@@ -19,7 +19,7 @@ use crossterm::{
 };
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io;
-use std::io::{stdout, Stdout};
+use std::io::{stdout, Stdout, Write};
 
 /// Custom buffer writer that _only_ flushes explicitly
 /// Surprisingly leads to a speedup from 2000 fps to 4800 fps on a full screen terminal
@@ -38,15 +38,16 @@ impl CustomBufWriter {
     }
 }
 
-impl io::Write for CustomBufWriter {
+impl Write for CustomBufWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.buf.extend_from_slice(buf);
         Ok(buf.len())
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.stdout.write_all(&self.buf)?;
-        self.stdout.flush()?;
+        let mut lock = self.stdout.lock();
+        lock.write_all(&self.buf)?;
+        lock.flush()?;
         self.buf.clear();
         Ok(())
     }
@@ -130,11 +131,13 @@ fn main() -> io::Result<()> {
     // game.add_component_with(|width, height| Box::new(ElevatorComponent::new(width, height)));
     // game.add_component(Box::new(FallingSimulationComponent::new()));
 
-    if let Err(e) = game.run() {
-        println!("Error: {:?}", e);
-    }
+    let res = game.run();
 
     cleanup()?;
+
+    if let Err(err) = res {
+        println!("Error: {:?}", err);
+    }
 
     Ok(())
 }
