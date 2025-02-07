@@ -105,8 +105,8 @@ impl World {
         ];
 
         let parallax_mountains = [
-            ParallaxMountains::new(0.2, [43, 148, 218], -120, [2, 3, 4], 0.2),
-            ParallaxMountains::new(0.4, [62, 137, 187], -30, [5, 6, 7], 0.4),
+            ParallaxMountains::new(0.2, [43, 148, 218], -60, [2, 3, 4], 0.6),
+            ParallaxMountains::new(0.4, [62, 137, 187], -30, [5, 6, 7], 0.8),
         ];
 
         let mut world = Self {
