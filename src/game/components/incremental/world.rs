@@ -498,7 +498,12 @@ impl Component for WorldComponent {
         for x in 0..screen_width {
             let world_x = camera_x + x as i64;
             if world_x % 100 == 0 {
-                format!("|{:?}", world_x).render(&mut renderer, x, screen_height - 1, depth_ground_level);
+                format!("|{:?}", world_x).render(
+                    &mut renderer,
+                    x,
+                    screen_height - 1,
+                    depth_ground_level,
+                );
             }
         }
 
