@@ -13,6 +13,7 @@ use std::iter::repeat;
 use std::ops::{Index, IndexMut};
 use std::time::Instant;
 use crate::game::seeds::get_u32_seed_for;
+use crate::game::util::{get_lerp_t_i64_clamped, lerp_color};
 
 #[derive(Debug, Clone)]
 pub struct InitializedTile {
@@ -280,6 +281,8 @@ impl World {
                 }
             };
 
+            let snow_line = self.world_gen.snow_line(x);
+
             for y in min_y..=max_y {
                 if self
                     .get_mut(x, y)
@@ -293,6 +296,14 @@ impl World {
                         let color = [100 + yd, 100 + yd, 100 + yd];
                         let mut final_pixel =
                             Pixel::new('█').with_color(color).with_bg_color(color);
+
+                        if y >= snow_line {
+                            let snow_color = [255, 255, 255];
+                            final_pixel = final_pixel
+                                .with_color(snow_color)
+                                .with_bg_color(snow_color);
+                        }
+
 
                         // Check if the ground height is below the dirt level
                         let dirt_val = self.dirt_noise.get([
@@ -348,12 +359,18 @@ impl World {
                             } else {
                                 color[2] = 0xfb;
                             }
+                        } else {
+                            // from 100 to 300 lerp to black
+                            let start_color = [0x01, 0x78, 0xc8];
+                            let end_color = [0, 0, 0];
+                            let t = get_lerp_t_i64_clamped(100, 300, y);
+                            color = lerp_color(start_color, end_color, t);
                         }
+
                         (
                             Pixel::new('█').with_color(color).with_bg_color(color),
                             false,
                         )
-                        // Pixel::transparent().with_bg_color(color)
                     };
 
                     if solid {
@@ -554,6 +571,7 @@ struct WorldGenerator {
     additional_ground_offset: i64,
     squash_factor: f64,
     cheese_noise: Simplex,
+    snow_noise: noise::Fbm<Simplex>,
 }
 
 impl WorldGenerator {
@@ -591,6 +609,9 @@ impl WorldGenerator {
 
         let cheese_noise = Simplex::new(get_u32_seed_for("cheese caves"));
 
+        let mut snow_noise = noise::Fbm::<Simplex>::new(get_u32_seed_for("snow"));
+        snow_noise.octaves = 4;
+
         Self {
             continentalness_spline,
             spikiness_spline,
@@ -600,6 +621,7 @@ impl WorldGenerator {
             additional_ground_offset,
             squash_factor,
             cheese_noise,
+            snow_noise,
         }
     }
 
@@ -614,6 +636,14 @@ impl WorldGenerator {
         let is_cave = false;
 
         y <= ground_offset_height && !is_cave
+    }
+
+    fn snow_line(&self, x: i64) -> i64 {
+        let wideness_factor = 100.0;
+        let noise_value = self.snow_noise.get([x as f64 / wideness_factor, 0.0]);
+        let snow_offset = (noise_value * 30.0) as i64;
+
+        snow_offset + 100
     }
 
     fn continentalness_offset(&self, x: i64) -> f64 {
