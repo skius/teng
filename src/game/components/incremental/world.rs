@@ -478,52 +478,29 @@ impl Component for WorldComponent {
                             if !tile.solid {
                                 // reversed iter because we want to draw closest first for priority
                                 for pl in world.parallax_layers.iter().rev() {
-                                    /*
-                                    ok so we have the parallax formula: adjusted = original + camera * parallax
-                                    so original = adjusted - camera * parallax
-
-                                    we currently know the adjusted position, it's our world_x and world_y
-                                    so we can resolve for the original one that we look up in the cached board
-
-                                    */
-
-                                    let original_x = world_x
-                                        - (camera_x as f64 * (1.0 - pl.parallax_factor)) as i64;
-                                    let original_y = world_y
-                                        - (camera_y as f64 * (1.0 - pl.parallax_factor)) as i64;
-
-                                    if let Some(is_star) =
-                                        pl.cached_board.get(original_x as i64, original_y as i64)
+                                    if let Some(&true) =
+                                        pl.get(camera_x, camera_y, x, y)
                                     {
-                                        if *is_star {
-                                            renderer.render_pixel(
-                                                x,
-                                                y,
-                                                Pixel::new(pl.star_symbol),
-                                                depth_parallax_stars,
-                                            );
-                                        }
+                                        renderer.render_pixel(
+                                            x,
+                                            y,
+                                            Pixel::new(pl.star_symbol),
+                                            depth_parallax_stars,
+                                        );
                                     }
                                 }
                                 // also for mountains
                                 // reversed iter because we want to draw closest first for priority
                                 for pl in world.parallax_mountains.iter().rev() {
-                                    let original_x = world_x
-                                        - (camera_x as f64 * (1.0 - pl.parallax_factor)) as i64;
-                                    let original_y = world_y
-                                        - (camera_y as f64 * (1.0 - pl.parallax_factor)) as i64;
-
-                                    if let Some(ground) = pl.ground_level[original_x] {
-                                        if original_y <= ground {
-                                            renderer.render_pixel(
-                                                x,
-                                                y,
-                                                Pixel::new('x')
-                                                    .with_color(pl.color)
-                                                    .with_bg_color(pl.color),
-                                                depth_parallax_mountains,
-                                            );
-                                        }
+                                    if let Some(true) = pl.get(camera_x, camera_y, x, y) {
+                                        renderer.render_pixel(
+                                            x,
+                                            y,
+                                            Pixel::new('x')
+                                                .with_color(pl.color)
+                                                .with_bg_color(pl.color),
+                                            depth_parallax_mountains,
+                                        );
                                     }
                                 }
                             }
@@ -749,6 +726,21 @@ impl ParallaxLayer {
         }
     }
 
+    fn to_world_pos(&self, camera_x: i64, camera_y: i64, screen_x: usize, screen_y: usize) -> (i64, i64) {
+        // we just take the regular to_world_pos formula, but we pretend that the camera has not moved as far.
+
+        let adjusted_c_x = camera_x as f64 * self.parallax_factor;
+        let adjusted_c_y = camera_y as f64 * self.parallax_factor;
+        let world_x = adjusted_c_x + screen_x as f64;
+        let world_y = adjusted_c_y - screen_y as f64;
+        (world_x as i64, world_y as i64)
+    }
+
+    fn get(&self, camera_x: i64, camera_y: i64, screen_x: usize, screen_y: usize) -> Option<&bool> {
+        let (world_x, world_y) = self.to_world_pos(camera_x, camera_y, screen_x, screen_y);
+        self.cached_board.get(world_x, world_y)
+    }
+
     fn expand_to_contain(&mut self, world_bounds: Bounds) {
         // recompute bounds into local space
         // let bounds = Bounds {
@@ -816,8 +808,8 @@ impl ParallaxLayer {
 struct ParallaxMountains {
     parallax_factor: f64,
     color: [u8; 3],
-    cached_board: PlanarVec<bool>,
     generated_bounds: Bounds,
+    world_bounds: Bounds,
     ground_level: BidiVec<Option<i64>>,
     world_gen: WorldGenerator,
 }
@@ -833,11 +825,31 @@ impl ParallaxMountains {
         Self {
             parallax_factor,
             color,
-            cached_board: PlanarVec::new(Bounds::empty(), false),
             generated_bounds: Bounds::empty(),
+            world_bounds: Bounds::empty(),
             world_gen: WorldGenerator::new_with_options(seeds, offset, squash_factor),
             ground_level: BidiVec::new(),
         }
+    }
+
+    fn to_world_pos(&self, camera_x: i64, camera_y: i64, screen_x: usize, screen_y: usize) -> (i64, i64) {
+        let adjusted_c_x = camera_x as f64 * self.parallax_factor;
+        let adjusted_c_y = camera_y as f64 * self.parallax_factor;
+        let world_x = adjusted_c_x + screen_x as f64;
+        let world_y = adjusted_c_y - screen_y as f64;
+        (world_x as i64, world_y as i64)
+    }
+
+    fn get(&self, camera_x: i64, camera_y: i64, screen_x: usize, screen_y: usize) -> Option<bool> {
+        let (world_x, world_y) = self.to_world_pos(camera_x, camera_y, screen_x, screen_y);
+
+        if let Some(&Some(ground)) = self.ground_level.get(world_x) {
+            if world_y <= ground {
+                return Some(true);
+            }
+        }
+
+        None
     }
 
     fn expand_to_contain(&mut self, world_bounds: Bounds) {
@@ -850,45 +862,41 @@ impl ParallaxMountains {
         // };
         // or not?
         let bounds = world_bounds;
-
-        self.cached_board.expand(bounds, false);
+        self.ground_level.grow(bounds.min_x..=bounds.max_x, None);
+        self.world_bounds = bounds;
         self.regenerate();
     }
 
     fn regenerate(&mut self) {
-        let missing_bounds = self.cached_board.bounds().subtract(self.generated_bounds);
+        let missing_bounds = self.world_bounds.subtract(self.generated_bounds);
         for bounds in missing_bounds.iter() {
             if bounds.is_empty() {
                 continue;
             }
             self.regenerate_bounds(*bounds);
         }
-        self.generated_bounds = self.cached_board.bounds();
+        self.generated_bounds = self.world_bounds;
     }
 
+    // TODO: fix this, it's broken
     fn regenerate_bounds(&mut self, bounds_to_regenerate: Bounds) {
         // Generates the world
         let Bounds {
             min_x,
             max_x,
-            min_y,
-            max_y,
+            ..
         } = bounds_to_regenerate;
 
         self.ground_level.grow(min_x..=max_x, None);
 
         for x in min_x..=max_x {
-            for y in min_y..=max_y {
-                let ground_offset_height = match self.ground_level[x] {
-                    Some(ground_offset_height) => ground_offset_height,
-                    None => {
-                        let ground_offset_height = self.world_gen.world_height(x);
-                        self.ground_level[x] = Some(ground_offset_height);
-                        ground_offset_height
-                    }
-                };
-                if y <= ground_offset_height {
-                    self.cached_board[(x, y)] = true;
+            match &mut self.ground_level[x] {
+                Some(_) => {
+                    // noop, we already generated this
+                }
+                None => {
+                    let ground_offset_height = self.world_gen.world_height(x);
+                    self.ground_level[x] = Some(ground_offset_height);
                 }
             }
         }

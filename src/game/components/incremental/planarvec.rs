@@ -38,49 +38,48 @@ impl Bounds {
     }
 
     /// Returns the (at most) four bounds that can happen when the smaller other bounds is subtracted
-    /// from the larger self bounds. In particular, it's the following four bounds:
-    /// * To the left of `other`, spanning the entire y range
-    /// * To the right of `other`, spanning the entire y range
-    /// * Above `other`, spanning only the x range of other (since the remainder is covered by the left/right piles
-    /// * Below `other`, spanning only the x range of other (since the remainder is covered by the left/right piles
-    /// Note: right now requires that other is contained in self
+    /// from the larger self bounds.
     pub fn subtract(&self, other: Bounds) -> [Bounds; 4] {
-        assert!(self.contains_bounds(other));
         let mut bounds = [Bounds::empty(); 4];
         if other.is_empty() {
             bounds[0] = *self;
+            return bounds;
+        }
+        if self.is_empty() {
             return bounds;
         }
 
         if other.min_x > self.min_x {
             bounds[0] = Bounds {
                 min_x: self.min_x,
-                max_x: other.min_x - 1,
+                max_x: self.max_x.min(other.min_x - 1),
                 min_y: self.min_y,
                 max_y: self.max_y,
             };
         }
         if other.max_x < self.max_x {
             bounds[1] = Bounds {
-                min_x: other.max_x + 1,
+                min_x: self.min_x.max(other.max_x + 1),
                 max_x: self.max_x,
                 min_y: self.min_y,
                 max_y: self.max_y,
             };
         }
+        // for the top/bottom bounds, we don't want to double count the corners, so we need to
+        // take into account the relative x bounds
         if other.min_y > self.min_y {
             bounds[2] = Bounds {
-                min_x: other.min_x,
-                max_x: other.max_x,
+                min_x: self.min_x.max(other.min_x),
+                max_x: self.max_x.min(other.max_x),
                 min_y: self.min_y,
-                max_y: other.min_y - 1,
+                max_y: self.max_y.min(other.min_y - 1),
             };
         }
         if other.max_y < self.max_y {
             bounds[3] = Bounds {
-                min_x: other.min_x,
-                max_x: other.max_x,
-                min_y: other.max_y + 1,
+                min_x: self.min_x.max(other.min_x),
+                max_x: self.max_x.min(other.max_x),
+                min_y: self.min_y.max(other.max_y + 1),
                 max_y: self.max_y,
             };
         }
