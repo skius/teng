@@ -5,34 +5,21 @@
 mod game;
 mod physics;
 
-use crate::game::components::elevator::ElevatorComponent;
-use crate::game::components::incremental::boundschecker::BoundsCheckerComponent;
-use crate::game::components::incremental::falling::FallingSimulationComponent;
-use crate::game::components::video::VideoComponent;
 use crate::game::components::{
-    incremental, video, ClearComponent, DebugInfoComponent, DecayComponent, FPSLockerComponent,
-    FloodFillComponent, ForceApplyComponent, KeyPressRecorderComponent, MouseTrackerComponent,
-    PhysicsComponent, PlayerComponent, QuitterComponent, SimpleDrawComponent,
+    incremental, DebugInfoComponent, FPSLockerComponent, KeyPressRecorderComponent,
+    MouseTrackerComponent, QuitterComponent,
 };
 use crate::game::seeds::set_seed;
-use crate::game::{DisplayRenderer, Game, Pixel, Render, Renderer, Sprite};
-use crossterm::event::{KeyEvent, KeyboardEnhancementFlags, MouseButton, MouseEventKind};
-use crossterm::style::{Color, Colored, Colors};
-use crossterm::terminal::size;
+use crate::game::Game;
 use crossterm::{
     cursor,
-    cursor::position,
-    event::{poll, read, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
-    execute, queue, style,
+    event::{DisableMouseCapture, EnableMouseCapture},
+    execute,
     terminal::{disable_raw_mode, enable_raw_mode},
 };
-use std::any::Any;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::io::{stdout, Stdout, Write};
-use std::ops::Deref;
-use std::thread::sleep;
-use std::time::Instant;
-use std::{io, time::Duration};
+use std::io;
+use std::io::{stdout, Stdout};
 
 /// Custom buffer writer that _only_ flushes explicitly
 /// Surprisingly leads to a speedup from 2000 fps to 4800 fps on a full screen terminal
@@ -51,7 +38,7 @@ impl CustomBufWriter {
     }
 }
 
-impl std::io::Write for CustomBufWriter {
+impl io::Write for CustomBufWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.buf.extend_from_slice(buf);
         Ok(buf.len())
