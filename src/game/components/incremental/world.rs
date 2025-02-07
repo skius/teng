@@ -79,6 +79,7 @@ pub struct World {
     pub collision_board: CollisionBoard,
     animations: Vec<AnimationInWorld>,
     world_gen: WorldGenerator,
+    generated_world_bounds: Bounds,
 }
 
 impl World {
@@ -104,6 +105,7 @@ impl World {
             collision_board: CollisionBoard::new(world_bounds),
             animations: vec![],
             world_gen: WorldGenerator::new(),
+            generated_world_bounds: Bounds::empty(),
         };
 
         world.expand_to_contain(world.camera_window());
@@ -187,9 +189,6 @@ impl World {
 
         self.tiles.expand(bounds, Tile::Ungenerated);
         self.collision_board.expand(bounds);
-        // TODO: only regenerate the portions that are new.
-        // Could solve this by keeping track of the generated bounds, and then only regenerating
-        // the four bounds you get by subtracting the new world bounds from the generated bounds
         self.regenerate();
     }
 
@@ -229,15 +228,15 @@ impl World {
             self.move_camera(0, move_by);
         }
     }
-
-    pub fn regenerate(&mut self) {
+    
+    fn regenerate_bounds(&mut self, bounds_to_regenerate: Bounds) {
         // Generates the world
         let Bounds {
             min_x,
             max_x,
             min_y,
             max_y,
-        } = self.world_bounds();
+        } = bounds_to_regenerate;
 
         // let noise = noise::Simplex::new(42);
         let mut noise = noise::Fbm::<Simplex>::new(42);
@@ -340,6 +339,17 @@ impl World {
                 }
             }
         }
+    }
+
+    pub fn regenerate(&mut self) {
+        let missing_bounds = self.world_bounds().subtract(self.generated_world_bounds);
+        for bounds in missing_bounds.iter() {
+            if bounds.is_empty() {
+                continue;
+            }
+            self.regenerate_bounds(*bounds);
+        }
+        self.generated_world_bounds = self.world_bounds();
     }
 }
 
