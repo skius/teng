@@ -469,7 +469,7 @@ impl Component for QuitterComponent {
         if matches!(
             event,
             Event::Key(KeyEvent {
-                code: KeyCode::Char('q'),
+                code: KeyCode::Char('q' | 'Q'),
                 ..
             })
         ) {
