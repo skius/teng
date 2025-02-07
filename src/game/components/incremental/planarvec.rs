@@ -21,20 +21,22 @@ impl Bounds {
             max_y: -1,
         }
     }
-    
+
     pub fn is_empty(&self) -> bool {
         self.min_x > self.max_x || self.min_y > self.max_y
     }
-    
+
     pub fn contains(&self, x: i64, y: i64) -> bool {
         x >= self.min_x && x <= self.max_x && y >= self.min_y && y <= self.max_y
     }
 
     pub fn contains_bounds(&self, other: Bounds) -> bool {
-        1..-1;
+        if other.is_empty() {
+            return true;
+        }
         self.contains(other.min_x, other.min_y) && self.contains(other.max_x, other.max_y)
     }
-    
+
     /// Returns the (at most) four bounds that can happen when the smaller other bounds is subtracted
     /// from the larger self bounds. In particular, it's the following four bounds:
     /// * To the left of `other`, spanning the entire y range
@@ -49,7 +51,7 @@ impl Bounds {
             bounds[0] = *self;
             return bounds;
         }
-        
+
         if other.min_x > self.min_x {
             bounds[0] = Bounds {
                 min_x: self.min_x,

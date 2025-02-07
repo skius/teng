@@ -4,9 +4,7 @@ use crate::game::components::incremental::collisionboard::{CollisionBoard, Colli
 use crate::game::components::incremental::planarvec::{Bounds, PlanarVec};
 use crate::game::components::incremental::ui::UiBarComponent;
 use crate::game::components::incremental::GameState;
-use crate::game::{
-    BreakingAction, Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo,
-};
+use crate::game::{BreakingAction, Color, Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
 use crossterm::event::{Event, KeyCode};
 use noise::{NoiseFn, Perlin, Simplex};
 use std::iter::repeat;
@@ -80,6 +78,8 @@ pub struct World {
     animations: Vec<AnimationInWorld>,
     world_gen: WorldGenerator,
     generated_world_bounds: Bounds,
+    parallax_layers: [ParallaxLayer; 3],
+    parallax_mountains: [ParallaxMountains; 2],
 }
 
 impl World {
@@ -96,6 +96,17 @@ impl World {
             max_y: 1,
         };
 
+        let parallax_layers = [
+            ParallaxLayer::new(0.1, '·', 0, 80),
+            ParallaxLayer::new(0.3, '.', 20, 100),
+            ParallaxLayer::new(0.5, '*', 50, 150),
+        ];
+
+        let parallax_mountains = [
+            ParallaxMountains::new(0.2, [43, 148, 218], -120, [2, 3, 4], 0.2),
+            ParallaxMountains::new(0.4, [62, 137, 187], -30, [5, 6, 7], 0.4),
+        ];
+
         let mut world = Self {
             tiles: PlanarVec::new(world_bounds, Tile::Ungenerated),
             camera_attach,
@@ -106,6 +117,8 @@ impl World {
             animations: vec![],
             world_gen: WorldGenerator::new(),
             generated_world_bounds: Bounds::empty(),
+            parallax_layers,
+            parallax_mountains,
         };
 
         world.expand_to_contain(world.camera_window());
@@ -189,6 +202,12 @@ impl World {
 
         self.tiles.expand(bounds, Tile::Ungenerated);
         self.collision_board.expand(bounds);
+        for pl in &mut self.parallax_layers {
+            pl.expand_to_contain(bounds);
+        }
+        for pl in &mut self.parallax_mountains {
+            pl.expand_to_contain(bounds);
+        }
         self.regenerate();
     }
 
@@ -228,7 +247,7 @@ impl World {
             self.move_camera(0, move_by);
         }
     }
-    
+
     fn regenerate_bounds(&mut self, bounds_to_regenerate: Bounds) {
         // Generates the world
         let Bounds {
@@ -267,9 +286,8 @@ impl World {
                     .get_mut(x, y)
                     .is_some_and(|t| matches!(t, Tile::Ungenerated))
                 {
-                    let (draw, solid) = if y <= ground_offset_height {
+                    let (draw, solid) = if self.world_gen.is_solid(x, y, ground_offset_height) {
                         // ground
-                        self.collision_board[(x, y)] = CollisionCell::Solid;
                         // Pixel::new('█').with_color().with_bg_color([139, 69, 19]);
                         // make it grey:
                         let yd = y.clamp(-50, 30) as u8;
@@ -335,6 +353,11 @@ impl World {
                         (Pixel::new('█').with_color(color).with_bg_color(color), false)
                         // Pixel::transparent().with_bg_color(color)
                     };
+
+                    if solid {
+                        self.collision_board[(x, y)] = CollisionCell::Solid;
+                    }
+
                     self[(x, y)] = Tile::Initialized(InitializedTile { draw, solid });
                 }
             }
@@ -405,6 +428,9 @@ impl Component for WorldComponent {
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+        let depth_parallax_stars = depth_base + 1;
+        let depth_parallax_mountains = depth_base + 2;
+
         let world = &shared_state.extensions.get::<GameState>().unwrap().world;
 
         let camera_x = world.camera_attach.0;
@@ -438,6 +464,42 @@ impl Component for WorldComponent {
                         }
                         Tile::Initialized(tile) => {
                             renderer.render_pixel(x, y, tile.draw, depth_base);
+
+                            // if sky, draw stars with parallax effect
+                            if !tile.solid {
+
+                                for pl in &world.parallax_layers {
+                                    /*
+                                    ok so we have the parallax formula: adjusted = original + camera * parallax
+                                    so original = adjusted - camera * parallax
+
+                                    we currently know the adjusted position, it's our world_x and world_y
+                                    so we can resolve for the original one that we look up in the cached board
+
+                                    */
+
+                                    let original_x = world_x - (camera_x as f64 * (1.0 - pl.parallax_factor)) as i64;
+                                    let original_y = world_y - (camera_y as f64 * (1.0 - pl.parallax_factor)) as i64;
+
+                                    if let Some(is_star) = pl.cached_board.get(original_x as i64, original_y as i64) {
+                                        if *is_star {
+                                            renderer.render_pixel(x, y, Pixel::new(pl.star_symbol), depth_parallax_stars);
+                                        }
+                                    }
+                                }
+                                // also for mountains
+                                // reversed iter because we want to draw closest first for priority
+                                for pl in world.parallax_mountains.iter().rev() {
+                                    let original_x = world_x - (camera_x as f64 * (1.0 - pl.parallax_factor)) as i64;
+                                    let original_y = world_y - (camera_y as f64 * (1.0 - pl.parallax_factor)) as i64;
+
+                                    if let Some(ground) = pl.ground_level[original_x] {
+                                        if original_y <= ground {
+                                            renderer.render_pixel(x, y, Pixel::new('x').with_color(pl.color).with_bg_color(pl.color), depth_parallax_mountains);
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 } else {
@@ -482,10 +544,19 @@ impl IndexMut<(i64, i64)> for World {
 struct WorldGenerator {
     continentalness_spline: Spline,
     spikiness_spline: Spline,
+    continentalness_offset_noise: noise::Fbm<Simplex>,
+    spikiness_noise: Simplex,
+    spiky_offset_noise: noise::Fbm<Simplex>,
+    additional_ground_offset: i64,
+    squash_factor: f64,
 }
 
 impl WorldGenerator {
     fn new() -> Self {
+        Self::new_with_options([1234, 4321, 42], 0, 1.0)
+    }
+
+    fn new_with_options(seeds: [u32; 3], additional_ground_offset: i64, squash_factor: f64) -> Self {
         let mut continentalness_spline = Spline::new();
         continentalness_spline.add_point(-1.0, -80.0);
         continentalness_spline.add_point(-0.2, -20.0);
@@ -502,42 +573,61 @@ impl WorldGenerator {
         spikiness_spline.add_point(0.5, 80.0);
         spikiness_spline.add_point(1.0, 120.0);
 
+        let mut continentalness_offset_noise = noise::Fbm::<Simplex>::new(seeds[0]);
+        continentalness_offset_noise.octaves = 3;
+
+        let spikiness_noise = Simplex::new(seeds[1]);
+        let mut spiky_offset_noise = noise::Fbm::<Simplex>::new(seeds[2]);
+        spiky_offset_noise.octaves = 5;
+
         Self {
             continentalness_spline,
             spikiness_spline,
+            continentalness_offset_noise,
+            spikiness_noise,
+            spiky_offset_noise,
+            additional_ground_offset,
+            squash_factor,
         }
     }
 
-    fn continentalness_offset(&self, x: i64) -> f64 {
-        let mut noise = noise::Fbm::<Simplex>::new(1234);
-        noise.octaves = 3;
+    fn is_solid(&self, x: i64, y: i64, ground_offset_height: i64) -> bool {
+        // 'cheese caves'
+        let noise = Simplex::new(500);
 
+        let wideness_factor = 100.0;
+        let noise_value = noise.get([x as f64 / wideness_factor, 2.0 * y as f64 / wideness_factor]);
+
+        let cave_threshold = 0.05;
+        let is_cave = noise_value.abs() < cave_threshold;
+
+        let is_cave = false;
+
+        y <= ground_offset_height && !is_cave
+    }
+
+    fn continentalness_offset(&self, x: i64) -> f64 {
         let wideness_factor = 1000.0;
 
-        let noise_value = noise.get([x as f64 / wideness_factor, 0.0]);
+        let noise_value = self.continentalness_offset_noise.get([x as f64 / wideness_factor, 0.0]);
         let continentalness = self.continentalness_spline.get(noise_value);
 
         continentalness
     }
 
     fn spikiness(&self, x: i64) -> f64 {
-        let noise = Simplex::new(4321);
-
         let wideness_factor = 500.0;
 
-        let noise_value = noise.get([x as f64 / wideness_factor, 0.0]);
+        let noise_value = self.spikiness_noise.get([x as f64 / wideness_factor, 0.0]);
         let spikiness = self.spikiness_spline.get(noise_value);
 
         spikiness
     }
 
     fn spike_offset(&self, x: i64) -> f64 {
-        let mut noise = noise::Fbm::<Simplex>::new(42);
-        noise.octaves = 5;
-
         let wideness_factor = 150.0;
 
-        let noise_value = noise.get([x as f64 / wideness_factor, 0.0]);
+        let noise_value = self.spiky_offset_noise.get([x as f64 / wideness_factor, 0.0]);
         let spikiness = self.spikiness(x);
         let spikiness_offset = (noise_value * spikiness);
 
@@ -548,7 +638,7 @@ impl WorldGenerator {
         let spikiness_offset = self.spike_offset(x);
         let continentalness_offset = self.continentalness_offset(x);
 
-        (spikiness_offset + continentalness_offset) as i64
+        ((spikiness_offset + continentalness_offset + self.additional_ground_offset as f64) * self.squash_factor) as i64
     }
 }
 
@@ -591,5 +681,170 @@ impl Spline {
 
         let t = (x - x0) / (x1 - x0);
         y0 * (1.0 - t) + y1 * t
+    }
+}
+
+#[derive(Debug)]
+struct ParallaxLayer {
+    parallax_factor: f64,
+    star_symbol: char,
+    spawn_threshold_start: i64,
+    spawn_threshold_end: i64,
+    cached_board: PlanarVec<bool>,
+    generated_bounds: Bounds,
+}
+
+impl ParallaxLayer {
+    fn new(parallax_factor: f64, star_symbol: char, spawn_threshold_start: i64, spawn_threshold_end: i64) -> Self {
+        Self {
+            parallax_factor,
+            star_symbol,
+            cached_board: PlanarVec::new(Bounds::empty(), false),
+            generated_bounds: Bounds::empty(),
+            spawn_threshold_start,
+            spawn_threshold_end,
+        }
+    }
+
+
+
+    fn expand_to_contain(&mut self, world_bounds: Bounds) {
+        // recompute bounds into local space
+        // let bounds = Bounds {
+        //     min_x: (world_bounds.min_x as f64 * self.parallax_factor).floor() as i64,
+        //     max_x: (world_bounds.max_x as f64 * self.parallax_factor).ceil() as i64,
+        //     min_y: (world_bounds.min_y as f64 * self.parallax_factor).floor() as i64,
+        //     max_y: (world_bounds.max_y as f64 * self.parallax_factor).ceil() as i64,
+        // };
+        // or not? if we adjust then we sometimes don't have generated stars yet when moving right...
+        let bounds = world_bounds;
+
+        self.cached_board.expand(bounds, false);
+        self.regenerate();
+    }
+
+    fn regenerate(&mut self) {
+        let missing_bounds = self.cached_board.bounds().subtract(self.generated_bounds);
+        for bounds in missing_bounds.iter() {
+            if bounds.is_empty() {
+                continue;
+            }
+            self.regenerate_bounds(*bounds);
+        }
+        self.generated_bounds = self.cached_board.bounds();
+    }
+
+    fn regenerate_bounds(&mut self, bounds_to_regenerate: Bounds) {
+        // Generates the world
+        let Bounds {
+            min_x,
+            max_x,
+            min_y,
+            max_y,
+        } = bounds_to_regenerate;
+
+        let noise = Simplex::new(42);
+        let star_density = 1.0;
+
+        for x in min_x..=max_x {
+            for y in min_y..=max_y {
+                let noise_value = noise.get([x as f64 * star_density, y as f64 * star_density]);
+                // vary threshold by y
+                // 1.0 until y = 100, then 0.8 at y = 200
+                // but since those y's are in world space, we need to translate to local space
+                let min_threshold_world = self.spawn_threshold_start;
+                let max_threshold_world = self.spawn_threshold_end;
+                let min_threshold_local = (min_threshold_world as f64 * self.parallax_factor).floor() as i64;
+                let max_threshold_local = (max_threshold_world as f64 * self.parallax_factor).ceil() as i64;
+
+                let y_c = y.clamp(min_threshold_local, max_threshold_local);
+                let yd = (y_c - min_threshold_local) as f64 / (max_threshold_local - min_threshold_local) as f64;
+                let star_threshold = 1.0 - yd * 0.2;
+
+                let is_star = noise_value > star_threshold;
+
+                self.cached_board[(x, y)] = is_star;
+            }
+        }
+    }
+}
+
+
+#[derive(Debug)]
+struct ParallaxMountains {
+    parallax_factor: f64,
+    color: [u8; 3],
+    cached_board: PlanarVec<bool>,
+    generated_bounds: Bounds,
+    ground_level: BidiVec<Option<i64>>,
+    world_gen: WorldGenerator,
+}
+
+impl ParallaxMountains {
+    fn new(parallax_factor: f64, color: [u8; 3], offset: i64, seeds: [u32; 3], squash_factor: f64) -> Self {
+        Self {
+            parallax_factor,
+            color,
+            cached_board: PlanarVec::new(Bounds::empty(), false),
+            generated_bounds: Bounds::empty(),
+            world_gen: WorldGenerator::new_with_options(seeds, offset, squash_factor),
+            ground_level: BidiVec::new(),
+        }
+    }
+
+
+
+    fn expand_to_contain(&mut self, world_bounds: Bounds) {
+        // recompute bounds into local space
+        // let bounds = Bounds {
+        //     min_x: (world_bounds.min_x as f64 * self.parallax_factor).floor() as i64,
+        //     max_x: (world_bounds.max_x as f64 * self.parallax_factor).ceil() as i64,
+        //     min_y: (world_bounds.min_y as f64 * self.parallax_factor).floor() as i64,
+        //     max_y: (world_bounds.max_y as f64 * self.parallax_factor).ceil() as i64,
+        // };
+        // or not?
+        let bounds = world_bounds;
+
+        self.cached_board.expand(bounds, false);
+        self.regenerate();
+    }
+
+    fn regenerate(&mut self) {
+        let missing_bounds = self.cached_board.bounds().subtract(self.generated_bounds);
+        for bounds in missing_bounds.iter() {
+            if bounds.is_empty() {
+                continue;
+            }
+            self.regenerate_bounds(*bounds);
+        }
+        self.generated_bounds = self.cached_board.bounds();
+    }
+
+    fn regenerate_bounds(&mut self, bounds_to_regenerate: Bounds) {
+        // Generates the world
+        let Bounds {
+            min_x,
+            max_x,
+            min_y,
+            max_y,
+        } = bounds_to_regenerate;
+
+        self.ground_level.grow(min_x..=max_x, None);
+
+        for x in min_x..=max_x {
+            for y in min_y..=max_y {
+                let ground_offset_height = match self.ground_level[x] {
+                    Some(ground_offset_height) => ground_offset_height,
+                    None => {
+                        let ground_offset_height = self.world_gen.world_height(x);
+                        self.ground_level[x] = Some(ground_offset_height);
+                        ground_offset_height
+                    }
+                };
+                if y <= ground_offset_height {
+                    self.cached_board[(x, y)] = true;
+                }
+            }
+        }
     }
 }
