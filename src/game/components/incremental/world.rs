@@ -12,6 +12,7 @@ use noise::{NoiseFn, Perlin, Simplex};
 use std::iter::repeat;
 use std::ops::{Index, IndexMut};
 use std::time::Instant;
+use crate::game::seeds::get_u32_seed_for;
 
 #[derive(Debug, Clone)]
 pub struct InitializedTile {
@@ -82,6 +83,7 @@ pub struct World {
     generated_world_bounds: Bounds,
     parallax_layers: [ParallaxLayer; 3],
     parallax_mountains: [ParallaxMountains; 2],
+    dirt_noise: Simplex,
 }
 
 impl World {
@@ -105,8 +107,8 @@ impl World {
         ];
 
         let parallax_mountains = [
-            ParallaxMountains::new(0.2, [43, 148, 218], -60, [2, 3, 4], 0.6),
-            ParallaxMountains::new(0.4, [62, 137, 187], -30, [5, 6, 7], 0.8),
+            ParallaxMountains::new(0.2, [43, 148, 218], -60, [get_u32_seed_for("pm1.1"), get_u32_seed_for("pm1.2"), get_u32_seed_for("pm1.3")], 0.6),
+            ParallaxMountains::new(0.4, [62, 137, 187], -30, [get_u32_seed_for("pm2.1"), get_u32_seed_for("pm2.2"), get_u32_seed_for("pm3.3")], 0.8),
         ];
 
         let mut world = Self {
@@ -121,6 +123,7 @@ impl World {
             generated_world_bounds: Bounds::empty(),
             parallax_layers,
             parallax_mountains,
+            dirt_noise: Simplex::new(get_u32_seed_for("dirt_noise")),
         };
 
         world.expand_to_contain(world.camera_window());
@@ -259,12 +262,6 @@ impl World {
             max_y,
         } = bounds_to_regenerate;
 
-        // let noise = noise::Simplex::new(42);
-        let mut noise = noise::Fbm::<Simplex>::new(42);
-        noise.octaves = 5;
-
-        let dirt_noise = noise::Simplex::new(42);
-        // let dirt_noise = noise::Fbm::<Simplex>::new(50);
 
         let max_height_deviance = 60.0;
         let wideness_factor = 150.0;
@@ -298,7 +295,7 @@ impl World {
                             Pixel::new('█').with_color(color).with_bg_color(color);
 
                         // Check if the ground height is below the dirt level
-                        let dirt_val = dirt_noise.get([
+                        let dirt_val = self.dirt_noise.get([
                             x as f64 / dirt_wideness_factor,
                             y as f64 / (dirt_wideness_factor * 2.0),
                         ]);
@@ -571,11 +568,12 @@ struct WorldGenerator {
     spiky_offset_noise: noise::Fbm<Simplex>,
     additional_ground_offset: i64,
     squash_factor: f64,
+    cheese_noise: Simplex,
 }
 
 impl WorldGenerator {
     fn new() -> Self {
-        Self::new_with_options([1234, 4321, 42], 0, 1.0)
+        Self::new_with_options([get_u32_seed_for("world_new.1"), get_u32_seed_for("world_new.2"), get_u32_seed_for("world_new.3")], 0, 1.0)
     }
 
     fn new_with_options(
@@ -606,6 +604,8 @@ impl WorldGenerator {
         let mut spiky_offset_noise = noise::Fbm::<Simplex>::new(seeds[2]);
         spiky_offset_noise.octaves = 5;
 
+        let cheese_noise = Simplex::new(get_u32_seed_for("cheese caves"));
+
         Self {
             continentalness_spline,
             spikiness_spline,
@@ -614,15 +614,14 @@ impl WorldGenerator {
             spiky_offset_noise,
             additional_ground_offset,
             squash_factor,
+            cheese_noise,
         }
     }
 
     fn is_solid(&self, x: i64, y: i64, ground_offset_height: i64) -> bool {
         // 'cheese caves'
-        let noise = Simplex::new(500);
-
         let wideness_factor = 100.0;
-        let noise_value = noise.get([x as f64 / wideness_factor, 2.0 * y as f64 / wideness_factor]);
+        let noise_value = self.cheese_noise.get([x as f64 / wideness_factor, 2.0 * y as f64 / wideness_factor]);
 
         let cave_threshold = 0.05;
         let is_cave = noise_value.abs() < cave_threshold;
@@ -721,6 +720,7 @@ struct ParallaxLayer {
     spawn_threshold_end: i64,
     cached_board: PlanarVec<bool>,
     generated_bounds: Bounds,
+    noise: Simplex,
 }
 
 impl ParallaxLayer {
@@ -737,6 +737,7 @@ impl ParallaxLayer {
             generated_bounds: Bounds::empty(),
             spawn_threshold_start,
             spawn_threshold_end,
+            noise: Simplex::new(get_u32_seed_for("parallax stars")),
         }
     }
 
@@ -775,12 +776,11 @@ impl ParallaxLayer {
             max_y,
         } = bounds_to_regenerate;
 
-        let noise = Simplex::new(42);
         let star_density = 1.0;
 
         for x in min_x..=max_x {
             for y in min_y..=max_y {
-                let noise_value = noise.get([x as f64 * star_density, y as f64 * star_density]);
+                let noise_value = self.noise.get([x as f64 * star_density, y as f64 * star_density]);
                 // vary threshold by y
                 // 1.0 until y = 100, then 0.8 at y = 200
                 // but since those y's are in world space, we need to translate to local space

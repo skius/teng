@@ -14,6 +14,7 @@ mod display;
 mod render;
 mod renderer;
 mod util;
+pub mod seeds;
 
 use crate::game::components::elevator::ElevatorComponent;
 use crate::game::components::incremental::ui::UiBarComponent;

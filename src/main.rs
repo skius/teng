@@ -30,6 +30,7 @@ use std::ops::Deref;
 use std::thread::sleep;
 use std::time::Instant;
 use std::{io, time::Duration};
+use crate::game::seeds::set_seed;
 
 const HELP: &str = r#"Blocking poll() & non-blocking read()
  - Keyboard, mouse and terminal resize events enabled
@@ -593,18 +594,28 @@ fn main() -> io::Result<()> {
         cleanup();
         eprintln!("{}", pinfo);
     }));
+    
+    // read the seed from args or use default "42"
+    let seed = std::env::args().nth(1).unwrap_or("42".to_string());
+    let seed = seed.parse::<u64>().unwrap_or_else(|_| {
+        // if the seed is not a number, generate a random seed
+        println!("Invalid seed, using random seed");
+        rand::random()
+    });
+    set_seed(seed);
+    
 
     let sink = CustomBufWriter::new();
     let mut game = Game::new(sink);
     game.add_component(Box::new(FPSLockerComponent::new(150.0)));
     game.add_component(Box::new(KeyPressRecorderComponent::new()));
-    game.add_component(Box::new(ClearComponent));
+    // game.add_component(Box::new(ClearComponent));
     game.add_component(Box::new(MouseTrackerComponent::new()));
     game.add_component(Box::new(QuitterComponent));
-    game.add_component(Box::new(ForceApplyComponent));
-    game.add_component(Box::new(PhysicsComponent::new()));
-    game.add_component(Box::new(DecayComponent::new()));
-    game.add_component_with(|width, height| Box::new(FloodFillComponent::new(width, height)));
+    // game.add_component(Box::new(ForceApplyComponent));
+    // game.add_component(Box::new(PhysicsComponent::new()));
+    // game.add_component(Box::new(DecayComponent::new()));
+    // game.add_component_with(|width, height| Box::new(FloodFillComponent::new(width, height)));
     // game.add_component(Box::new(SimpleDrawComponent::new()));
     // game.add_component_with(|width, height| Box::new(PlayerComponent::new(1, height)));
     // game.add_component_with(|width, height| Box::new(incremental::PlayerComponent::new(1, height)));

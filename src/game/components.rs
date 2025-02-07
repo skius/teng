@@ -12,6 +12,7 @@ use crate::physics::PhysicsBoard;
 use crossterm::event::{Event, KeyCode, KeyEvent, MouseEvent, MouseEventKind};
 use smallvec::SmallVec;
 use std::time::{Duration, Instant};
+use crate::game::seeds::get_seed;
 
 #[derive(Debug, Default, Clone)]
 pub struct ElevatorInfo {
@@ -185,6 +186,8 @@ impl Component for DebugInfoComponent {
             shared_state.display_info.height()
         )
         .render(&mut renderer, 0, y, depth_base);
+        y += 1;
+        format!("Game seed: {}", get_seed()).render(&mut renderer, 0, y, depth_base);
         y += 1;
         // format!("Pressed keys: {:?}", shared_state.pressed_keys).render(&mut renderer, 0, y, depth_base);
         // y += 1;
