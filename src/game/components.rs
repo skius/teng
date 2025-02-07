@@ -581,38 +581,9 @@ impl FloodFillComponent {
 }
 
 impl Component for FloodFillComponent {
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
-        match event {
-            Event::Resize(width, height) => {
-                self.board.resize_discard(width as usize, height as usize);
-                self.visited.resize_discard(width as usize, height as usize);
-            }
-            // Event::Mouse(event) => {
-            //     let mut new_mouse_info = self.last_mouse_info;
-            //     MouseTrackerComponent::fill_mouse_info(event, &mut new_mouse_info);
-            //     MouseTrackerComponent::smooth_two_updates(
-            //         false,
-            //         self.last_mouse_info,
-            //         new_mouse_info,
-            //         |mouse_info| {
-            //             if mouse_info.right_mouse_down {
-            //                 let (x, y) = mouse_info.last_mouse_pos;
-            //                 self.board.set(x, y, true);
-            //             }
-            //         },
-            //     );
-            //     self.last_mouse_info = new_mouse_info;
-            //     // if self.last_mouse_info.right_mouse_down {
-            //     //     let (x, y) = self.last_mouse_info.last_mouse_pos;
-            //     //     self.board.set(x, y, true);
-            //     // }
-            //     if self.last_mouse_info.right_mouse_down {
-            //         self.received_down_event_this_frame = true;
-            //     }
-            // }
-            _ => {}
-        }
-        None
+    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState) {
+        self.board.resize_discard(width, height);
+        self.visited.resize_discard(width, height);
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {

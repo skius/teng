@@ -219,6 +219,15 @@ impl World {
         self.expand_to_contain(self.camera_window());
     }
 
+    /// Processes terminal resize events.
+    /// The passed dimensions are the terminal's dimensions, that is, including the UI bar.
+    fn on_resize(&mut self, width: usize, height: usize) {
+        self.screen_width = width;
+        // remove the UI bar
+        self.screen_height = height - UiBarComponent::HEIGHT;
+        self.expand_to_contain(self.camera_window());
+    }
+
     /// Expands the world to at the minimum contain the given bounds.
     fn expand_to_contain(&mut self, bounds: Bounds) {
         let current_bounds = self.world_bounds();
@@ -421,16 +430,9 @@ impl WorldComponent {
 }
 
 impl Component for WorldComponent {
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
-        if let Event::Resize(width, height) = event {
-            let game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
-            let world = &mut game_state.world;
-            world.screen_width = width as usize;
-            world.screen_height = height as usize - UiBarComponent::HEIGHT;
-            world.expand_to_contain(world.camera_window());
-        }
-
-        None
+    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState) {
+        let game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
+        game_state.world.on_resize(width, height);
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {

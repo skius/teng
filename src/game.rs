@@ -250,6 +250,9 @@ pub trait Component: Any {
     fn is_active(&self, shared_state: &SharedState) -> bool {
         true
     }
+    /// Called when the terminal is resized.
+    /// Note that Resize events are also passed to on_event, so this is not strictly necessary.
+    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState) {}
     /// Called when an event is received. This could happen multiple times per frame.
     fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         None
@@ -439,6 +442,9 @@ impl<W: Write> Game<W> {
     fn on_resize(&mut self, width: usize, height: usize) {
         self.display_renderer.resize_discard(width, height);
         self.shared_state.resize(width, height);
+        for component in self.components.iter_mut() {
+            component.on_resize(width, height, &mut self.shared_state);
+        }
     }
 
     fn update(&mut self, update_info: UpdateInfo) {

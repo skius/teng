@@ -41,6 +41,11 @@ impl Component for SlingshotComponent {
         game_state.phase == GamePhase::Moving && game_state.upgrades.slingshot
     }
 
+    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState) {
+        self.half_block_display_render
+            .resize_discard(width, 2 * height);
+    }
+
     fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         match event {
             Event::Mouse(event) => {
@@ -56,10 +61,6 @@ impl Component for SlingshotComponent {
                     }
                     _ => {}
                 }
-            }
-            Event::Resize(width, height) => {
-                self.half_block_display_render
-                    .resize_discard(width as usize, 2 * (height as usize));
             }
             _ => {}
         }

@@ -447,12 +447,13 @@ impl Component for UiBarComponent {
         );
     }
 
+    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState) {
+        self.buttons.iter_mut().for_each(|button| {
+            button.update_screen_dimensions(height, width);
+        });
+    }
+
     fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
-        if let Event::Resize(width, height) = event {
-            self.buttons.iter_mut().for_each(|button| {
-                button.update_screen_dimensions(height as usize, width as usize);
-            });
-        }
         if let Event::Mouse(me) = event {
             // only change if we're in the UI bar range
             let (x, y) = (me.column as usize, me.row as usize);
