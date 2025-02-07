@@ -75,9 +75,10 @@ pub struct World {
     /// The height of the world's viewport, so excluding the UI bar.
     screen_height: usize,
     /// For every x, this stores the y value of the ground level.
-    ground_level: BidiVec<i64>,
+    ground_level: BidiVec<Option<i64>>,
     pub collision_board: CollisionBoard,
     animations: Vec<AnimationInWorld>,
+    world_gen: WorldGenerator,
 }
 
 impl World {
@@ -102,6 +103,7 @@ impl World {
             ground_level: BidiVec::new(),
             collision_board: CollisionBoard::new(world_bounds),
             animations: vec![],
+            world_gen: WorldGenerator::new(),
         };
 
         world.expand_to_contain(world.camera_window());
@@ -250,15 +252,16 @@ impl World {
 
         // go over entire world, find tiles that are ungenerated and generate them
         // go from left to right and generate based on noise function
-        self.ground_level.grow(min_x..=max_x, 0);
+        self.ground_level.grow(min_x..=max_x, None);
         for x in min_x..=max_x {
-            let noise_value = noise.get([x as f64 / wideness_factor, 0.0]);
-            let ground_offset_height = (noise_value * max_height_deviance) as i64;
-
-            // let dirt_offset = (dirt_noise.get([x as f64 / 10.0, 0.0]) * 2.0) as i64;
-            // let dirt_level = -10 + dirt_offset;
-
-            self.ground_level[x] = ground_offset_height;
+            let ground_offset_height = match self.ground_level[x] {
+                Some(ground_offset_height) => ground_offset_height,
+                None => {
+                    let ground_offset_height = self.world_gen.world_height(x);
+                    self.ground_level[x] = Some(ground_offset_height);
+                    ground_offset_height
+                }
+            };
 
             for y in min_y..=max_y {
                 if self
@@ -462,5 +465,121 @@ impl Index<(i64, i64)> for World {
 impl IndexMut<(i64, i64)> for World {
     fn index_mut(&mut self, (x, y): (i64, i64)) -> &mut Self::Output {
         self.get_mut(x, y).unwrap()
+    }
+}
+
+#[derive(Debug)]
+struct WorldGenerator {
+    continentalness_spline: Spline,
+    spikiness_spline: Spline,
+}
+
+impl WorldGenerator {
+    fn new() -> Self {
+        let mut continentalness_spline = Spline::new();
+        continentalness_spline.add_point(-1.0, -80.0);
+        continentalness_spline.add_point(-0.2, -20.0);
+        continentalness_spline.add_point(0.0, 10.0);
+        continentalness_spline.add_point(0.3, 30.0);
+        continentalness_spline.add_point(0.8, 100.0);
+        continentalness_spline.add_point(1.0, 400.0);
+
+        let mut spikiness_spline = Spline::new();
+        spikiness_spline.add_point(-1.0, 1.0);
+        spikiness_spline.add_point(-0.7, 5.0);
+        spikiness_spline.add_point(-0.2, 30.0);
+        spikiness_spline.add_point(0.1, 50.0);
+        spikiness_spline.add_point(0.5, 80.0);
+        spikiness_spline.add_point(1.0, 120.0);
+
+        Self {
+            continentalness_spline,
+            spikiness_spline,
+        }
+    }
+
+    fn continentalness_offset(&self, x: i64) -> f64 {
+        let mut noise = noise::Fbm::<Simplex>::new(1234);
+        noise.octaves = 3;
+
+        let wideness_factor = 1000.0;
+
+        let noise_value = noise.get([x as f64 / wideness_factor, 0.0]);
+        let continentalness = self.continentalness_spline.get(noise_value);
+
+        continentalness
+    }
+
+    fn spikiness(&self, x: i64) -> f64 {
+        let noise = Simplex::new(4321);
+
+        let wideness_factor = 500.0;
+
+        let noise_value = noise.get([x as f64 / wideness_factor, 0.0]);
+        let spikiness = self.spikiness_spline.get(noise_value);
+
+        spikiness
+    }
+
+    fn spike_offset(&self, x: i64) -> f64 {
+        let mut noise = noise::Fbm::<Simplex>::new(42);
+        noise.octaves = 5;
+
+        let wideness_factor = 150.0;
+
+        let noise_value = noise.get([x as f64 / wideness_factor, 0.0]);
+        let spikiness = self.spikiness(x);
+        let spikiness_offset = (noise_value * spikiness);
+
+        spikiness_offset
+    }
+
+    fn world_height(&self, x: i64) -> i64 {
+        let spikiness_offset = self.spike_offset(x);
+        let continentalness_offset = self.continentalness_offset(x);
+
+        (spikiness_offset + continentalness_offset) as i64
+    }
+}
+
+#[derive(Debug)]
+struct Spline {
+    /// Pairs of key and associated values
+    points: Vec<(f64, f64)>,
+}
+
+impl Spline {
+    fn new() -> Self {
+        Self {
+            points: vec![],
+        }
+    }
+
+    fn add_point(&mut self, x: f64, y: f64) {
+        // keys must be increasing
+        if let Some((last_x, _)) = self.points.last() {
+            assert!(x > *last_x);
+        }
+        self.points.push((x, y));
+    }
+
+    fn get(&self, x: f64) -> f64 {
+        // Find the two points that x is between
+        let mut left = 0;
+        let mut right = self.points.len() - 1;
+        while right - left > 1 {
+            let mid = (left + right) / 2;
+            if self.points[mid].0 < x {
+                left = mid;
+            } else {
+                right = mid;
+            }
+        }
+
+        let (x0, y0) = self.points[left];
+        let (x1, y1) = self.points[right];
+
+        let t = (x - x0) / (x1 - x0);
+        y0 * (1.0 - t) + y1 * t
     }
 }
