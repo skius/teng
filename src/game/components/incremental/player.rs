@@ -215,7 +215,9 @@ impl Component for NewPlayerComponent {
                         .spawn_ground_slam_animation(&mut game_state.world);
                 }
 
-                if fall_distance >= Self::DEATH_HEIGHT && game_state.new_player_state.dead_time.is_none() {
+                if fall_distance >= Self::DEATH_HEIGHT
+                    && game_state.new_player_state.dead_time.is_none()
+                {
                     NewPlayerState::on_death(fall_distance, yvel_before, game_state);
                 }
 

@@ -6,6 +6,7 @@ mod game;
 mod physics;
 
 use crate::game::components::elevator::ElevatorComponent;
+use crate::game::components::incremental::boundschecker::BoundsCheckerComponent;
 use crate::game::components::incremental::falling::FallingSimulationComponent;
 use crate::game::components::video::VideoComponent;
 use crate::game::components::{
@@ -13,6 +14,7 @@ use crate::game::components::{
     FloodFillComponent, ForceApplyComponent, KeyPressRecorderComponent, MouseTrackerComponent,
     PhysicsComponent, PlayerComponent, QuitterComponent, SimpleDrawComponent,
 };
+use crate::game::seeds::set_seed;
 use crate::game::{DisplayRenderer, Game, Pixel, Render, Renderer, Sprite};
 use crossterm::event::{KeyEvent, KeyboardEnhancementFlags, MouseButton, MouseEventKind};
 use crossterm::style::{Color, Colored, Colors};
@@ -25,14 +27,12 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode},
 };
 use std::any::Any;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::{stdout, Stdout, Write};
 use std::ops::Deref;
 use std::thread::sleep;
 use std::time::Instant;
 use std::{io, time::Duration};
-use std::hash::{DefaultHasher, Hash, Hasher};
-use crate::game::components::incremental::boundschecker::BoundsCheckerComponent;
-use crate::game::seeds::set_seed;
 
 const HELP: &str = r#"Blocking poll() & non-blocking read()
  - Keyboard, mouse and terminal resize events enabled
@@ -610,7 +610,6 @@ fn main() -> io::Result<()> {
         }
     });
     set_seed(seed);
-
 
     let sink = CustomBufWriter::new();
     let mut game = Game::new(sink);

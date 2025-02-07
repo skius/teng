@@ -4,6 +4,8 @@ use crate::game::components::incremental::collisionboard::{CollisionBoard, Colli
 use crate::game::components::incremental::planarvec::{Bounds, PlanarVec};
 use crate::game::components::incremental::ui::UiBarComponent;
 use crate::game::components::incremental::GameState;
+use crate::game::seeds::get_u32_seed_for;
+use crate::game::util::{get_lerp_t_i64_clamped, lerp_color};
 use crate::game::{
     BreakingAction, Color, Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo,
 };
@@ -12,8 +14,6 @@ use noise::{NoiseFn, Perlin, Simplex};
 use std::iter::repeat;
 use std::ops::{Index, IndexMut};
 use std::time::Instant;
-use crate::game::seeds::get_u32_seed_for;
-use crate::game::util::{get_lerp_t_i64_clamped, lerp_color};
 
 #[derive(Debug, Clone)]
 pub struct InitializedTile {
@@ -108,8 +108,28 @@ impl World {
         ];
 
         let parallax_mountains = [
-            ParallaxMountains::new(0.2, [43, 148, 218], -60, [get_u32_seed_for("pm1.1"), get_u32_seed_for("pm1.2"), get_u32_seed_for("pm1.3")], 0.6),
-            ParallaxMountains::new(0.4, [62, 137, 187], -30, [get_u32_seed_for("pm2.1"), get_u32_seed_for("pm2.2"), get_u32_seed_for("pm3.3")], 0.8),
+            ParallaxMountains::new(
+                0.2,
+                [43, 148, 218],
+                -60,
+                [
+                    get_u32_seed_for("pm1.1"),
+                    get_u32_seed_for("pm1.2"),
+                    get_u32_seed_for("pm1.3"),
+                ],
+                0.6,
+            ),
+            ParallaxMountains::new(
+                0.4,
+                [62, 137, 187],
+                -30,
+                [
+                    get_u32_seed_for("pm2.1"),
+                    get_u32_seed_for("pm2.2"),
+                    get_u32_seed_for("pm3.3"),
+                ],
+                0.8,
+            ),
         ];
 
         let mut world = Self {
@@ -263,7 +283,6 @@ impl World {
             max_y,
         } = bounds_to_regenerate;
 
-
         let max_height_deviance = 60.0;
         let wideness_factor = 150.0;
         let dirt_wideness_factor = 20.0;
@@ -299,11 +318,9 @@ impl World {
 
                         if y >= snow_line {
                             let snow_color = [255, 255, 255];
-                            final_pixel = final_pixel
-                                .with_color(snow_color)
-                                .with_bg_color(snow_color);
+                            final_pixel =
+                                final_pixel.with_color(snow_color).with_bg_color(snow_color);
                         }
-
 
                         // Check if the ground height is below the dirt level
                         let dirt_val = self.dirt_noise.get([
@@ -495,9 +512,7 @@ impl Component for WorldComponent {
                             if !tile.solid {
                                 // reversed iter because we want to draw closest first for priority
                                 for pl in world.parallax_layers.iter().rev() {
-                                    if let Some(&true) =
-                                        pl.get(camera_x, camera_y, x, y)
-                                    {
+                                    if let Some(&true) = pl.get(camera_x, camera_y, x, y) {
                                         renderer.render_pixel(
                                             x,
                                             y,
@@ -576,7 +591,15 @@ struct WorldGenerator {
 
 impl WorldGenerator {
     fn new() -> Self {
-        Self::new_with_options([get_u32_seed_for("world_new.1"), get_u32_seed_for("world_new.2"), get_u32_seed_for("world_new.3")], 0, 1.0)
+        Self::new_with_options(
+            [
+                get_u32_seed_for("world_new.1"),
+                get_u32_seed_for("world_new.2"),
+                get_u32_seed_for("world_new.3"),
+            ],
+            0,
+            1.0,
+        )
     }
 
     fn new_with_options(
@@ -628,7 +651,9 @@ impl WorldGenerator {
     fn is_solid(&self, x: i64, y: i64, ground_offset_height: i64) -> bool {
         // 'cheese caves'
         let wideness_factor = 100.0;
-        let noise_value = self.cheese_noise.get([x as f64 / wideness_factor, 2.0 * y as f64 / wideness_factor]);
+        let noise_value = self
+            .cheese_noise
+            .get([x as f64 / wideness_factor, 2.0 * y as f64 / wideness_factor]);
 
         let cave_threshold = 0.05;
         let is_cave = noise_value.abs() < cave_threshold;
@@ -756,7 +781,13 @@ impl ParallaxLayer {
         }
     }
 
-    fn to_world_pos(&self, camera_x: i64, camera_y: i64, screen_x: usize, screen_y: usize) -> (i64, i64) {
+    fn to_world_pos(
+        &self,
+        camera_x: i64,
+        camera_y: i64,
+        screen_x: usize,
+        screen_y: usize,
+    ) -> (i64, i64) {
         // we just take the regular to_world_pos formula, but we pretend that the camera has not moved as far.
 
         let adjusted_c_x = camera_x as f64 * self.parallax_factor;
@@ -810,7 +841,9 @@ impl ParallaxLayer {
 
         for x in min_x..=max_x {
             for y in min_y..=max_y {
-                let noise_value = self.noise.get([x as f64 * star_density, y as f64 * star_density]);
+                let noise_value = self
+                    .noise
+                    .get([x as f64 * star_density, y as f64 * star_density]);
                 // vary threshold by y
                 // 1.0 until y = 100, then 0.8 at y = 200
                 // but since those y's are in world space, we need to translate to local space
@@ -862,7 +895,13 @@ impl ParallaxMountains {
         }
     }
 
-    fn to_world_pos(&self, camera_x: i64, camera_y: i64, screen_x: usize, screen_y: usize) -> (i64, i64) {
+    fn to_world_pos(
+        &self,
+        camera_x: i64,
+        camera_y: i64,
+        screen_x: usize,
+        screen_y: usize,
+    ) -> (i64, i64) {
         let adjusted_c_x = camera_x as f64 * self.parallax_factor;
         let adjusted_c_y = camera_y as f64 * self.parallax_factor;
         let world_x = adjusted_c_x + screen_x as f64;
@@ -892,7 +931,8 @@ impl ParallaxMountains {
         // };
         // or not?
         let new_bounds = self.world_bounds.union(world_bounds);
-        self.ground_level.grow(new_bounds.min_x..=new_bounds.max_x, None);
+        self.ground_level
+            .grow(new_bounds.min_x..=new_bounds.max_x, None);
         self.world_bounds = new_bounds;
         self.regenerate();
     }
@@ -911,11 +951,7 @@ impl ParallaxMountains {
     // TODO: fix this, it's broken
     fn regenerate_bounds(&mut self, bounds_to_regenerate: Bounds) {
         // Generates the world
-        let Bounds {
-            min_x,
-            max_x,
-            ..
-        } = bounds_to_regenerate;
+        let Bounds { min_x, max_x, .. } = bounds_to_regenerate;
 
         self.ground_level.grow(min_x..=max_x, None);
 

@@ -49,16 +49,14 @@ use crate::game::components::incremental::slingshot::SlingshotComponent;
 use crate::game::components::incremental::ui::UiBarComponent;
 use crate::game::components::incremental::world::{World, WorldComponent};
 use crate::game::components::DecayElement;
-use crate::game::{
-    Component, DebugMessage, Render, Renderer, SetupInfo,
-    SharedState, UpdateInfo,
-};
+use crate::game::{Component, DebugMessage, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
 use anymap::any::Any;
 use crossterm::event::KeyCode;
 use std::time::Instant;
 
 mod animation;
 mod bidivec;
+pub mod boundschecker;
 mod collisionboard;
 pub mod falling;
 mod planarvec;
@@ -66,7 +64,6 @@ mod player;
 mod slingshot;
 pub mod ui;
 pub mod world;
-pub mod boundschecker;
 
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 enum GamePhase {

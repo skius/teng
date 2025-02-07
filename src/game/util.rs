@@ -37,7 +37,7 @@ macro_rules! lerp_t_impl {
     ($fn_name:ident, $typ:ty) => {
         #[allow(unused)]
         pub fn $fn_name(from: $typ, to: $typ, current: $typ) -> f32 {
-            (current as  f32 - from as f32) / (to as f32 - from as f32)
+            (current as f32 - from as f32) / (to as f32 - from as f32)
         }
     };
 }
@@ -46,7 +46,7 @@ macro_rules! lerp_t_impl_clamped {
     ($fn_name:ident, $typ:ty) => {
         #[allow(unused)]
         pub fn $fn_name(from: $typ, to: $typ, current: $typ) -> f32 {
-            let t = (current as  f32 - from as f32) / (to as f32 - from as f32);
+            let t = (current as f32 - from as f32) / (to as f32 - from as f32);
             t.clamp(0.0, 1.0)
         }
     };
@@ -81,7 +81,6 @@ lerp_t_impl_clamped!(get_lerp_t_isize_clamped, isize);
 lerp_t_impl_clamped!(get_lerp_t_usize_clamped, usize);
 lerp_t_impl_clamped!(get_lerp_t_f32_clamped, f32);
 lerp_t_impl_clamped!(get_lerp_t_f64_clamped, f64);
-
 
 pub fn lerp_color(a: [u8; 3], b: [u8; 3], t: f32) -> [u8; 3] {
     [

@@ -13,8 +13,8 @@ pub mod components;
 mod display;
 mod render;
 mod renderer;
-mod util;
 pub mod seeds;
+mod util;
 
 use crate::game::components::elevator::ElevatorComponent;
 use crate::game::components::incremental::ui::UiBarComponent;
@@ -43,7 +43,7 @@ impl Color {
             Color::Rgb(c) => c,
         }
     }
-    
+
     pub fn is_solid(self) -> bool {
         match self {
             Color::Default => true,

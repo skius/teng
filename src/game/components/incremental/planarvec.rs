@@ -86,7 +86,7 @@ impl Bounds {
 
         bounds
     }
-    
+
     /// Returns the bounds containing both self and other bounds.
     pub fn union(&self, other: Bounds) -> Bounds {
         if self.is_empty() {

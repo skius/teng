@@ -135,10 +135,7 @@ impl<W: Write> DisplayRenderer<W> {
         if x >= self.width || y >= self.height {
             return;
         }
-        
 
-        
-        
         let old_depth = self.depth_buffer[(x, y)];
         if old_depth == i32::MIN {
             // This is the first pixel arriving for this position, so we do not want to do any blending.
@@ -155,7 +152,7 @@ impl<W: Write> DisplayRenderer<W> {
             self.bg_depth_buffer[(x, y)] = new_depth;
             new_bg_color = new_pixel.bg_color;
         }
-        
+
         let (lower_pixel, upper_pixel) = if old_depth < new_depth {
             (old_pixel, new_pixel)
         } else {
