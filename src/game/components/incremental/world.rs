@@ -571,7 +571,7 @@ impl WorldGenerator {
         continentalness_spline.add_point(-0.2, -20.0);
         continentalness_spline.add_point(0.0, 10.0);
         continentalness_spline.add_point(0.3, 30.0);
-        continentalness_spline.add_point(0.8, 100.0);
+        continentalness_spline.add_point(0.8, 300.0);
         continentalness_spline.add_point(1.0, 400.0);
 
         let mut spikiness_spline = Spline::new();
