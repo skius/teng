@@ -46,6 +46,7 @@ pub struct DisplayRenderer<W: Write> {
     // larger values are closer and get preference
     depth_buffer: Display<i32>,
     // same as above, but for the bg color.
+    // only keeps track of solid bg colors (in particular, which one is the top most)
     bg_depth_buffer: Display<i32>,
     default_fg_color: [u8; 3],
     last_fg_color: [u8; 3],
@@ -141,6 +142,9 @@ impl<W: Write> DisplayRenderer<W> {
             // This is the first pixel arriving for this position, so we do not want to do any blending.
             self.display[(x, y)] = new_pixel;
             self.depth_buffer[(x, y)] = new_depth;
+            if new_pixel.bg_color.is_solid() {
+                self.bg_depth_buffer[(x, y)] = new_depth;
+            }
             return;
         }
         let old_pixel = self.display[(x, y)];

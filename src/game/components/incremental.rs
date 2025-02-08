@@ -64,6 +64,7 @@ mod player;
 mod slingshot;
 pub mod ui;
 pub mod world;
+pub mod rasterize;
 
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 enum GamePhase {

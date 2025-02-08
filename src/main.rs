@@ -20,6 +20,7 @@ use crossterm::{
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io;
 use std::io::{stdout, Stdout, Write};
+use crate::game::components::incremental::rasterize::RasterizeComponent;
 
 /// Custom buffer writer that _only_ flushes explicitly
 /// Surprisingly leads to a speedup from 2000 fps to 4800 fps on a full screen terminal
@@ -130,6 +131,7 @@ fn main() -> io::Result<()> {
     // game.add_component(Box::new(VideoComponent::new()));
     // game.add_component_with(|width, height| Box::new(ElevatorComponent::new(width, height)));
     // game.add_component(Box::new(FallingSimulationComponent::new()));
+    // game.add_component(Box::new(RasterizeComponent::new()));
 
     let res = game.run();
 

@@ -211,6 +211,14 @@ impl HalfBlockDisplayRender {
             display: Display::new(width, height, Color::Transparent),
         }
     }
+    
+    pub fn height(&self) -> usize {
+        self.height
+    }
+    
+    pub fn width(&self) -> usize {
+        self.width
+    }
 
     pub fn set_color(&mut self, x: usize, y: usize, color: Color) {
         self.display.set(x, y, color);
