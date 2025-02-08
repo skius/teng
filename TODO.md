@@ -45,3 +45,5 @@ BUT WHERE IS THE SKILL??
 
 
 Add seed passing to commandline for worldgen.
+
+TODO: if I want to really do rasterization, should use nalgebra and properly define scene structures.

@@ -4,6 +4,7 @@ use crossterm::queue;
 use std::io;
 use std::io::{Stdout, Write};
 use std::ops::{Index, IndexMut};
+use rand::Rng;
 
 pub trait Renderer {
     fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32);
@@ -132,10 +133,24 @@ impl<W: Write> DisplayRenderer<W> {
     }
 
     /// Higher depths have higher priority. At same depth, first write wins.
-    pub fn render_pixel(&mut self, x: usize, y: usize, new_pixel: Pixel, new_depth: i32) {
+    pub fn render_pixel(&mut self, x: usize, y: usize, mut new_pixel: Pixel, new_depth: i32) {
         if x >= self.width || y >= self.height {
             return;
         }
+
+        // match &mut new_pixel.color {
+        //     Color::Rgb(arr) => {
+        //         // add some random noise to the new pixel color and bg color
+        //         let d = rand::thread_rng().gen_range(-4..=4);
+        //         arr[0] = (arr[0] as i16 + d).max(0).min(255) as u8;
+        //         arr[1] = (arr[1] as i16 + d).max(0).min(255) as u8;
+        //         arr[2] = (arr[2] as i16 + d).max(0).min(255) as u8;
+        //     }
+        //     _ => {}
+        // }
+
+
+        
 
         let old_depth = self.depth_buffer[(x, y)];
         if old_depth == i32::MIN {
