@@ -700,6 +700,21 @@ impl WorldGenerator {
         let wideness_factor = 500.0;
 
         let noise_value = self.spikiness_noise.get([x as f64 / wideness_factor, 0.0]);
+
+        // TODO: higher continentalness should make spikiness more likely
+        // could do that by splitting the continentalness offset noise into separate function (dont call twice per worldgen..)
+        // and then using that noise to additionally index into some separate spikiness-continentalness adjustment
+        // spline, whose value just gets added to the spikiness noise_value.
+        // actually, could just take the continentalness offset directly and index the spline with that,
+        // having something like from -inf to 80 it's 0.0, but from 80 onwards to 230 it increases to 1.0
+        // because the splines currently don't clamp at the endpoints (maybe TODO?), we'd have to clamp
+        // the summed noise_value (which is a spline key) ourselves.
+
+
+        // let continentalness_offset = self.continentalness_offset(x);
+        // let continentalness_offset = (continentalness_offset / 400.0).clamp(0.0, 1.0);
+        // let noise_value = noise_value + continentalness_offset;
+
         let spikiness = self.spikiness_spline.get(noise_value);
 
         spikiness
@@ -745,6 +760,7 @@ impl Spline {
         self.points.push((x, y));
     }
 
+    /// Note: does not clamp. Might be a good idea to check what happens outside the range.
     fn get(&self, x: f64) -> f64 {
         // Find the two points that x is between
         let mut left = 0;
