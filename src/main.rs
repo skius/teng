@@ -5,6 +5,7 @@
 mod game;
 mod physics;
 
+use crate::game::components::incremental::rasterize::RasterizeComponent;
 use crate::game::components::{
     incremental, DebugInfoComponent, FPSLockerComponent, KeyPressRecorderComponent,
     MouseTrackerComponent, QuitterComponent,
@@ -20,7 +21,6 @@ use crossterm::{
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io;
 use std::io::{stdout, Stdout, Write};
-use crate::game::components::incremental::rasterize::RasterizeComponent;
 
 /// Custom buffer writer that _only_ flushes explicitly
 /// Surprisingly leads to a speedup from 2000 fps to 4800 fps on a full screen terminal

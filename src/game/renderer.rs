@@ -1,10 +1,10 @@
 use crate::game::display::Display;
 use crate::game::{Color, Pixel, Render};
 use crossterm::queue;
+use rand::Rng;
 use std::io;
 use std::io::{Stdout, Write};
 use std::ops::{Index, IndexMut};
-use rand::Rng;
 
 pub trait Renderer {
     fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32);
@@ -148,9 +148,6 @@ impl<W: Write> DisplayRenderer<W> {
         //     }
         //     _ => {}
         // }
-
-
-        
 
         let old_depth = self.depth_buffer[(x, y)];
         if old_depth == i32::MIN {

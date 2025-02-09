@@ -710,7 +710,6 @@ impl WorldGenerator {
         // because the splines currently don't clamp at the endpoints (maybe TODO?), we'd have to clamp
         // the summed noise_value (which is a spline key) ourselves.
 
-
         // let continentalness_offset = self.continentalness_offset(x);
         // let continentalness_offset = (continentalness_offset / 400.0).clamp(0.0, 1.0);
         // let noise_value = noise_value + continentalness_offset;

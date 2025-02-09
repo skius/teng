@@ -211,11 +211,11 @@ impl HalfBlockDisplayRender {
             display: Display::new(width, height, Color::Transparent),
         }
     }
-    
+
     pub fn height(&self) -> usize {
         self.height
     }
-    
+
     pub fn width(&self) -> usize {
         self.width
     }

@@ -1,6 +1,8 @@
-use std::ops::{AddAssign, SubAssign};
+use crate::game::{
+    Color, Component, HalfBlockDisplayRender, Render, Renderer, SetupInfo, SharedState, UpdateInfo,
+};
 use crossterm::event::KeyCode;
-use crate::game::{Color, Component, HalfBlockDisplayRender, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
+use std::ops::{AddAssign, SubAssign};
 
 #[derive(Clone, Copy, Debug)]
 struct Vec3 {
@@ -84,7 +86,6 @@ impl Mat4 {
         }
     }
 
-
     fn perspective(fov: f32, aspect: f32, near: f32, far: f32) -> Mat4 {
         let f = 1.0 / (fov.to_radians() / 2.0).tan();
         // Mat4 {
@@ -98,19 +99,32 @@ impl Mat4 {
         Mat4::from_cols(
             [f / aspect, 0.0, 0.0, 0.0],
             [0.0, f, 0.0, 0.0],
-            [0.0, 0.0, (far + near) / (near - far), (2.0 * far * near) / (near - far)],
+            [
+                0.0,
+                0.0,
+                (far + near) / (near - far),
+                (2.0 * far * near) / (near - far),
+            ],
             [0.0, 0.0, -1.0, 0.0],
         )
     }
 
     fn transform(&self, v: Vec3) -> Vec3 {
-        let x = v.x * self.data[0][0] + v.y * self.data[1][0] + v.z * self.data[2][0] + self.data[3][0];
-        let y = v.x * self.data[0][1] + v.y * self.data[1][1] + v.z * self.data[2][1] + self.data[3][1];
-        let z = v.x * self.data[0][2] + v.y * self.data[1][2] + v.z * self.data[2][2] + self.data[3][2];
-        let w = v.x * self.data[0][3] + v.y * self.data[1][3] + v.z * self.data[2][3] + self.data[3][3];
+        let x =
+            v.x * self.data[0][0] + v.y * self.data[1][0] + v.z * self.data[2][0] + self.data[3][0];
+        let y =
+            v.x * self.data[0][1] + v.y * self.data[1][1] + v.z * self.data[2][1] + self.data[3][1];
+        let z =
+            v.x * self.data[0][2] + v.y * self.data[1][2] + v.z * self.data[2][2] + self.data[3][2];
+        let w =
+            v.x * self.data[0][3] + v.y * self.data[1][3] + v.z * self.data[2][3] + self.data[3][3];
 
         if w != 0.0 {
-            Vec3 { x: x / w, y: y / w, z: z / w }
+            Vec3 {
+                x: x / w,
+                y: y / w,
+                z: z / w,
+            }
         } else {
             Vec3 { x, y, z }
         }
@@ -125,7 +139,6 @@ struct Triangle {
     n1: Vec3, // Normal at v1
     n2: Vec3, // Normal at v2
 }
-
 
 impl Triangle {
     fn compute_normal(&self) -> Vec3 {
@@ -156,7 +169,15 @@ struct Camera {
 }
 
 impl Camera {
-    fn new(position: Vec3, orientation: Mat4, fov: f32, width: usize, height: usize, near: f32, far: f32) -> Self {
+    fn new(
+        position: Vec3,
+        orientation: Mat4,
+        fov: f32,
+        width: usize,
+        height: usize,
+        near: f32,
+        far: f32,
+    ) -> Self {
         let aspect = width as f32 / height as f32;
         Self {
             position,
@@ -172,7 +193,6 @@ impl Camera {
         Mat4::perspective(self.fov, self.aspect, self.near, self.far)
     }
 }
-
 
 fn edge_function(v0: (usize, usize), v1: (usize, usize), p: (usize, usize)) -> i32 {
     (p.0 as i32 - v0.0 as i32) * (v1.1 as i32 - v0.1 as i32)
@@ -215,7 +235,8 @@ fn fill_triangle(
                         x: w0 * v0.3.x + w1 * v1.3.x + w2 * v2.3.x,
                         y: w0 * v0.3.y + w1 * v1.3.y + w2 * v2.3.y,
                         z: w0 * v0.3.z + w1 * v1.3.z + w2 * v2.3.z,
-                    }.normalize();
+                    }
+                    .normalize();
 
                     // Compute lighting
                     let light_dir = light_pos.normalize();
@@ -238,20 +259,13 @@ fn fill_triangle(
                     let min_dist = 0.0;
                     let max_dist = 1.5;
                     let dist_interp = (z - min_dist) / (max_dist - min_dist);
-                    framebuffer[idx] = [
-                        0,
-                        0,
-                        (dist_interp * 255.0) as u8,
-                    ];
+                    framebuffer[idx] = [0, 0, (dist_interp * 255.0) as u8];
                     // panic!("{z}")
                 }
             }
         }
     }
 }
-
-
-
 
 fn render(scene: &Scene, width: usize, height: usize) -> Vec<[u8; 3]> {
     let mut framebuffer = vec![[0, 0, 0]; width * height];
@@ -276,10 +290,15 @@ fn render(scene: &Scene, width: usize, height: usize) -> Vec<[u8; 3]> {
             let v2 = to_screen(v2_proj, triangle.n2);
 
             fill_triangle(
-                v0, v1, v2,
-                &mut framebuffer, &mut depth_buffer,
-                width, height,
-                mesh.color, scene.light_pos
+                v0,
+                v1,
+                v2,
+                &mut framebuffer,
+                &mut depth_buffer,
+                width,
+                height,
+                mesh.color,
+                scene.light_pos,
             );
         }
     }
@@ -287,59 +306,146 @@ fn render(scene: &Scene, width: usize, height: usize) -> Vec<[u8; 3]> {
     framebuffer
 }
 
-
 fn create_cube(center: Vec3, size: f32, color: [u8; 3]) -> Mesh {
     let half = size / 2.0;
 
     // Cube vertices
     let v = [
-        Vec3 { x: center.x - half, y: center.y - half, z: center.z - half }, // 0
-        Vec3 { x: center.x + half, y: center.y - half, z: center.z - half }, // 1
-        Vec3 { x: center.x + half, y: center.y + half, z: center.z - half }, // 2
-        Vec3 { x: center.x - half, y: center.y + half, z: center.z - half }, // 3
-        Vec3 { x: center.x - half, y: center.y - half, z: center.z + half }, // 4
-        Vec3 { x: center.x + half, y: center.y - half, z: center.z + half }, // 5
-        Vec3 { x: center.x + half, y: center.y + half, z: center.z + half }, // 6
-        Vec3 { x: center.x - half, y: center.y + half, z: center.z + half }, // 7
+        Vec3 {
+            x: center.x - half,
+            y: center.y - half,
+            z: center.z - half,
+        }, // 0
+        Vec3 {
+            x: center.x + half,
+            y: center.y - half,
+            z: center.z - half,
+        }, // 1
+        Vec3 {
+            x: center.x + half,
+            y: center.y + half,
+            z: center.z - half,
+        }, // 2
+        Vec3 {
+            x: center.x - half,
+            y: center.y + half,
+            z: center.z - half,
+        }, // 3
+        Vec3 {
+            x: center.x - half,
+            y: center.y - half,
+            z: center.z + half,
+        }, // 4
+        Vec3 {
+            x: center.x + half,
+            y: center.y - half,
+            z: center.z + half,
+        }, // 5
+        Vec3 {
+            x: center.x + half,
+            y: center.y + half,
+            z: center.z + half,
+        }, // 6
+        Vec3 {
+            x: center.x - half,
+            y: center.y + half,
+            z: center.z + half,
+        }, // 7
     ];
 
     // Normals per vertex (for smooth shading)
     let n = [
-        Vec3 { x: -1.0, y: -1.0, z: -1.0 }.normalize(),
-        Vec3 { x: 1.0, y: -1.0, z: -1.0 }.normalize(),
-        Vec3 { x: 1.0, y: 1.0, z: -1.0 }.normalize(),
-        Vec3 { x: -1.0, y: 1.0, z: -1.0 }.normalize(),
-        Vec3 { x: -1.0, y: -1.0, z: 1.0 }.normalize(),
-        Vec3 { x: 1.0, y: -1.0, z: 1.0 }.normalize(),
-        Vec3 { x: 1.0, y: 1.0, z: 1.0 }.normalize(),
-        Vec3 { x: -1.0, y: 1.0, z: 1.0 }.normalize(),
+        Vec3 {
+            x: -1.0,
+            y: -1.0,
+            z: -1.0,
+        }
+        .normalize(),
+        Vec3 {
+            x: 1.0,
+            y: -1.0,
+            z: -1.0,
+        }
+        .normalize(),
+        Vec3 {
+            x: 1.0,
+            y: 1.0,
+            z: -1.0,
+        }
+        .normalize(),
+        Vec3 {
+            x: -1.0,
+            y: 1.0,
+            z: -1.0,
+        }
+        .normalize(),
+        Vec3 {
+            x: -1.0,
+            y: -1.0,
+            z: 1.0,
+        }
+        .normalize(),
+        Vec3 {
+            x: 1.0,
+            y: -1.0,
+            z: 1.0,
+        }
+        .normalize(),
+        Vec3 {
+            x: 1.0,
+            y: 1.0,
+            z: 1.0,
+        }
+        .normalize(),
+        Vec3 {
+            x: -1.0,
+            y: 1.0,
+            z: 1.0,
+        }
+        .normalize(),
     ];
 
     // Define the cube faces (two triangles per face)
     let indices = [
-        (0, 1, 2), (0, 2, 3), // Front
-        (1, 5, 6), (1, 6, 2), // Right
-        (5, 4, 7), (5, 7, 6), // Back
-        (4, 0, 3), (4, 3, 7), // Left
-        (3, 2, 6), (3, 6, 7), // Top
-        (4, 5, 1), (4, 1, 0), // Bottom
+        (0, 1, 2),
+        (0, 2, 3), // Front
+        (1, 5, 6),
+        (1, 6, 2), // Right
+        (5, 4, 7),
+        (5, 7, 6), // Back
+        (4, 0, 3),
+        (4, 3, 7), // Left
+        (3, 2, 6),
+        (3, 6, 7), // Top
+        (4, 5, 1),
+        (4, 1, 0), // Bottom
     ];
 
-    let triangles = indices.iter().map(|&(i0, i1, i2)| Triangle {
-        v0: v[i0], v1: v[i1], v2: v[i2],
-        n0: n[i0], n1: n[i1], n2: n[i2],
-    }).collect();
+    let triangles = indices
+        .iter()
+        .map(|&(i0, i1, i2)| Triangle {
+            v0: v[i0],
+            v1: v[i1],
+            v2: v[i2],
+            n0: n[i0],
+            n1: n[i1],
+            n2: n[i2],
+        })
+        .collect();
 
     Mesh { triangles, color }
 }
-
 
 fn rotate_mesh_y(mesh: &mut Mesh, angle: f32) {
     let cos_a = angle.cos();
     let sin_a = angle.sin();
 
     // Compute the center of the mesh
-    let mut center = Vec3 { x: 0.0, y: 0.0, z: 0.0 };
+    let mut center = Vec3 {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    };
     let num_vertices = mesh.triangles.len() * 3;
 
     for triangle in &mesh.triangles {
@@ -396,7 +502,11 @@ fn rotate_mesh_x(mesh: &mut Mesh, angle: f32) {
     let sin_a = angle.sin();
 
     // Compute the center of the mesh
-    let mut center = Vec3 { x: 0.0, y: 0.0, z: 0.0 };
+    let mut center = Vec3 {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    };
     let num_vertices = mesh.triangles.len() * 3;
 
     for triangle in &mesh.triangles {
@@ -448,14 +558,6 @@ fn rotate_mesh_x(mesh: &mut Mesh, angle: f32) {
     }
 }
 
-
-
-
-
-
-
-
-
 pub struct RasterizeComponent {
     half_block_display_render: HalfBlockDisplayRender,
     rotation_angle: f32,
@@ -474,11 +576,13 @@ impl RasterizeComponent {
 
 impl Component for RasterizeComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
-        self.half_block_display_render.resize_discard(setup_info.width, 2 * setup_info.height);
+        self.half_block_display_render
+            .resize_discard(setup_info.width, 2 * setup_info.height);
     }
 
     fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState) {
-        self.half_block_display_render.resize_discard(width, 2 * height);
+        self.half_block_display_render
+            .resize_discard(width, 2 * height);
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
@@ -501,12 +605,39 @@ impl Component for RasterizeComponent {
         // update half_block_display_render
         self.half_block_display_render.clear();
         let triangle = Triangle {
-            v0: Vec3 { x: -0.5, y: -0.5, z: 1.0 },
-            v1: Vec3 { x: 0.5, y: -0.5, z: 1.0 },
-            v2: Vec3 { x: 0.0, y: 0.5, z: 1.0 },
-            n0: Vec3 { x: -0.5, y: -0.5, z: 1.0 }.normalize(),
-            n1: Vec3 { x: 0.5, y: -0.5, z: 1.0 }.normalize(),
-            n2: Vec3 { x: 0.0, y: 0.5, z: 1.0 }.normalize(),
+            v0: Vec3 {
+                x: -0.5,
+                y: -0.5,
+                z: 1.0,
+            },
+            v1: Vec3 {
+                x: 0.5,
+                y: -0.5,
+                z: 1.0,
+            },
+            v2: Vec3 {
+                x: 0.0,
+                y: 0.5,
+                z: 1.0,
+            },
+            n0: Vec3 {
+                x: -0.5,
+                y: -0.5,
+                z: 1.0,
+            }
+            .normalize(),
+            n1: Vec3 {
+                x: 0.5,
+                y: -0.5,
+                z: 1.0,
+            }
+            .normalize(),
+            n2: Vec3 {
+                x: 0.0,
+                y: 0.5,
+                z: 1.0,
+            }
+            .normalize(),
         };
 
         let mesh = Mesh {
@@ -514,13 +645,24 @@ impl Component for RasterizeComponent {
             color: [255, 100, 50], // Orange color
         };
 
-        let mut cube = create_cube(Vec3 { x: 0.0, y: 0.0, z: 0.0 }, 100.0, [255, 0, 0]); // Red cube
+        let mut cube = create_cube(
+            Vec3 {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            100.0,
+            [255, 0, 0],
+        ); // Red cube
         rotate_mesh_y(&mut cube, self.rotation_angle.to_radians());
         rotate_mesh_x(&mut cube, self.rotation_x_angle.to_radians());
 
-
         let camera = Camera::new(
-            Vec3 { x: 0.0, y: 0.0, z: 200.0 },
+            Vec3 {
+                x: 0.0,
+                y: 0.0,
+                z: 200.0,
+            },
             Mat4::identity(),
             90.0,
             width,
@@ -530,9 +672,13 @@ impl Component for RasterizeComponent {
         );
 
         let scene = Scene {
-            meshes: vec![ cube],
+            meshes: vec![cube],
             camera,
-            light_pos: Vec3 { x: 1.0, y: 10.0, z: -1.0 },
+            light_pos: Vec3 {
+                x: 1.0,
+                y: 10.0,
+                z: -1.0,
+            },
         };
 
         let framebuffer = render(&scene, width, height);
@@ -540,19 +686,16 @@ impl Component for RasterizeComponent {
             for x in 0..width {
                 let color_top = framebuffer[y * width + x];
 
-                self.half_block_display_render.set_color(x, height - y - 1, Color::Rgb(color_top));
+                self.half_block_display_render
+                    .set_color(x, height - y - 1, Color::Rgb(color_top));
             }
         }
         // self.half_block_display_render.set_color(0, 0, Color::Rgb([255, 255, 255]));
     }
 
-
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let depth_base = i32::MAX - 200;
-        self.half_block_display_render.render(&mut renderer, 0, 0, depth_base);
+        self.half_block_display_render
+            .render(&mut renderer, 0, 0, depth_base);
     }
-
 }
-
-
-

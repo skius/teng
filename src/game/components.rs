@@ -6,7 +6,8 @@ use crate::game::display::Display;
 use crate::game::seeds::get_seed;
 use crate::game::util::for_coord_in_line;
 use crate::game::{
-    BreakingAction, Component, MouseInfo, Pixel, Render, Renderer, SharedState, Sprite, UpdateInfo,
+    BreakingAction, Color, Component, MouseInfo, Pixel, Render, Renderer, SharedState, Sprite,
+    UpdateInfo,
 };
 use crate::physics::PhysicsBoard;
 use crossterm::event::{Event, KeyCode, KeyEvent, MouseEvent, MouseEventKind};

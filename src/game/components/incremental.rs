@@ -61,10 +61,10 @@ mod collisionboard;
 pub mod falling;
 mod planarvec;
 mod player;
+pub mod rasterize;
 mod slingshot;
 pub mod ui;
 pub mod world;
-pub mod rasterize;
 
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 enum GamePhase {
