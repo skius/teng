@@ -42,7 +42,15 @@ the slingshot would not be overpowered in that instance, if:
 BUT WHERE IS THE SKILL??
  - there could be some hurdles to overcome to reach the point of recordings in the first place,
    like falling meteors that kill you without giving you a lot of money or something
+- to make different recordings be placed at different locations (instead of multiple recordings at the best location over and over)
+  we could have different recording lengths per recording, so only long enough recordings can fall from the highest mountains, etc
 
+Minimap of the world?
+- scrolls (due to infinite world size)
+- only shows the y range where the ground level can be
+- halfblock display
+- size dynamically adjusts in top right corner according to screen size
+- toggleable with m
 
 Add seed passing to commandline for worldgen.
 
