@@ -1,6 +1,7 @@
 pub mod elevator;
 pub mod incremental;
 pub mod video;
+pub mod fpschecker;
 
 use crate::game::display::Display;
 use crate::game::seeds::get_seed;

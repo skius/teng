@@ -21,6 +21,8 @@ use crossterm::{
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io;
 use std::io::{stdout, Stdout, Write};
+use std::time::Instant;
+use crate::game::components::fpschecker::FpsCheckerComponent;
 
 /// Custom buffer writer that _only_ flushes explicitly
 /// Surprisingly leads to a speedup from 2000 fps to 4800 fps on a full screen terminal
@@ -100,7 +102,43 @@ fn process_inputs() {
     set_seed(seed);
 }
 
+fn fps_test() {
+    let mut max_x = 252;
+    let mut stdout = stdout().lock();
+    let mut curr_x = 0;
+    let mut target_fps = 144.0;
+    let mut frame_time = 1.0 / target_fps;
+    let mut last_time = Instant::now();
+    let mut curr_time = Instant::now();
+    loop {
+        curr_time = Instant::now();
+        let elapsed = curr_time - last_time;
+        if elapsed.as_secs_f64() >= frame_time {
+            last_time = curr_time;
+            curr_x += 1;
+            if curr_x >=  2 * max_x {
+                curr_x = 0;
+            }
+            // bounce back and forth
+            let num_leading_spaces = if curr_x < max_x {
+                curr_x
+            } else {
+                2 * max_x - curr_x
+            };
+            for _ in 0..num_leading_spaces {
+                let _ = write!(stdout, " ");
+            }
+            let _ = write!(stdout, "█");
+            let _ = write!(stdout, "\n");
+            let _ = stdout.flush();
+        }
+    }
+}
+
 fn main() -> io::Result<()> {
+    // fps_test();
+    // panic!("done");
+    
     terminal_setup()?;
 
     // install panic handler
@@ -132,6 +170,7 @@ fn main() -> io::Result<()> {
     // game.add_component_with(|width, height| Box::new(ElevatorComponent::new(width, height)));
     // game.add_component(Box::new(FallingSimulationComponent::new()));
     // game.add_component(Box::new(RasterizeComponent::new()));
+    game.add_component(Box::new(FpsCheckerComponent::new()));
 
     let res = game.run();
 
