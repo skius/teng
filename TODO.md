@@ -55,3 +55,10 @@ Minimap of the world?
 Add seed passing to commandline for worldgen.
 
 TODO: if I want to really do rasterization, should use nalgebra and properly define scene structures.
+
+Microsoft Terminal waits until it renders above 60fps: https://github.com/microsoft/terminal/blob/f28f65870a9caeb629498c83efc4ab6992c93bad/src/renderer/base/RenderEngineBase.cpp#L91
+nope fixed in preview
+
+TODO: test sixels again? https://github.com/zellij-org/sixel-image
+
+ah let's not. sixels need color palettes
