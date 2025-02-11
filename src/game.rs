@@ -239,6 +239,8 @@ pub trait Component: Any {
     /// Called when the terminal is resized.
     /// Note that Resize events are also passed to on_event, so this is not strictly necessary.
     fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState) {}
+    /// Called when the game exits. Useful for cleanup.
+    fn on_quit(&mut self, shared_state: &mut SharedState) {}
     /// Called when an event is received. This could happen multiple times per frame. Runs before update.
     fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         None
@@ -521,6 +523,10 @@ impl<W: Write> Game<W> {
     }
 
     fn cleanup(&mut self) {
+        for component in self.components.iter_mut() {
+            component.on_quit(&mut self.shared_state);
+        }
+        
         self.event_read_stop_signal.send(()).unwrap();
         self.event_read_thread_handle
             .take()
