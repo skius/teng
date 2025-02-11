@@ -216,7 +216,8 @@ impl Component for GameComponent {
                 game_state.received_blocks = 0;
                 game_state.received_blocks_base = 0;
                 game_state.blocks = game_state.max_blocks;
-                shared_state.physics_board.clear();
+                // Note: archived the physics board. See in archive
+                // shared_state.physics_board.clear();
             }
             GamePhase::Building => {
                 if shared_state.pressed_keys.did_press_char(' ')

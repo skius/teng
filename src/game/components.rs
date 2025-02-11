@@ -9,7 +9,6 @@ use crate::game::{
     BreakingAction, Color, Component, MouseInfo, Pixel, Render, Renderer, SharedState, Sprite,
     UpdateInfo,
 };
-use crate::physics::PhysicsBoard;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, MouseEvent, MouseEventKind};
 use smallvec::SmallVec;
 use std::collections::HashMap;

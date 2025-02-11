@@ -11,17 +11,16 @@ use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 
 pub mod components;
-mod display;
+pub mod display;
 mod render;
 mod renderer;
 pub mod seeds;
-mod util;
+pub mod util;
 
 use crate::game::components::incremental::ui::UiBarComponent;
 use crate::game::components::{DebugInfo, DebugInfoComponent, MouseEvents, PressedKeys};
 use crate::game::display::Display;
 use crate::game::Color::Transparent;
-use crate::physics::PhysicsBoard;
 pub use render::*;
 pub use renderer::*;
 
@@ -193,8 +192,6 @@ pub struct SharedState {
     mouse_pressed: MousePressedInfo,
     mouse_events: MouseEvents,
     target_fps: Option<f64>,
-    collision_board: Display<bool>,
-    physics_board: PhysicsBoard,
     display_info: DisplayInfo,
     pressed_keys: PressedKeys,
     debounced_down_keys: HashSet<KeyCode>,
@@ -211,11 +208,9 @@ impl SharedState {
             mouse_pressed: MousePressedInfo::default(),
             mouse_events: MouseEvents::new(),
             target_fps: Some(150.0),
-            physics_board: PhysicsBoard::new(width),
             display_info: DisplayInfo::new(width, height),
             pressed_keys: PressedKeys::new(),
             debounced_down_keys: HashSet::new(),
-            collision_board: Display::new(width, height, false),
             debug_info: DebugInfo::new(),
             debug_messages: SmallVec::new(),
             extensions: AnyMap::new(),
@@ -224,10 +219,7 @@ impl SharedState {
     }
 
     pub fn resize(&mut self, width: usize, height: usize) {
-        self.physics_board.resize(width);
         self.display_info = DisplayInfo::new(width, height);
-        self.collision_board
-            .resize_keep(width, height - UiBarComponent::HEIGHT);
     }
 }
 

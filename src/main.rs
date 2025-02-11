@@ -3,7 +3,6 @@
 //! cargo run --example event-poll-read
 
 mod game;
-mod physics;
 
 use crate::game::components::fpschecker::FpsCheckerComponent;
 use crate::game::components::incremental::boundschecker::BoundsCheckerComponent;
