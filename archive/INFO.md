@@ -5,5 +5,7 @@ not existed back then.
 
 `git log -p | grep "impl Component for"` is a good way to find old components.
 
+or `git grep '<regex>' $(git rev-list --all)`
+
 The commits might also contain more code related to the archived components, like how they
 were instantiated, etc.
