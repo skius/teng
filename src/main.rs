@@ -5,8 +5,14 @@
 mod game;
 mod physics;
 
+use crate::game::components::fpschecker::FpsCheckerComponent;
+use crate::game::components::incremental::boundschecker::BoundsCheckerComponent;
 use crate::game::components::incremental::rasterize::RasterizeComponent;
-use crate::game::components::{incremental, DebugInfoComponent, FPSLockerComponent, KeyPressRecorderComponent, KeypressDebouncerComponent, MouseTrackerComponent, QuitterComponent};
+use crate::game::components::incremental::worldmap::WorldMapComponent;
+use crate::game::components::{
+    incremental, DebugInfoComponent, FPSLockerComponent, KeyPressRecorderComponent,
+    KeypressDebouncerComponent, MouseTrackerComponent, QuitterComponent,
+};
 use crate::game::seeds::set_seed;
 use crate::game::Game;
 use crossterm::{
@@ -19,9 +25,6 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io;
 use std::io::{stdout, Stdout, Write};
 use std::time::Instant;
-use crate::game::components::fpschecker::FpsCheckerComponent;
-use crate::game::components::incremental::boundschecker::BoundsCheckerComponent;
-use crate::game::components::incremental::worldmap::WorldMapComponent;
 
 /// Custom buffer writer that _only_ flushes explicitly
 /// Surprisingly leads to a speedup from 2000 fps to 4800 fps on a full screen terminal
@@ -115,7 +118,7 @@ fn fps_test() {
         if elapsed.as_secs_f64() >= frame_time {
             last_time = curr_time;
             curr_x += 1;
-            if curr_x >=  2 * max_x {
+            if curr_x >= 2 * max_x {
                 curr_x = 0;
             }
             // bounce back and forth
@@ -137,7 +140,7 @@ fn fps_test() {
 fn main() -> io::Result<()> {
     // fps_test();
     // panic!("done");
-    
+
     terminal_setup()?;
 
     // install panic handler

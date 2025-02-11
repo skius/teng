@@ -75,7 +75,7 @@ impl<T> BidiVec<T> {
             std::ops::Bound::Excluded(&end) => end - 1,
             std::ops::Bound::Unbounded => 0,
         };
-        
+
         // Don't shrink.
         let start = start.min(-(self.neg.len() as i64));
         let end = end.max(self.pos.len() as i64 - 1);

@@ -2,12 +2,12 @@ use crate::game::components::incremental::animation::CharAnimationSequence;
 use crate::game::components::incremental::collisionboard::PhysicsEntity2d;
 use crate::game::components::incremental::world::World;
 use crate::game::components::incremental::{GamePhase, GameState, PlayerHistoryElement};
+use crate::game::components::PressedKeys;
 use crate::game::{
     BreakingAction, Component, DebugMessage, Render, Renderer, SharedState, Sprite, UpdateInfo,
 };
 use crossterm::event::{Event, KeyCode};
 use std::time::{Duration, Instant};
-use crate::game::components::PressedKeys;
 
 #[derive(Debug)]
 pub struct NewPlayerState {
@@ -206,7 +206,7 @@ impl Component for NewPlayerComponent {
             //     if shared_state.debounced_down_keys.contains(&KeyCode::Down) {
             //         game_state.new_player_state.entity.position.1 -= 1.0;
             //     }
-            // 
+            //
             // }
 
             let step_size = if game_state.new_player_state.dead_time.is_some() {

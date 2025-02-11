@@ -329,7 +329,11 @@ impl World {
                 {
                     let (draw, solid) = if self.world_gen.is_solid(x, y, ground_offset_height) {
                         // ground
-                        let color = lerp_color([50, 50, 50], [130, 130, 130], get_lerp_t_i64_clamped(-50, 30, y));
+                        let color = lerp_color(
+                            [50, 50, 50],
+                            [130, 130, 130],
+                            get_lerp_t_i64_clamped(-50, 30, y),
+                        );
                         let mut final_pixel =
                             Pixel::new('█').with_color(color).with_bg_color(color);
 
@@ -459,8 +463,7 @@ impl Component for WorldComponent {
         }
 
         // In case the collision board grew from physics
-        world
-            .expand_to_contain(world.collision_board.bounds());
+        world.expand_to_contain(world.collision_board.bounds());
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
@@ -481,7 +484,7 @@ impl Component for WorldComponent {
             let world_y = camera_y - y as i64;
             // render this text latest, so we get the appropriate background color.
             // nope! by introducing bg_depth into renderer we can render it whenever we want.
-            
+
             if world_y % 10 == 0 {
                 format!("{:?}", world_y).render(&mut renderer, 0, y, depth_ground_level);
             }

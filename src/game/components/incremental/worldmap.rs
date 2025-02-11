@@ -1,9 +1,11 @@
-use std::ops::RangeInclusive;
-use crossterm::event::KeyCode;
 use crate::game::components::incremental::planarvec::{Bounds, PlanarVec};
-use crate::game::{Color, Component, HalfBlockDisplayRender, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
-use crate::game::components::incremental::GameState;
 use crate::game::components::incremental::world::Tile;
+use crate::game::components::incremental::GameState;
+use crate::game::{
+    Color, Component, HalfBlockDisplayRender, Render, Renderer, SetupInfo, SharedState, UpdateInfo,
+};
+use crossterm::event::KeyCode;
+use std::ops::RangeInclusive;
 
 pub struct WorldMapComponent {
     window_width: usize,
@@ -24,12 +26,17 @@ pub struct WorldMapComponent {
 }
 
 impl WorldMapComponent {
-    pub fn new(window_width: usize, window_height: usize, view_width: usize, view_height: usize, base_y: i64) -> Self {
+    pub fn new(
+        window_width: usize,
+        window_height: usize,
+        view_width: usize,
+        view_height: usize,
+        base_y: i64,
+    ) -> Self {
         // want to assert that window_width evenly divides view_width
         // want to assert that window_height evenly divides view_height
         assert_eq!(view_width % window_width, 0);
         assert_eq!(view_height % window_height, 0);
-
 
         Self {
             window_width,
@@ -50,7 +57,10 @@ impl WorldMapComponent {
     fn world_pixels_per_window_pixel(&self) -> (usize, usize) {
         // the vertical ratio is divided by two because we're in half pixels. a square region (visually) in the
         // terminal takes up twice as many x pixels as y pixels.
-        (self.view_width / self.window_width, self.view_height / self.window_height / 2)
+        (
+            self.view_width / self.window_width,
+            self.view_height / self.window_height / 2,
+        )
     }
 
     fn expand_rendered_map_around_x(&mut self, game_state: &mut GameState, x: i64) {
@@ -113,7 +123,9 @@ impl WorldMapComponent {
                 let mut count = 0;
                 for world_y in world_y_min..=world_y_max {
                     for world_x in world_x_min..=world_x_max {
-                        if let Some(Tile::Initialized(tile)) = game_state.world.get(world_x, world_y) {
+                        if let Some(Tile::Initialized(tile)) =
+                            game_state.world.get(world_x, world_y)
+                        {
                             let tile_color = match tile.draw.color {
                                 Color::Rgb(c) => c,
                                 // not handling transparency and other color types for now
@@ -162,11 +174,11 @@ impl Component for WorldMapComponent {
         let camera_center_attach = game_state.world.camera_center().0;
         self.expand_rendered_map_around_x(&mut game_state, camera_center_attach);
 
-
         // render into display based on the player's position
         let player_x_map = player_x / self.world_pixels_per_window_pixel().0 as i64;
         let player_y_map = player_y / self.world_pixels_per_window_pixel().1 as i64;
-        let camera_center_x_map = camera_center_attach / self.world_pixels_per_window_pixel().0 as i64;
+        let camera_center_x_map =
+            camera_center_attach / self.world_pixels_per_window_pixel().0 as i64;
         let base_y_map = self.base_y / self.world_pixels_per_window_pixel().1 as i64;
         let max_y_in_map = base_y_map + self.window_height as i64 / 2;
 
@@ -178,15 +190,18 @@ impl Component for WorldMapComponent {
                 let screen_x = x;
                 let screen_y = self.window_width - y - 1;
 
-                if x_map == player_x_map && (y_map == player_y_map || player_y_map >= max_y_in_map && screen_y == 0 ) {
-                    self.display.set_color(screen_x, screen_y, Color::Rgb([255, 255, 255]));
+                if x_map == player_x_map
+                    && (y_map == player_y_map || player_y_map >= max_y_in_map && screen_y == 0)
+                {
+                    self.display
+                        .set_color(screen_x, screen_y, Color::Rgb([255, 255, 255]));
                     continue;
                 }
 
                 let color = self.rendered_map[(x_map, y_map)];
-                self.display.set_color(screen_x, screen_y, Color::Rgb(color));
+                self.display
+                    .set_color(screen_x, screen_y, Color::Rgb(color));
             }
-
         }
 
         // apply a circular filter to the display, everything outside should have transparent color
@@ -207,8 +222,6 @@ impl Component for WorldMapComponent {
                 }
             }
         }
-
-
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
@@ -216,6 +229,11 @@ impl Component for WorldMapComponent {
             return;
         }
         // render the display
-        self.display.render(&mut renderer, self.display_attach_x, self.display_attach_y, i32::MAX);
+        self.display.render(
+            &mut renderer,
+            self.display_attach_x,
+            self.display_attach_y,
+            i32::MAX,
+        );
     }
 }

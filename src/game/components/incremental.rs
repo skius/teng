@@ -48,11 +48,11 @@ use crate::game::components::incremental::player::{
 use crate::game::components::incremental::slingshot::SlingshotComponent;
 use crate::game::components::incremental::ui::UiBarComponent;
 use crate::game::components::incremental::world::{World, WorldComponent};
+use crate::game::components::incremental::worldmap::WorldMapComponent;
 use crate::game::{Component, DebugMessage, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
 use anymap::any::Any;
 use crossterm::event::KeyCode;
 use std::time::Instant;
-use crate::game::components::incremental::worldmap::WorldMapComponent;
 
 mod animation;
 mod bidivec;
@@ -287,9 +287,9 @@ impl Component for BuildingDrawComponent {
                 //     if !exists_already {
                 //         game_state.blocks -= 1;
                 //     }
-                    // Note: Removed the decay component. Check in archive if we want to readd it.
-                    // shared_state.decay_board[(x, y)] =
-                    //     DecayElement::new_with_time('█', update_info.current_time);
+                // Note: Removed the decay component. Check in archive if we want to readd it.
+                // shared_state.decay_board[(x, y)] =
+                //     DecayElement::new_with_time('█', update_info.current_time);
                 // }
             }
         });

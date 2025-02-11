@@ -1,5 +1,5 @@
-use std::time::Instant;
 use crate::game::{Component, Pixel, Renderer, SharedState, UpdateInfo};
+use std::time::Instant;
 
 pub struct FpsCheckerComponent {
     start_time: Instant,
@@ -11,7 +11,6 @@ impl FpsCheckerComponent {
             start_time: Instant::now(),
         }
     }
-
 }
 
 impl Component for FpsCheckerComponent {
@@ -27,7 +26,12 @@ impl Component for FpsCheckerComponent {
         if x < shared_state.display_info.width() {
             renderer.render_pixel(x, y, pixel, i32::MAX);
         } else {
-            renderer.render_pixel(shared_state.display_info.width() * 2 - x - 1, y, pixel, i32::MAX);
+            renderer.render_pixel(
+                shared_state.display_info.width() * 2 - x - 1,
+                y,
+                pixel,
+                i32::MAX,
+            );
         }
     }
 }

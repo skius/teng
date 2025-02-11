@@ -1,8 +1,7 @@
+pub mod fpschecker;
 pub mod incremental;
 pub mod video;
-pub mod fpschecker;
 
-use std::collections::HashMap;
 use crate::game::display::Display;
 use crate::game::seeds::get_seed;
 use crate::game::util::for_coord_in_line;
@@ -13,6 +12,7 @@ use crate::game::{
 use crate::physics::PhysicsBoard;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, MouseEvent, MouseEventKind};
 use smallvec::SmallVec;
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Default, Clone)]
@@ -176,7 +176,12 @@ impl Component for DebugInfoComponent {
         y += 1;
         format!("Game seed: {}", get_seed()).render(&mut renderer, 0, y, depth_base);
         y += 1;
-        format!("Debounced keys: {:?}", shared_state.debounced_down_keys).render(&mut renderer, 0, y, depth_base);
+        format!("Debounced keys: {:?}", shared_state.debounced_down_keys).render(
+            &mut renderer,
+            0,
+            y,
+            depth_base,
+        );
         y += 1;
         // format!("Events: {}", self.num_events).render(&mut renderer, 0, y, depth_base);
         // y += 1;
@@ -483,7 +488,11 @@ impl Component for KeyPressRecorderComponent {
     fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         match event {
             // only capture presses to work on windows as well (where we get Release too)
-            Event::Key(KeyEvent { kind: KeyEventKind::Press, code, .. }) => {
+            Event::Key(KeyEvent {
+                kind: KeyEventKind::Press,
+                code,
+                ..
+            }) => {
                 if let Some(count) = self.pressed_keys.get_mut(&code) {
                     *count += 1;
                 } else {
@@ -522,7 +531,11 @@ impl Component for KeypressDebouncerComponent {
     fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         match event {
             // only capture presses to work on windows as well (where we get Release too)
-            Event::Key(KeyEvent { kind: KeyEventKind::Press, code, .. }) => {
+            Event::Key(KeyEvent {
+                kind: KeyEventKind::Press,
+                code,
+                ..
+            }) => {
                 self.last_keypress.insert(code, Instant::now());
             }
             _ => {}
