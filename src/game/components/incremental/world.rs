@@ -176,6 +176,17 @@ impl World {
         }
     }
 
+    pub fn camera_center(&self) -> (i64, i64) {
+        let camera_x = self.camera_attach.0;
+        let camera_y = self.camera_attach.1;
+
+        // recenter
+        let center_x = camera_x + self.screen_width as i64 / 2;
+        let center_y = camera_y - self.screen_height as i64 / 2;
+
+        (center_x, center_y)
+    }
+
     pub fn to_screen_pos(&self, world_x: i64, world_y: i64) -> Option<(usize, usize)> {
         let camera_x = self.camera_attach.0;
         let camera_y = self.camera_attach.1;
@@ -229,7 +240,7 @@ impl World {
     }
 
     /// Expands the world to at the minimum contain the given bounds.
-    fn expand_to_contain(&mut self, bounds: Bounds) {
+    pub fn expand_to_contain(&mut self, bounds: Bounds) {
         let current_bounds = self.world_bounds();
         if current_bounds.contains_bounds(bounds) {
             return;

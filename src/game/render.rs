@@ -236,11 +236,13 @@ impl HalfBlockDisplayRender {
 }
 
 impl Render for HalfBlockDisplayRender {
-    fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
-        for y in 0..(self.height / 2) {
-            for x in 0..self.width {
-                let color_top = *self.display.get(x, 2 * y).unwrap();
-                let color_bottom = *self.display.get(x, 2 * y + 1).unwrap();
+    fn render<R: Renderer>(&self, renderer: &mut R, base_x: usize, base_y: usize, depth: i32) {
+        for y_offset in 0..(self.height / 2) {
+            for x_offset in 0..self.width {
+                let x = base_x + x_offset;
+                let y = base_y + y_offset;
+                let color_top = *self.display.get(x_offset, 2 * y_offset).unwrap();
+                let color_bottom = *self.display.get(x_offset, 2 * y_offset + 1).unwrap();
 
                 match (color_top, color_bottom) {
                     // no need to draw anything

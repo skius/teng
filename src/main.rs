@@ -23,6 +23,7 @@ use std::io;
 use std::io::{stdout, Stdout, Write};
 use std::time::Instant;
 use crate::game::components::fpschecker::FpsCheckerComponent;
+use crate::game::components::incremental::worldmap::WorldMapComponent;
 
 /// Custom buffer writer that _only_ flushes explicitly
 /// Surprisingly leads to a speedup from 2000 fps to 4800 fps on a full screen terminal
@@ -170,7 +171,8 @@ fn main() -> io::Result<()> {
     // game.add_component_with(|width, height| Box::new(ElevatorComponent::new(width, height)));
     // game.add_component(Box::new(FallingSimulationComponent::new()));
     // game.add_component(Box::new(RasterizeComponent::new()));
-    game.add_component(Box::new(FpsCheckerComponent::new()));
+    // game.add_component(Box::new(FpsCheckerComponent::new()));
+    game.add_component(Box::new(WorldMapComponent::new(30, 30, 600, 600, 50)));
 
     let res = game.run();
 

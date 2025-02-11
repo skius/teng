@@ -62,3 +62,5 @@ nope fixed in preview
 TODO: test sixels again? https://github.com/zellij-org/sixel-image
 
 ah let's not. sixels need color palettes
+
+TODO: before release make sure it works on windows, so only run on ::Press .

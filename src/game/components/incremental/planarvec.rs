@@ -172,7 +172,7 @@ impl<T> PlanarVec<T> {
         Some(&mut self.data[x][y])
     }
 
-    /// Expands the planar v ec to at least contain the given bounds.
+    /// Expands the planar vec to at least contain the given bounds.
     pub fn expand(&mut self, bounds: Bounds, default: T)
     where
         T: Clone,
