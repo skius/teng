@@ -3,6 +3,9 @@ use rust_embed::Embed;
 use tempfile::env::temp_dir;
 use video_rs::Decoder;
 
+/// Created by:
+/// `ffmpeg -i never.mp4 -filter:v 'crop=ih/1080*1386:ih' -c:v libx264 -crf 19 -preset veryfast -c:a copy output4.mp4`
+/// `ffmpeg -i output4.mp4 -filter:v scale=-1:134 -c:a copy output4-small.mp4`
 #[derive(Embed)]
 #[folder = "assets/"]
 struct Asset;
