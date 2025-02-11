@@ -429,11 +429,15 @@ impl World {
     }
 }
 
-pub struct WorldComponent {}
+pub struct WorldComponent {
+    parallax_enabled: bool,
+}
 
 impl WorldComponent {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            parallax_enabled: true,
+        }
     }
 }
 
@@ -450,6 +454,10 @@ impl Component for WorldComponent {
             .unwrap()
             .world;
 
+        if shared_state.pressed_keys.contains_key(&KeyCode::Char('p')) {
+            self.parallax_enabled = !self.parallax_enabled;
+        }
+        
         // if shared_state.pressed_keys.contains_key(&KeyCode::Char('r')) {
         //     world.regenerate();
         // }
@@ -531,7 +539,7 @@ impl Component for WorldComponent {
                             renderer.render_pixel(x, y, tile.draw, depth_base);
 
                             // if sky, draw stars with parallax effect
-                            if !tile.solid {
+                            if !tile.solid && self.parallax_enabled {
                                 // reversed iter because we want to draw closest first for priority
                                 for pl in world.parallax_layers.iter().rev() {
                                     if let Some(&true) = pl.get(camera_x, camera_y, x, y) {

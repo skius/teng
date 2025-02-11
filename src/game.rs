@@ -17,9 +17,8 @@ mod renderer;
 pub mod seeds;
 mod util;
 
-use crate::game::components::elevator::ElevatorComponent;
 use crate::game::components::incremental::ui::UiBarComponent;
-use crate::game::components::{DebugInfo, DebugInfoComponent, DecayElement, MouseEvents};
+use crate::game::components::{DebugInfo, DebugInfoComponent, MouseEvents};
 use crate::game::display::Display;
 use crate::game::Color::Transparent;
 use crate::physics::PhysicsBoard;
@@ -194,7 +193,6 @@ pub struct SharedState {
     mouse_pressed: MousePressedInfo,
     mouse_events: MouseEvents,
     target_fps: Option<f64>,
-    decay_board: Display<DecayElement>,
     collision_board: Display<bool>,
     physics_board: PhysicsBoard,
     display_info: DisplayInfo,
@@ -213,11 +211,6 @@ impl SharedState {
             mouse_pressed: MousePressedInfo::default(),
             mouse_events: MouseEvents::new(),
             target_fps: Some(150.0),
-            decay_board: Display::new(
-                width,
-                height - UiBarComponent::HEIGHT,
-                DecayElement::new(' '),
-            ),
             physics_board: PhysicsBoard::new(width),
             display_info: DisplayInfo::new(width, height),
             pressed_keys: micromap::Map::new(),
@@ -231,8 +224,6 @@ impl SharedState {
     }
 
     pub fn resize(&mut self, width: usize, height: usize) {
-        self.decay_board
-            .resize_keep(width, height - UiBarComponent::HEIGHT);
         self.physics_board.resize(width);
         self.display_info = DisplayInfo::new(width, height);
         self.collision_board
@@ -492,15 +483,6 @@ impl<W: Write> Game<W> {
     // }
 
     fn update_game(&mut self, update_info: UpdateInfo) {
-        if self
-            .shared_state
-            .pressed_keys
-            .contains_key(&KeyCode::Char('e'))
-        {
-            self.swap_component::<ElevatorComponent>(|width, height| {
-                Box::new(ElevatorComponent::new(width, height))
-            });
-        }
         if self
             .shared_state
             .pressed_keys

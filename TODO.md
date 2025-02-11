@@ -64,3 +64,7 @@ TODO: test sixels again? https://github.com/zellij-org/sixel-image
 ah let's not. sixels need color palettes
 
 TODO: before release make sure it works on windows, so only run on ::Press .
+
+Some kind of event recorder that records all events and timestamps that happen?
+Then serializes them and allows replaying them for tests?
+Would also need to store display size, since some events are relative to display size.

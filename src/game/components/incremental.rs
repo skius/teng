@@ -48,7 +48,6 @@ use crate::game::components::incremental::player::{
 use crate::game::components::incremental::slingshot::SlingshotComponent;
 use crate::game::components::incremental::ui::UiBarComponent;
 use crate::game::components::incremental::world::{World, WorldComponent};
-use crate::game::components::DecayElement;
 use crate::game::{Component, DebugMessage, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
 use anymap::any::Any;
 use crossterm::event::KeyCode;
@@ -187,7 +186,7 @@ impl Component for GameComponent {
         shared_state
             .components_to_add
             .push(Box::new(WorldMapComponent::new(30, 30, 600, 600, 50)));
-        
+
         shared_state.extensions.insert(GameState::new(setup_info));
     }
 
@@ -278,17 +277,20 @@ impl Component for BuildingDrawComponent {
                 if y >= shared_state.display_info.height() - UiBarComponent::HEIGHT {
                     return;
                 }
+
+                // Note: Removed the decay component. Check in archive if we want to readd it.
+
                 // if decay board already has this pixel, we don't need to count it towards our blocks
-                let exists_already = shared_state.decay_board[(x as usize, y as usize)].c != ' ';
+                // let exists_already = shared_state.decay_board[(x as usize, y as usize)].c != ' ';
                 // draw only if it either exists, or we have enough blocks
-                if exists_already || game_state.blocks > 0 {
-                    if !exists_already {
-                        game_state.blocks -= 1;
-                    }
-                    // self.draw_queue.push((x, y));
-                    shared_state.decay_board[(x, y)] =
-                        DecayElement::new_with_time('█', update_info.current_time);
-                }
+                // if exists_already || game_state.blocks > 0 {
+                //     if !exists_already {
+                //         game_state.blocks -= 1;
+                //     }
+                    // Note: Removed the decay component. Check in archive if we want to readd it.
+                    // shared_state.decay_board[(x, y)] =
+                    //     DecayElement::new_with_time('█', update_info.current_time);
+                // }
             }
         });
     }
