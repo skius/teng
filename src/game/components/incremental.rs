@@ -53,6 +53,7 @@ use crate::game::{Component, DebugMessage, Render, Renderer, SetupInfo, SharedSt
 use anymap::any::Any;
 use crossterm::event::KeyCode;
 use std::time::Instant;
+use crate::game::components::incremental::worldmap::WorldMapComponent;
 
 mod animation;
 mod bidivec;
@@ -183,6 +184,10 @@ impl Component for GameComponent {
         shared_state
             .components_to_add
             .push(Box::new(UiBarComponent::new()));
+        shared_state
+            .components_to_add
+            .push(Box::new(WorldMapComponent::new(30, 30, 600, 600, 50)));
+        
         shared_state.extensions.insert(GameState::new(setup_info));
     }
 

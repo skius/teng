@@ -12,7 +12,7 @@ use crate::game::{
 use crossterm::event::{Event, KeyCode};
 use noise::{NoiseFn, Perlin, Simplex};
 use std::iter::repeat;
-use std::ops::{Index, IndexMut};
+use std::ops::{Index, IndexMut, RangeBounds};
 use std::time::Instant;
 
 #[derive(Debug, Clone)]
@@ -329,10 +329,7 @@ impl World {
                 {
                     let (draw, solid) = if self.world_gen.is_solid(x, y, ground_offset_height) {
                         // ground
-                        // Pixel::new('█').with_color().with_bg_color([139, 69, 19]);
-                        // make it grey:
-                        let yd = y.clamp(-50, 30) as u8;
-                        let color = [100 + yd, 100 + yd, 100 + yd];
+                        let color = lerp_color([50, 50, 50], [130, 130, 130], get_lerp_t_i64_clamped(-50, 30, y));
                         let mut final_pixel =
                             Pixel::new('█').with_color(color).with_bg_color(color);
 
@@ -955,6 +952,8 @@ impl ParallaxMountains {
         if let Some(&Some(ground)) = self.ground_level.get(world_x) {
             if world_y <= ground {
                 return Some(true);
+            } else {
+                return Some(false);
             }
         }
 
@@ -971,8 +970,6 @@ impl ParallaxMountains {
         // };
         // or not?
         let new_bounds = self.world_bounds.union(world_bounds);
-        self.ground_level
-            .grow(new_bounds.min_x..=new_bounds.max_x, None);
         self.world_bounds = new_bounds;
         self.regenerate();
     }
@@ -988,7 +985,6 @@ impl ParallaxMountains {
         self.generated_bounds = self.world_bounds;
     }
 
-    // TODO: fix this, it's broken
     fn regenerate_bounds(&mut self, bounds_to_regenerate: Bounds) {
         // Generates the world
         let Bounds { min_x, max_x, .. } = bounds_to_regenerate;

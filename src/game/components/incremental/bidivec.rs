@@ -60,6 +60,7 @@ impl<T> BidiVec<T> {
     }
 
     /// Grows the `BidiVec` to contain the given range of indices, filling with the provided default.
+    /// Does not shrink.
     pub fn grow(&mut self, indices: impl RangeBounds<i64>, default: T)
     where
         T: Clone,
@@ -74,6 +75,10 @@ impl<T> BidiVec<T> {
             std::ops::Bound::Excluded(&end) => end - 1,
             std::ops::Bound::Unbounded => 0,
         };
+        
+        // Don't shrink.
+        let start = start.min(-(self.neg.len() as i64));
+        let end = end.max(self.pos.len() as i64 - 1);
 
         if start < 0 {
             self.neg.resize((-start) as usize, default.clone());
