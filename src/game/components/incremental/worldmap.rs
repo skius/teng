@@ -201,8 +201,8 @@ impl Component for WorldMapComponent {
                 if distance >= radius * radius {
                     self.display.set_color(x, y, Color::Transparent);
                 } else if distance >= (radius - 1) * (radius - 1) {
-                    self.display.set_color(x, y, Color::Rgb([58, 63, 95]));
-                    self.display.set_color(x, y, Color::Rgb([75, 46, 32]));
+                    // self.display.set_color(x, y, Color::Rgb([58, 63, 95]));
+                    // self.display.set_color(x, y, Color::Rgb([75, 46, 32]));
                     self.display.set_color(x, y, Color::Rgb([115, 94, 45]));
                 }
             }
