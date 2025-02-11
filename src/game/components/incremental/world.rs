@@ -457,28 +457,10 @@ impl Component for WorldComponent {
         if shared_state.pressed_keys.did_press_char_ignore_case('p') {
             self.parallax_enabled = !self.parallax_enabled;
         }
-        
-        // if shared_state.pressed_keys.contains_key(&KeyCode::Char('r')) {
-        //     world.regenerate();
-        // }
 
         // In case the collision board grew from physics
         world
-            .tiles
-            .expand(world.collision_board.bounds(), Tile::Ungenerated);
-
-        // if shared_state.pressed_keys.contains_key(&KeyCode::Char('w')) {
-        //     world.move_camera(0, 1);
-        // }
-        // if shared_state.pressed_keys.contains_key(&KeyCode::Char('s')) {
-        //     world.move_camera(0, -1);
-        // }
-        // if shared_state.pressed_keys.contains_key(&KeyCode::Char('a')) {
-        //     world.move_camera(-1, 0);
-        // }
-        // if shared_state.pressed_keys.contains_key(&KeyCode::Char('d')) {
-        //     world.move_camera(1, 0);
-        // }
+            .expand_to_contain(world.collision_board.bounds());
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
@@ -499,17 +481,9 @@ impl Component for WorldComponent {
             let world_y = camera_y - y as i64;
             // render this text latest, so we get the appropriate background color.
             // nope! by introducing bg_depth into renderer we can render it whenever we want.
-
-            if world_y == 0 {
-                // special case
-                "ground->".render(&mut renderer, 0, y, depth_ground_level);
-                // continue;
-            }
-
+            
             if world_y % 10 == 0 {
-                // special case
                 format!("{:?}", world_y).render(&mut renderer, 0, y, depth_ground_level);
-                // continue;
             }
         }
 
