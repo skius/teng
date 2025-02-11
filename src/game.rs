@@ -18,7 +18,7 @@ pub mod seeds;
 mod util;
 
 use crate::game::components::incremental::ui::UiBarComponent;
-use crate::game::components::{DebugInfo, DebugInfoComponent, MouseEvents};
+use crate::game::components::{DebugInfo, DebugInfoComponent, MouseEvents, PressedKeys};
 use crate::game::display::Display;
 use crate::game::Color::Transparent;
 use crate::physics::PhysicsBoard;
@@ -196,7 +196,7 @@ pub struct SharedState {
     collision_board: Display<bool>,
     physics_board: PhysicsBoard,
     display_info: DisplayInfo,
-    pressed_keys: micromap::Map<KeyCode, u8, 16>,
+    pressed_keys: PressedKeys,
     debounced_down_keys: HashSet<KeyCode>,
     debug_info: DebugInfo,
     debug_messages: SmallVec<[DebugMessage; 16]>,
@@ -213,7 +213,7 @@ impl SharedState {
             target_fps: Some(150.0),
             physics_board: PhysicsBoard::new(width),
             display_info: DisplayInfo::new(width, height),
-            pressed_keys: micromap::Map::new(),
+            pressed_keys: PressedKeys::new(),
             debounced_down_keys: HashSet::new(),
             collision_board: Display::new(width, height, false),
             debug_info: DebugInfo::new(),
@@ -486,7 +486,7 @@ impl<W: Write> Game<W> {
         if self
             .shared_state
             .pressed_keys
-            .contains_key(&KeyCode::Char('i'))
+            .did_press_char_ignore_case('i')
         {
             self.swap_component::<DebugInfoComponent>(|width, height| {
                 Box::new(DebugInfoComponent::new())

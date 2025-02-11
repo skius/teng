@@ -586,16 +586,16 @@ impl Component for RasterizeComponent {
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
-        if shared_state.pressed_keys.contains_key(&KeyCode::Left) {
+        if shared_state.pressed_keys.inner().contains_key(&KeyCode::Left) {
             self.rotation_angle += 1.0;
         }
-        if shared_state.pressed_keys.contains_key(&KeyCode::Right) {
+        if shared_state.pressed_keys.inner().contains_key(&KeyCode::Right) {
             self.rotation_angle -= 1.0;
         }
-        if shared_state.pressed_keys.contains_key(&KeyCode::Up) {
+        if shared_state.pressed_keys.inner().contains_key(&KeyCode::Up) {
             self.rotation_x_angle += 1.0;
         }
-        if shared_state.pressed_keys.contains_key(&KeyCode::Down) {
+        if shared_state.pressed_keys.inner().contains_key(&KeyCode::Down) {
             self.rotation_x_angle -= 1.0;
         }
 

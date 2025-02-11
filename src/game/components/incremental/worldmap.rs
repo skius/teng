@@ -149,7 +149,7 @@ impl Component for WorldMapComponent {
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
-        if shared_state.pressed_keys.contains_key(&KeyCode::Char('m')) || shared_state.pressed_keys.contains_key(&KeyCode::Char('M')) {
+        if shared_state.pressed_keys.did_press_char_ignore_case('m') {
             self.enabled = !self.enabled;
         }
         if !self.enabled {

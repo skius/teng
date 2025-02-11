@@ -7,6 +7,7 @@ use crate::game::{
 };
 use crossterm::event::{Event, KeyCode};
 use std::time::{Duration, Instant};
+use crate::game::components::PressedKeys;
 
 #[derive(Debug)]
 pub struct NewPlayerState {
@@ -87,20 +88,20 @@ impl NewPlayerState {
         game_state.received_blocks_base += blocks;
     }
 
-    fn horizontal_inputs(&mut self, pressed_keys: &micromap::Map<KeyCode, u8, 16>) {
+    fn horizontal_inputs(&mut self, pressed_keys: &PressedKeys) {
         let slow_velocity = 10.0;
         let fast_velocity = 30.0;
 
         let mut did_move = false;
 
-        if pressed_keys.contains_key(&KeyCode::Char('a')) {
+        if pressed_keys.did_press_char('a') {
             self.entity.velocity.0 = if self.entity.velocity.0 > 0.0 {
                 0.0
             } else {
                 -slow_velocity
             };
             did_move = true;
-        } else if pressed_keys.contains_key(&KeyCode::Char('d')) {
+        } else if pressed_keys.did_press_char('d') {
             self.entity.velocity.0 = if self.entity.velocity.0 < 0.0 {
                 0.0
             } else {
@@ -109,14 +110,14 @@ impl NewPlayerState {
             did_move = true;
         }
 
-        if pressed_keys.contains_key(&KeyCode::Char('A')) {
+        if pressed_keys.did_press_char('A') {
             self.entity.velocity.0 = if self.entity.velocity.0 > 0.0 {
                 0.0
             } else {
                 -fast_velocity
             };
             did_move = true;
-        } else if pressed_keys.contains_key(&KeyCode::Char('D')) {
+        } else if pressed_keys.did_press_char('D') {
             self.entity.velocity.0 = if self.entity.velocity.0 < 0.0 {
                 0.0
             } else {
@@ -246,7 +247,7 @@ impl Component for NewPlayerComponent {
 
             if game_state.new_player_state.dead_time.is_none() {
                 // Now jump input since we need grounded information
-                if shared_state.pressed_keys.contains_key(&KeyCode::Char(' ')) {
+                if shared_state.pressed_keys.did_press_char(' ') {
                     if game_state
                         .new_player_state
                         .entity

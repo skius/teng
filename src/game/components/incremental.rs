@@ -194,7 +194,7 @@ impl Component for GameComponent {
         let mut game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
 
         // cheats
-        if shared_state.pressed_keys.contains_key(&KeyCode::Char('b')) {
+        if shared_state.pressed_keys.did_press_char_ignore_case('b') {
             game_state.max_blocks += 1;
             game_state.max_blocks *= 1000000;
             game_state.blocks = game_state.max_blocks;
@@ -219,7 +219,7 @@ impl Component for GameComponent {
                 shared_state.physics_board.clear();
             }
             GamePhase::Building => {
-                if shared_state.pressed_keys.contains_key(&KeyCode::Char(' '))
+                if shared_state.pressed_keys.did_press_char(' ')
                     || game_state.upgrades.auto_play == Some(true)
                 {
                     // hack to have a frame of delay, so that we don't immediately jump due to the space bar press
@@ -235,7 +235,7 @@ impl Component for GameComponent {
                     ghost.was_dead = false;
                 }
                 if let Some(true) = game_state.upgrades.auto_play {
-                    shared_state.pressed_keys.insert(KeyCode::Char(' '), 1);
+                    shared_state.pressed_keys.insert(KeyCode::Char(' '));
                     // shared_state.pressed_keys.insert(KeyCode::Char('d'), 1);
                 }
             }

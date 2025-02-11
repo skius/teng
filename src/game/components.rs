@@ -227,7 +227,7 @@ impl Component for FPSLockerComponent {
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
-        if shared_state.pressed_keys.contains_key(&KeyCode::Char('l')) {
+        if shared_state.pressed_keys.did_press_char_ignore_case('l') {
             self.locked = !self.locked;
         }
         shared_state.target_fps = self.locked.then_some(self.default_fps);
@@ -436,6 +436,36 @@ impl Component for QuitterComponent {
     }
 }
 
+pub struct PressedKeys {
+    inner: micromap::Map<KeyCode, u8, 16>,
+}
+
+impl PressedKeys {
+    pub fn new() -> Self {
+        Self {
+            inner: micromap::Map::new(),
+        }
+    }
+
+    pub fn inner(&self) -> &micromap::Map<KeyCode, u8, 16> {
+        &self.inner
+    }
+
+    /// Not recommended to use. However, it is useful to hack key actions in other components
+    /// if the update order is known.
+    pub fn insert(&mut self, key: KeyCode) {
+        self.inner.insert(key, 1);
+    }
+
+    pub fn did_press_char(&self, c: char) -> bool {
+        self.inner.contains_key(&KeyCode::Char(c))
+    }
+
+    pub fn did_press_char_ignore_case(&self, c: char) -> bool {
+        self.did_press_char(c) || self.did_press_char(c.to_ascii_uppercase())
+    }
+}
+
 /// Must be before any other components that use key presses.
 pub struct KeyPressRecorderComponent {
     pressed_keys: micromap::Map<KeyCode, u8, 16>,
@@ -469,7 +499,7 @@ impl Component for KeyPressRecorderComponent {
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
-        std::mem::swap(&mut shared_state.pressed_keys, &mut self.pressed_keys);
+        std::mem::swap(&mut shared_state.pressed_keys.inner, &mut self.pressed_keys);
         self.pressed_keys.clear();
     }
 }

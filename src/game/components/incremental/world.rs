@@ -454,7 +454,7 @@ impl Component for WorldComponent {
             .unwrap()
             .world;
 
-        if shared_state.pressed_keys.contains_key(&KeyCode::Char('p')) {
+        if shared_state.pressed_keys.did_press_char_ignore_case('p') {
             self.parallax_enabled = !self.parallax_enabled;
         }
         
