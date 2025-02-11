@@ -6,10 +6,7 @@ mod game;
 mod physics;
 
 use crate::game::components::incremental::rasterize::RasterizeComponent;
-use crate::game::components::{
-    incremental, DebugInfoComponent, FPSLockerComponent, KeyPressRecorderComponent,
-    MouseTrackerComponent, QuitterComponent,
-};
+use crate::game::components::{incremental, DebugInfoComponent, FPSLockerComponent, KeyPressRecorderComponent, KeypressDebouncerComponent, MouseTrackerComponent, QuitterComponent};
 use crate::game::seeds::set_seed;
 use crate::game::Game;
 use crossterm::{
@@ -154,6 +151,8 @@ fn main() -> io::Result<()> {
     let mut game = Game::new(sink);
     game.add_component(Box::new(FPSLockerComponent::new(150.0)));
     game.add_component(Box::new(KeyPressRecorderComponent::new()));
+    // needs to be early in the update loop
+    game.add_component(Box::new(KeypressDebouncerComponent::new(520)));
     // game.add_component(Box::new(ClearComponent));
     game.add_component(Box::new(MouseTrackerComponent::new()));
     game.add_component(Box::new(QuitterComponent));

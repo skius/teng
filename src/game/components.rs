@@ -3,6 +3,7 @@ pub mod incremental;
 pub mod video;
 pub mod fpschecker;
 
+use std::collections::HashMap;
 use crate::game::display::Display;
 use crate::game::seeds::get_seed;
 use crate::game::util::for_coord_in_line;
@@ -190,8 +191,8 @@ impl Component for DebugInfoComponent {
         y += 1;
         format!("Game seed: {}", get_seed()).render(&mut renderer, 0, y, depth_base);
         y += 1;
-        // format!("Pressed keys: {:?}", shared_state.pressed_keys).render(&mut renderer, 0, y, depth_base);
-        // y += 1;
+        format!("Debounced keys: {:?}", shared_state.debounced_down_keys).render(&mut renderer, 0, y, depth_base);
+        y += 1;
         // format!("Events: {}", self.num_events).render(&mut renderer, 0, y, depth_base);
         // y += 1;
         // format!("Frames since last FPS: {}", self.frames_since_last_fps).render(&mut renderer, 0, y, depth_base);
@@ -1314,5 +1315,48 @@ impl Component for ForceApplyComponent {
             let (x, y) = shared_state.mouse_info.last_mouse_pos;
             ForceApplyComponent::apply_force(shared_state, x, y, -100.0, 10);
         }
+    }
+}
+
+pub struct KeypressDebouncerComponent {
+    max_delay_ms: u128,
+    last_keypress: HashMap<KeyCode, Instant>,
+}
+
+impl KeypressDebouncerComponent {
+    pub fn new(max_delay_ms: u128) -> Self {
+        Self {
+            max_delay_ms,
+            last_keypress: HashMap::new(),
+        }
+    }
+}
+
+impl Component for KeypressDebouncerComponent {
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
+        match event {
+            Event::Key(ke) => {
+                self.last_keypress.insert(ke.code, Instant::now());
+            }
+            _ => {}
+        }
+        None
+    }
+
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        // go through all keys, consume the ones that have expired
+        shared_state.debounced_down_keys.clear();
+        self.last_keypress = self
+            .last_keypress
+            .drain()
+            .filter(|(key, time)| {
+                if time.elapsed().as_millis() < self.max_delay_ms {
+                    shared_state.debounced_down_keys.insert(*key);
+                    true
+                } else {
+                    false
+                }
+            })
+            .collect();
     }
 }

@@ -189,6 +189,25 @@ impl Component for NewPlayerComponent {
 
         // only update if not paused
         if !game_state.new_player_state.paused {
+            // {
+            //     // test responsiveness of debounced keys
+            //     // result: another problem is also that there is at most one down key at a time,
+            //     // because the terminal will not press-repeat multiple keys, only the latest one.
+            //     if shared_state.debounced_down_keys.contains(&KeyCode::Right) {
+            //         game_state.new_player_state.entity.position.0 += 1.0;
+            //     }
+            //     if shared_state.debounced_down_keys.contains(&KeyCode::Left) {
+            //         game_state.new_player_state.entity.position.0 -= 1.0;
+            //     }
+            //     if shared_state.debounced_down_keys.contains(&KeyCode::Up) {
+            //         game_state.new_player_state.entity.position.1 += 1.0;
+            //     }
+            //     if shared_state.debounced_down_keys.contains(&KeyCode::Down) {
+            //         game_state.new_player_state.entity.position.1 -= 1.0;
+            //     }
+            // 
+            // }
+
             let step_size = if game_state.new_player_state.dead_time.is_some() {
                 0
             } else {

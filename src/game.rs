@@ -3,6 +3,7 @@ use crossterm::event::{Event, KeyCode, MouseEvent, MouseEventKind};
 use crossterm::queue;
 use smallvec::SmallVec;
 use std::any::Any;
+use std::collections::HashSet;
 use std::io;
 use std::io::{Stdout, Write};
 use std::ops::{Index, IndexMut};
@@ -198,6 +199,7 @@ pub struct SharedState {
     physics_board: PhysicsBoard,
     display_info: DisplayInfo,
     pressed_keys: micromap::Map<KeyCode, u8, 16>,
+    debounced_down_keys: HashSet<KeyCode>,
     debug_info: DebugInfo,
     debug_messages: SmallVec<[DebugMessage; 16]>,
     extensions: AnyMap,
@@ -219,6 +221,7 @@ impl SharedState {
             physics_board: PhysicsBoard::new(width),
             display_info: DisplayInfo::new(width, height),
             pressed_keys: micromap::Map::new(),
+            debounced_down_keys: HashSet::new(),
             collision_board: Display::new(width, height, false),
             debug_info: DebugInfo::new(),
             debug_messages: SmallVec::new(),
@@ -253,11 +256,11 @@ pub trait Component: Any {
     /// Called when the terminal is resized.
     /// Note that Resize events are also passed to on_event, so this is not strictly necessary.
     fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState) {}
-    /// Called when an event is received. This could happen multiple times per frame.
+    /// Called when an event is received. This could happen multiple times per frame. Runs before update.
     fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         None
     }
-    /// Called once per frame to update the component's state.
+    /// Called once per frame to update the component's state. Runs after the frame's events have been processed.
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {}
     /// Called once per frame to render the component. Each component has 100 depth available
     /// starting from the base.
