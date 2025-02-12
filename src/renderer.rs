@@ -1,5 +1,5 @@
-use crate::game::display::Display;
-use crate::game::{Color, Pixel, Render};
+use crate::display::Display;
+use crate::{Color, Pixel, Render};
 use crossterm::queue;
 use rand::Rng;
 use std::io;

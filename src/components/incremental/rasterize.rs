@@ -1,4 +1,4 @@
-use crate::game::{
+use crate::{
     Color, Component, HalfBlockDisplayRender, Render, Renderer, SetupInfo, SharedState, UpdateInfo,
 };
 use crossterm::event::KeyCode;

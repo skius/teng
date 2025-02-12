@@ -3,6 +3,14 @@ name = "termgame"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "teng"
+path = "src/lib.rs"
+
+[[bin]]
+name = "termill"
+path = "src/main.rs"
+
 [dependencies]
 crossterm = { version = "0.28.1", features = ["serde"] }
 smallvec = "1.13.2"

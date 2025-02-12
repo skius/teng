@@ -1,6 +1,6 @@
-use crate::game::components::incremental::planarvec::{Bounds, PlanarVec};
-use crate::game::components::MouseTrackerComponent;
-use crate::game::{
+use crate::components::incremental::planarvec::{Bounds, PlanarVec};
+use crate::components::MouseTrackerComponent;
+use crate::{
     BreakingAction, Color, Component, DisplayInfo, HalfBlockDisplayRender, MouseInfo, Render,
     Renderer, SetupInfo, SharedState, UpdateInfo,
 };

@@ -1,5 +1,5 @@
-use crate::game::components::incremental::planarvec::{Bounds, PlanarVec};
-use crate::game::components::incremental::player::NewPlayerComponent;
+use crate::components::incremental::planarvec::{Bounds, PlanarVec};
+use crate::components::incremental::player::NewPlayerComponent;
 use std::ops::{Index, IndexMut};
 
 #[derive(Debug, Clone, Copy, PartialEq)]

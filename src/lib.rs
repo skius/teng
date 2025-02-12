@@ -17,10 +17,10 @@ mod renderer;
 pub mod seeds;
 pub mod util;
 
-use crate::game::components::incremental::ui::UiBarComponent;
-use crate::game::components::{DebugInfo, DebugInfoComponent, MouseEvents, PressedKeys};
-use crate::game::display::Display;
-use crate::game::Color::Transparent;
+use crate::components::incremental::ui::UiBarComponent;
+use crate::components::{DebugInfo, DebugInfoComponent, MouseEvents, PressedKeys};
+use crate::display::Display;
+use crate::Color::Transparent;
 pub use render::*;
 pub use renderer::*;
 
@@ -146,7 +146,7 @@ pub struct DisplayInfo {
 }
 
 impl DisplayInfo {
-    pub(super) fn new(width: usize, height: usize) -> Self {
+    pub fn new(width: usize, height: usize) -> Self {
         Self {
             _width: width,
             _height: height,
@@ -399,7 +399,7 @@ impl<W: Write> Game<W> {
                 return Ok(Some(action));
             }
         }
-        
+
         // fake events for next frame
         let events = std::mem::replace(&mut self.shared_state.fake_events_for_next_frame, vec![]);
         for event in events {

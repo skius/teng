@@ -1,7 +1,7 @@
-use crate::game::components::incremental::planarvec::{Bounds, PlanarVec};
-use crate::game::components::incremental::world::Tile;
-use crate::game::components::incremental::GameState;
-use crate::game::{
+use crate::components::incremental::planarvec::{Bounds, PlanarVec};
+use crate::components::incremental::world::Tile;
+use crate::components::incremental::GameState;
+use crate::{
     Color, Component, HalfBlockDisplayRender, Render, Renderer, SetupInfo, SharedState, UpdateInfo,
 };
 use crossterm::event::KeyCode;

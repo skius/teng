@@ -1,8 +1,8 @@
-use crate::game::components::incremental::ui::UiBarComponent;
-use crate::game::components::incremental::{GamePhase, GameState};
-use crate::game::components::MouseTrackerComponent;
-use crate::game::util::for_coord_in_line;
-use crate::game::{
+use crate::components::incremental::ui::UiBarComponent;
+use crate::components::incremental::{GamePhase, GameState};
+use crate::components::MouseTrackerComponent;
+use crate::util::for_coord_in_line;
+use crate::{
     BreakingAction, Color, Component, DebugMessage, HalfBlockDisplayRender, Pixel, Render,
     Renderer, SetupInfo, SharedState, UpdateInfo,
 };

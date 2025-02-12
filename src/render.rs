@@ -1,5 +1,5 @@
-use crate::game::display::Display;
-use crate::game::{renderer::Renderer, Color, Pixel};
+use crate::display::Display;
+use crate::{renderer::Renderer, Color, Pixel};
 use std::fmt::Debug;
 use std::io::Write;
 

@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use crossterm::event::Event;
 use serde::{Deserialize, Serialize};
-use crate::game::{BreakingAction, Component, DebugMessage, SetupInfo, SharedState, UpdateInfo};
+use crate::{BreakingAction, Component, DebugMessage, SetupInfo, SharedState, UpdateInfo};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RecordedEvent {

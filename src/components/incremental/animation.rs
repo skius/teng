@@ -1,4 +1,4 @@
-use crate::game::{Render, Renderer};
+use crate::{Render, Renderer};
 use std::fmt::Debug;
 use std::time::{Duration, Instant};
 

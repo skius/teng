@@ -1,5 +1,5 @@
-use crate::game::components::incremental::{GamePhase, GameState, PlayerGhost};
-use crate::game::{
+use crate::components::incremental::{GamePhase, GameState, PlayerGhost};
+use crate::{
     BreakingAction, Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo,
 };
 use anymap::any::Any;

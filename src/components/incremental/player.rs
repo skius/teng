@@ -1,9 +1,9 @@
-use crate::game::components::incremental::animation::CharAnimationSequence;
-use crate::game::components::incremental::collisionboard::PhysicsEntity2d;
-use crate::game::components::incremental::world::World;
-use crate::game::components::incremental::{GamePhase, GameState, PlayerHistoryElement};
-use crate::game::components::PressedKeys;
-use crate::game::{
+use crate::components::incremental::animation::CharAnimationSequence;
+use crate::components::incremental::collisionboard::PhysicsEntity2d;
+use crate::components::incremental::world::World;
+use crate::components::incremental::{GamePhase, GameState, PlayerHistoryElement};
+use crate::components::PressedKeys;
+use crate::{
     BreakingAction, Component, DebugMessage, Render, Renderer, SharedState, Sprite, UpdateInfo,
 };
 use crossterm::event::{Event, KeyCode};

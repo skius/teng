@@ -42,14 +42,14 @@
 //! - At high fall gravities, the red background screen starts flashing when the player is on the floor.
 //!    maybe add override for when the player is on the floor and skip it?
 
-use crate::game::components::incremental::player::{
+use crate::components::incremental::player::{
     NewPlayerComponent, NewPlayerState, PlayerGhost,
 };
-use crate::game::components::incremental::slingshot::SlingshotComponent;
-use crate::game::components::incremental::ui::UiBarComponent;
-use crate::game::components::incremental::world::{World, WorldComponent};
-use crate::game::components::incremental::worldmap::WorldMapComponent;
-use crate::game::{Component, DebugMessage, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
+use crate::components::incremental::slingshot::SlingshotComponent;
+use crate::components::incremental::ui::UiBarComponent;
+use crate::components::incremental::world::{World, WorldComponent};
+use crate::components::incremental::worldmap::WorldMapComponent;
+use crate::{Component, DebugMessage, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
 use anymap::any::Any;
 use crossterm::event::KeyCode;
 use std::time::Instant;

@@ -2,18 +2,18 @@
 //!
 //! cargo run --example event-poll-read
 
-mod game;
+// mod lib;
 
-use crate::game::components::fpschecker::FpsCheckerComponent;
-use crate::game::components::incremental::boundschecker::BoundsCheckerComponent;
-use crate::game::components::incremental::rasterize::RasterizeComponent;
-use crate::game::components::incremental::worldmap::WorldMapComponent;
-use crate::game::components::{
+use teng::components::fpschecker::FpsCheckerComponent;
+use teng::components::incremental::boundschecker::BoundsCheckerComponent;
+use teng::components::incremental::rasterize::RasterizeComponent;
+use teng::components::incremental::worldmap::WorldMapComponent;
+use teng::components::{
     incremental, DebugInfoComponent, FPSLockerComponent, KeyPressRecorderComponent,
     KeypressDebouncerComponent, MouseTrackerComponent, QuitterComponent,
 };
-use crate::game::seeds::set_seed;
-use crate::game::Game;
+use teng::seeds::set_seed;
+use teng::Game;
 use crossterm::{
     cursor,
     event::{DisableMouseCapture, EnableMouseCapture},
@@ -27,7 +27,7 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::time::Instant;
 use clap::Parser;
-use crate::game::components::eventrecorder::{BenchFrameCounter, EventRecorderComponent, EventReplayerComponent, Recording};
+use teng::components::eventrecorder::{BenchFrameCounter, EventRecorderComponent, EventReplayerComponent, Recording};
 
 /// Custom buffer writer that _only_ flushes explicitly
 /// Surprisingly leads to a speedup from 2000 fps to 4800 fps on a full screen terminal
@@ -240,7 +240,7 @@ fn main() -> io::Result<()> {
     if let Some(frame_count) = FRAME_COUNT.get() {
         println!("Frames: {}", frame_count);
     }
-    
+
     if let Some(recording) = &args.benchmark {
         save_bench_result(recording);
     }

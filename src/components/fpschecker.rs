@@ -1,4 +1,4 @@
-use crate::game::{Component, Pixel, Renderer, SharedState, UpdateInfo};
+use crate::{Component, Pixel, Renderer, SharedState, UpdateInfo};
 use std::time::Instant;
 
 pub struct FpsCheckerComponent {

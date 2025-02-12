@@ -3,10 +3,10 @@ pub mod incremental;
 pub mod video;
 pub mod eventrecorder;
 
-use crate::game::display::Display;
-use crate::game::seeds::get_seed;
-use crate::game::util::for_coord_in_line;
-use crate::game::{
+use crate::display::Display;
+use crate::seeds::get_seed;
+use crate::util::for_coord_in_line;
+use crate::{
     BreakingAction, Color, Component, MouseInfo, Pixel, Render, Renderer, SharedState, Sprite,
     UpdateInfo,
 };

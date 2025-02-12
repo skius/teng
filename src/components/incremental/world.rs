@@ -1,12 +1,12 @@
-use crate::game::components::incremental::animation::Animation;
-use crate::game::components::incremental::bidivec::BidiVec;
-use crate::game::components::incremental::collisionboard::{CollisionBoard, CollisionCell};
-use crate::game::components::incremental::planarvec::{Bounds, PlanarVec};
-use crate::game::components::incremental::ui::UiBarComponent;
-use crate::game::components::incremental::GameState;
-use crate::game::seeds::get_u32_seed_for;
-use crate::game::util::{get_lerp_t_i64_clamped, lerp_color};
-use crate::game::{
+use crate::components::incremental::animation::Animation;
+use crate::components::incremental::bidivec::BidiVec;
+use crate::components::incremental::collisionboard::{CollisionBoard, CollisionCell};
+use crate::components::incremental::planarvec::{Bounds, PlanarVec};
+use crate::components::incremental::ui::UiBarComponent;
+use crate::components::incremental::GameState;
+use crate::seeds::get_u32_seed_for;
+use crate::util::{get_lerp_t_i64_clamped, lerp_color};
+use crate::{
     BreakingAction, Color, Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo,
 };
 use crossterm::event::{Event, KeyCode};

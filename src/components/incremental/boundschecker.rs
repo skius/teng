@@ -1,5 +1,5 @@
-use crate::game::components::incremental::planarvec::Bounds;
-use crate::game::{Component, Pixel, Renderer, SharedState, UpdateInfo};
+use crate::components::incremental::planarvec::Bounds;
+use crate::{Component, Pixel, Renderer, SharedState, UpdateInfo};
 
 pub struct BoundsCheckerComponent {
     first_loc: Option<(usize, usize)>,
