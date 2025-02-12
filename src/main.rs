@@ -1,13 +1,3 @@
-//! Demonstrates how to match on modifiers like: Control, alt, shift.
-//!
-//! cargo run --example event-poll-read
-
-// mod lib;
-
-use teng::components::fpschecker::FpsCheckerComponent;
-use teng::components::incremental::boundschecker::BoundsCheckerComponent;
-use teng::components::incremental::rasterize::RasterizeComponent;
-use teng::components::incremental::worldmap::WorldMapComponent;
 use teng::components::{
     incremental, DebugInfoComponent, FPSLockerComponent, KeyPressRecorderComponent,
     KeypressDebouncerComponent, MouseTrackerComponent, QuitterComponent,
@@ -118,14 +108,16 @@ fn process_seed(seed: String) {
     set_seed(seed);
 }
 
+/// Run a simple FPS test in non-raw terminal mode
+#[allow(unused)]
 fn fps_test() {
-    let mut max_x = 252;
+    let max_x = 252;
     let mut stdout = stdout().lock();
     let mut curr_x = 0;
-    let mut target_fps = 144.0;
-    let mut frame_time = 1.0 / target_fps;
+    let target_fps = 144.0;
+    let frame_time = 1.0 / target_fps;
     let mut last_time = Instant::now();
-    let mut curr_time = Instant::now();
+    let mut curr_time;
     loop {
         curr_time = Instant::now();
         let elapsed = curr_time - last_time;

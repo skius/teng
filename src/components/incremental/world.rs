@@ -37,19 +37,6 @@ impl Tile {
     }
 }
 
-enum Quadrant {
-    TopRight,
-    BottomRight,
-    TopLeft,
-    BottomLeft,
-}
-
-struct WorldIndex {
-    q: Quadrant,
-    y: usize,
-    x: usize,
-}
-
 #[derive(Debug)]
 struct AnimationInWorld {
     animation: Box<dyn Animation>,
@@ -259,10 +246,6 @@ impl World {
 
     fn world_bounds(&self) -> Bounds {
         self.tiles.bounds()
-    }
-
-    fn inside_world(&self, x: i64, y: i64) -> bool {
-        self.world_bounds().contains(x, y)
     }
 
     pub fn get(&self, x: i64, y: i64) -> Option<&Tile> {

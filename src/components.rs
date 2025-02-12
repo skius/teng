@@ -71,7 +71,7 @@ impl DebugInfoComponent {
 }
 
 impl Component for DebugInfoComponent {
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
+    fn on_event(&mut self, _event: Event, _shared_state: &mut SharedState) -> Option<BreakingAction> {
         self.num_events += 1;
         None
     }

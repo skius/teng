@@ -159,7 +159,6 @@ impl FallingSimulationData {
 
 pub struct FallingSimulationComponent {
     dt_budget: f64,
-    last_mouse_info: MouseInfo,
     hb_display: HalfBlockDisplayRender,
 }
 
@@ -170,7 +169,6 @@ impl FallingSimulationComponent {
     pub fn new() -> Self {
         Self {
             dt_budget: 0.0,
-            last_mouse_info: MouseInfo::default(),
             hb_display: HalfBlockDisplayRender::new(10, 10),
         }
     }
@@ -207,10 +205,6 @@ impl FallingSimulationComponent {
 
         data.has_moved.clear(false);
 
-        // TODO: why is total_pieces getting smaller??
-        // ah. because we're overwriting data.world when moving, even if something else already moved
-        // there. fix: read from new_world maybe?
-        // or for performance reasons just keep track of each piece and then move those?
         data.total_pieces = 0;
 
         // go over every piece (that is not air) and update it
@@ -257,12 +251,6 @@ impl Component for FallingSimulationComponent {
         self.hb_display
             .resize_discard(setup_info.width, setup_info.height * 2);
         shared_state.extensions.insert(FallingSimulationData::new());
-    }
-
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
-        // // get mouse and set everything to 'sand' on LMB
-
-        None
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {

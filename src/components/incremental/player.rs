@@ -138,7 +138,6 @@ pub struct NewPlayerComponent {}
 impl NewPlayerComponent {
     const DEATH_HEIGHT: f64 = 3.5;
     const DEATH_RESPAWN_TIME: f64 = 2.0;
-    const DEATH_STOP_X_MOVE_TIME: f64 = 0.5;
 
     pub fn new() -> Self {
         Self {}
@@ -375,7 +374,6 @@ pub struct PlayerGhost {
 
 impl PlayerGhost {
     const SAMPLE_RATE: f64 = 160.0;
-    const HISTORY_SIZE_SECS: f64 = 10.0;
 
     pub fn new(offset_secs: f64) -> Self {
         Self {

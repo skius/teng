@@ -61,7 +61,6 @@ mod collisionboard;
 pub mod falling;
 mod planarvec;
 mod player;
-pub mod rasterize;
 mod slingshot;
 pub mod ui;
 pub mod world;
