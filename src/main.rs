@@ -23,8 +23,11 @@ use crossterm::{
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io;
 use std::io::{stdout, Stdout, Write};
+use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use std::time::Instant;
-use crate::game::components::eventrecorder::{EventRecorderComponent, EventReplayerComponent, Recording};
+use clap::Parser;
+use crate::game::components::eventrecorder::{BenchFrameCounter, EventRecorderComponent, EventReplayerComponent, Recording};
 
 /// Custom buffer writer that _only_ flushes explicitly
 /// Surprisingly leads to a speedup from 2000 fps to 4800 fps on a full screen terminal
@@ -58,6 +61,19 @@ impl Write for CustomBufWriter {
     }
 }
 
+/// A game running inside the terminal.
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// The seed to use for the game.
+    #[clap(short, long, default_value = "42")]
+    seed: String,
+
+    /// Run a benchmark with the given recording
+    #[clap(short, long)]
+    benchmark: Option<PathBuf>,
+}
+
 fn terminal_setup() -> io::Result<()> {
     let mut stdout = stdout();
 
@@ -88,9 +104,7 @@ fn cleanup() -> io::Result<()> {
     Ok(())
 }
 
-fn process_inputs() {
-    // read the seed from args or use default "42"
-    let seed = std::env::args().nth(1).unwrap_or("42".to_string());
+fn process_seed(seed: String) {
     let seed = seed.parse::<u64>().unwrap_or_else(|_| {
         // if the seed is not a number, hash or generate random
         if seed == "random" {
@@ -137,7 +151,12 @@ fn fps_test() {
     }
 }
 
+/// For benchmarking.
+static FRAME_COUNT: OnceLock<usize> = OnceLock::new();
+
 fn main() -> io::Result<()> {
+    let args = Args::parse();
+
     // fps_test();
     // panic!("done");
 
@@ -149,15 +168,22 @@ fn main() -> io::Result<()> {
         eprintln!("{}", pinfo);
     }));
 
-    process_inputs();
-
-    let recording = Recording::read_from_file("recordings/recording-1739372718.bin");
+    process_seed(args.seed);
 
     let sink = CustomBufWriter::new();
     let mut game = Game::new(sink);
     game.add_component(Box::new(KeyPressRecorderComponent::new()));
     game.add_component(Box::new(EventRecorderComponent::new()));
-    game.add_component(Box::new(EventReplayerComponent::new(true, recording)));
+
+    // if we're benchmarking, run the benchmark
+    if let Some(recording) = args.benchmark {
+        let recording = Recording::read_from_file(recording);
+        game.add_component(Box::new(EventReplayerComponent::new(true, recording)));
+        game.add_component(Box::new(BenchFrameCounter::new(|num| {
+            FRAME_COUNT.set(num).unwrap()
+        })));
+    }
+
     game.add_component(Box::new(FPSLockerComponent::new(150.0)));
     // needs to be early in the update loop
     game.add_component(Box::new(KeypressDebouncerComponent::new(520)));
@@ -187,6 +213,11 @@ fn main() -> io::Result<()> {
 
     if let Err(err) = res {
         println!("Error: {:?}", err);
+    }
+
+    // If we're benchmarking, report the frames
+    if let Some(frame_count) = FRAME_COUNT.get() {
+        println!("Frames: {}", frame_count);
     }
 
     Ok(())

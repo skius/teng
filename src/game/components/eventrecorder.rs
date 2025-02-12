@@ -179,3 +179,25 @@ impl Component for EventReplayerComponent {
         self.play_events_until(current_time, shared_state);
     }
 }
+
+pub struct BenchFrameCounter {
+    frame_count: usize,
+    report_fn: Box<dyn Fn(usize)>,
+}
+
+impl BenchFrameCounter {
+    pub fn new(report_fn: impl Fn(usize) + 'static) -> Self {
+        Self { frame_count: 0, report_fn: Box::new(report_fn) }
+    }
+}
+
+impl Component for BenchFrameCounter {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        self.frame_count += 1;
+    }
+
+    fn on_quit(&mut self, shared_state: &mut SharedState) {
+        // report the count
+        (self.report_fn)(self.frame_count);
+    }
+}
