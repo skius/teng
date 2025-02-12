@@ -24,6 +24,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io;
 use std::io::{stdout, Stdout, Write};
 use std::time::Instant;
+use crate::game::components::eventrecorder::{EventRecorderComponent, EventReplayerComponent, Recording};
 
 /// Custom buffer writer that _only_ flushes explicitly
 /// Surprisingly leads to a speedup from 2000 fps to 4800 fps on a full screen terminal
@@ -150,10 +151,14 @@ fn main() -> io::Result<()> {
 
     process_inputs();
 
+    let recording = Recording::read_from_file("recordings/recording-1739372718.bin");
+
     let sink = CustomBufWriter::new();
     let mut game = Game::new(sink);
-    game.add_component(Box::new(FPSLockerComponent::new(150.0)));
     game.add_component(Box::new(KeyPressRecorderComponent::new()));
+    game.add_component(Box::new(EventRecorderComponent::new()));
+    game.add_component(Box::new(EventReplayerComponent::new(true, recording)));
+    game.add_component(Box::new(FPSLockerComponent::new(150.0)));
     // needs to be early in the update loop
     game.add_component(Box::new(KeypressDebouncerComponent::new(520)));
     // game.add_component(Box::new(ClearComponent));

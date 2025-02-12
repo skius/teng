@@ -199,6 +199,7 @@ pub struct SharedState {
     debug_messages: SmallVec<[DebugMessage; 16]>,
     extensions: AnyMap,
     components_to_add: Vec<Box<dyn Component>>,
+    fake_events_for_next_frame: Vec<Event>,
 }
 
 impl SharedState {
@@ -215,6 +216,7 @@ impl SharedState {
             debug_messages: SmallVec::new(),
             extensions: AnyMap::new(),
             components_to_add: Vec::new(),
+            fake_events_for_next_frame: Vec::new(),
         }
     }
 
@@ -397,6 +399,14 @@ impl<W: Write> Game<W> {
                 return Ok(Some(action));
             }
         }
+        
+        // fake events for next frame
+        let events = std::mem::replace(&mut self.shared_state.fake_events_for_next_frame, vec![]);
+        for event in events {
+            if let Some(action) = self.on_event(event) {
+                return Ok(Some(action));
+            }
+        }
 
         Ok(None)
     }
@@ -526,7 +536,7 @@ impl<W: Write> Game<W> {
         for component in self.components.iter_mut() {
             component.on_quit(&mut self.shared_state);
         }
-        
+
         self.event_read_stop_signal.send(()).unwrap();
         self.event_read_thread_handle
             .take()

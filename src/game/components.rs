@@ -1,6 +1,7 @@
 pub mod fpschecker;
 pub mod incremental;
 pub mod video;
+pub mod eventrecorder;
 
 use crate::game::display::Display;
 use crate::game::seeds::get_seed;
