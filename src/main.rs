@@ -154,6 +154,37 @@ fn fps_test() {
 /// For benchmarking.
 static FRAME_COUNT: OnceLock<usize> = OnceLock::new();
 
+/// If we're benchmarking, append the result to the bench.csv file with the following columns:
+/// - Current git hash
+/// - Unix time
+/// - Seed
+/// - Frames
+fn save_bench_result(recording_path: &Path) {
+    let mut file = std::fs::OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open("bench.csv")
+        .unwrap();
+
+    let git_hash = std::process::Command::new("git")
+        .args(&["rev-parse", "HEAD"])
+        .output()
+        .unwrap();
+    let git_hash = String::from_utf8(git_hash.stdout).unwrap();
+    let git_hash = git_hash.trim();
+
+    let time = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+
+    let seed = recording_path.file_stem().unwrap().to_str().unwrap();
+
+    let frames = FRAME_COUNT.get().unwrap();
+
+    writeln!(file, "{},{},{},{}", git_hash, time, seed, frames).unwrap();
+}
+
 fn main() -> io::Result<()> {
     let args = Args::parse();
 
@@ -176,7 +207,7 @@ fn main() -> io::Result<()> {
     game.add_component(Box::new(EventRecorderComponent::new()));
 
     // if we're benchmarking, run the benchmark
-    if let Some(recording) = args.benchmark {
+    if let Some(recording) = &args.benchmark {
         let recording = Recording::read_from_file(recording);
         game.add_component(Box::new(EventReplayerComponent::new(true, recording)));
         game.add_component(Box::new(BenchFrameCounter::new(|num| {
@@ -218,6 +249,10 @@ fn main() -> io::Result<()> {
     // If we're benchmarking, report the frames
     if let Some(frame_count) = FRAME_COUNT.get() {
         println!("Frames: {}", frame_count);
+    }
+    
+    if let Some(recording) = &args.benchmark {
+        save_bench_result(recording);
     }
 
     Ok(())
