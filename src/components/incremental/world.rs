@@ -483,8 +483,8 @@ impl Component for WorldComponent {
             }
         }
 
-        for y in 0..screen_height {
-            for x in 0..screen_width {
+        for x in 0..screen_width {
+            for y in 0..screen_height {
                 let world_x = camera_x + x as i64;
                 let world_y = camera_y - y as i64;
 
