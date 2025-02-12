@@ -218,25 +218,15 @@ fn main() -> io::Result<()> {
     game.add_component(Box::new(FPSLockerComponent::new(150.0)));
     // needs to be early in the update loop
     game.add_component(Box::new(KeypressDebouncerComponent::new(520)));
-    // game.add_component(Box::new(ClearComponent));
     game.add_component(Box::new(MouseTrackerComponent::new()));
     game.add_component(Box::new(QuitterComponent));
-    // game.add_component(Box::new(ForceApplyComponent));
-    // game.add_component(Box::new(PhysicsComponent::new()));
-    // game.add_component(Box::new(DecayComponent::new()));
-    // game.add_component_with(|width, height| Box::new(FloodFillComponent::new(width, height)));
-    // game.add_component(Box::new(SimpleDrawComponent::new()));
-    // game.add_component_with(|width, height| Box::new(PlayerComponent::new(1, height)));
-    // game.add_component_with(|width, height| Box::new(incremental::PlayerComponent::new(1, height)));
     game.add_component(Box::new(incremental::GameComponent::new()));
     game.add_component(Box::new(DebugInfoComponent::new()));
     // game.add_component(Box::new(BoundsCheckerComponent::new()));
     // game.add_component(Box::new(VideoComponent::new()));
-    // game.add_component_with(|width, height| Box::new(ElevatorComponent::new(width, height)));
     // game.add_component(Box::new(FallingSimulationComponent::new()));
     // game.add_component(Box::new(RasterizeComponent::new()));
     // game.add_component(Box::new(FpsCheckerComponent::new()));
-    // game.add_component(Box::new(WorldMapComponent::new(30, 30, 600, 600, 50)));
 
     let res = game.run();
 
