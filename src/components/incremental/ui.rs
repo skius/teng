@@ -237,7 +237,7 @@ impl UiBarComponent {
 impl Component for UiBarComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
         let mut y_offset = Self::HEIGHT - 2;
-        let mut initial_y_offset = y_offset;
+        let initial_y_offset = y_offset;
         let x_offset = 1;
         let x_offset = OffsetX::Right(x_offset);
         let screen_height = setup_info.height;

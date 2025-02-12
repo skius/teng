@@ -1,11 +1,8 @@
 use crate::components::incremental::planarvec::{Bounds, PlanarVec};
-use crate::components::MouseTrackerComponent;
 use crate::{
-    BreakingAction, Color, Component, DisplayInfo, HalfBlockDisplayRender, MouseInfo, Render,
+    Color, Component, DisplayInfo, HalfBlockDisplayRender, Render,
     Renderer, SetupInfo, SharedState, UpdateInfo,
 };
-use crossterm::event::Event;
-use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum PieceKind {

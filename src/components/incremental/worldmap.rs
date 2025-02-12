@@ -4,7 +4,6 @@ use crate::components::incremental::GameState;
 use crate::{
     Color, Component, HalfBlockDisplayRender, Render, Renderer, SetupInfo, SharedState, UpdateInfo,
 };
-use crossterm::event::KeyCode;
 use std::ops::RangeInclusive;
 
 pub struct WorldMapComponent {
@@ -212,7 +211,7 @@ impl Component for WorldMapComponent {
             for x in 0..self.window_width {
                 let dx = x as i32 - center_x as i32;
                 let dy = y as i32 - center_y as i32;
-                let distance = (dx * dx + dy * dy);
+                let distance = dx * dx + dy * dy;
                 if distance >= radius * radius {
                     self.display.set_color(x, y, Color::Transparent);
                 } else if distance >= (radius - 1) * (radius - 1) {

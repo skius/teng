@@ -4,9 +4,8 @@ use crate::components::incremental::world::World;
 use crate::components::incremental::{GamePhase, GameState, PlayerHistoryElement};
 use crate::components::PressedKeys;
 use crate::{
-    BreakingAction, Component, DebugMessage, Render, Renderer, SharedState, Sprite, UpdateInfo,
+    Component, Render, Renderer, SharedState, Sprite, UpdateInfo,
 };
-use crossterm::event::{Event, KeyCode};
 use std::time::{Duration, Instant};
 
 #[derive(Debug)]

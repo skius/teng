@@ -1,10 +1,9 @@
 use crate::display::Display;
-use crate::{Color, Pixel, Render};
+use crate::{Pixel, Render};
 use crossterm::queue;
 use rand::Rng;
 use std::io;
 use std::io::{Stdout, Write};
-use std::ops::{Index, IndexMut};
 
 pub trait Renderer {
     fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32);
@@ -133,7 +132,7 @@ impl<W: Write> DisplayRenderer<W> {
     }
 
     /// Higher depths have higher priority. At same depth, first write wins.
-    pub fn render_pixel(&mut self, x: usize, y: usize, mut new_pixel: Pixel, new_depth: i32) {
+    pub fn render_pixel(&mut self, x: usize, y: usize, new_pixel: Pixel, new_depth: i32) {
         if x >= self.width || y >= self.height {
             return;
         }

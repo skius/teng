@@ -1,5 +1,4 @@
 use crate::components::incremental::planarvec::{Bounds, PlanarVec};
-use crate::components::incremental::player::NewPlayerComponent;
 use std::ops::{Index, IndexMut};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -221,7 +220,7 @@ impl PhysicsEntity2d {
         let y_diff = new_y_tile - y_tile;
 
         if y_diff != 0 {
-            let (mut bounds, yds, sign) = if y_diff > 0 {
+            let (bounds, yds, sign) = if y_diff > 0 {
                 (self.top_sensor(), 0..y_diff, 1)
             } else {
                 (self.floor_sensor(), 0..y_diff.abs(), -1)

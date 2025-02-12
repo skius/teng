@@ -49,8 +49,7 @@ use crate::components::incremental::slingshot::SlingshotComponent;
 use crate::components::incremental::ui::UiBarComponent;
 use crate::components::incremental::world::{World, WorldComponent};
 use crate::components::incremental::worldmap::WorldMapComponent;
-use crate::{Component, DebugMessage, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
-use anymap::any::Any;
+use crate::{Component, DebugMessage, SetupInfo, SharedState, UpdateInfo};
 use crossterm::event::KeyCode;
 use std::time::Instant;
 
@@ -190,7 +189,7 @@ impl Component for GameComponent {
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
-        let mut game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
+        let game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
 
         // cheats
         if shared_state.pressed_keys.did_press_char_ignore_case('b') {

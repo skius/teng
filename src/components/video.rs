@@ -87,7 +87,7 @@ impl Component for VideoComponent {
                 let color_top = frame.0[2 * y * self.width + x];
                 let color_bottom = frame.0[(2 * y + 1) * self.width + x];
 
-                let mut pixel = Pixel::new('▄');
+                let pixel = Pixel::new('▄');
                 let pixel = pixel.with_color(color_bottom).with_bg_color(color_top);
 
                 renderer.render_pixel(x + offset_x, y, pixel, i32::MAX);

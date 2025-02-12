@@ -3,15 +3,13 @@ pub mod incremental;
 pub mod video;
 pub mod eventrecorder;
 
-use crate::display::Display;
 use crate::seeds::get_seed;
 use crate::util::for_coord_in_line;
 use crate::{
-    BreakingAction, Color, Component, MouseInfo, Pixel, Render, Renderer, SharedState, Sprite,
+    BreakingAction, Component, MouseInfo, Render, Renderer, SharedState,
     UpdateInfo,
 };
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, MouseEvent, MouseEventKind};
-use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 

@@ -7,11 +7,9 @@ use crate::components::incremental::GameState;
 use crate::seeds::get_u32_seed_for;
 use crate::util::{get_lerp_t_i64_clamped, lerp_color};
 use crate::{
-    BreakingAction, Color, Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo,
+    Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo,
 };
-use crossterm::event::{Event, KeyCode};
-use noise::{NoiseFn, Perlin, Simplex};
-use std::iter::repeat;
+use noise::{NoiseFn, Simplex};
 use std::ops::{Index, IndexMut, RangeBounds};
 use std::time::Instant;
 
@@ -702,7 +700,7 @@ impl WorldGenerator {
             .spiky_offset_noise
             .get([x as f64 / wideness_factor, 0.0]);
         let spikiness = self.spikiness(x);
-        let spikiness_offset = (noise_value * spikiness);
+        let spikiness_offset = noise_value * spikiness;
 
         spikiness_offset
     }

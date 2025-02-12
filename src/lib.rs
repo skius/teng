@@ -1,12 +1,10 @@
 use anymap::AnyMap;
-use crossterm::event::{Event, KeyCode, MouseEvent, MouseEventKind};
-use crossterm::queue;
+use crossterm::event::{Event, KeyCode};
 use smallvec::SmallVec;
 use std::any::Any;
 use std::collections::HashSet;
 use std::io;
-use std::io::{Stdout, Write};
-use std::ops::{Index, IndexMut};
+use std::io::Write;
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 
@@ -17,9 +15,7 @@ mod renderer;
 pub mod seeds;
 pub mod util;
 
-use crate::components::incremental::ui::UiBarComponent;
 use crate::components::{DebugInfo, DebugInfoComponent, MouseEvents, PressedKeys};
-use crate::display::Display;
 use crate::Color::Transparent;
 pub use render::*;
 pub use renderer::*;

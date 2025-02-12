@@ -1,13 +1,11 @@
 use crate::components::incremental::ui::UiBarComponent;
 use crate::components::incremental::{GamePhase, GameState};
-use crate::components::MouseTrackerComponent;
 use crate::util::for_coord_in_line;
 use crate::{
-    BreakingAction, Color, Component, DebugMessage, HalfBlockDisplayRender, Pixel, Render,
+    BreakingAction, Color, Component, HalfBlockDisplayRender, Render,
     Renderer, SetupInfo, SharedState, UpdateInfo,
 };
-use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
-use std::time::{Duration, Instant};
+use crossterm::event::{Event, MouseButton, MouseEventKind};
 
 pub struct SlingshotComponent {
     // 'Some' with screen coords of the first mouse down event during this slingshot
@@ -68,7 +66,7 @@ impl Component for SlingshotComponent {
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
-        let mut game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
+        let game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
         // don't do anything except reset if we're dead
         if game_state.new_player_state.dead_time.is_some() {
             self.first_down = None;
