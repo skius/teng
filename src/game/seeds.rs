@@ -17,6 +17,7 @@ pub fn get_seed() -> u64 {
 
 macro_rules! seed_impl {
     ($fn_name:ident, $typ:ty) => {
+        #[allow(unused)]
         pub fn $fn_name(purpose: &str) -> $typ {
             let mut hasher = DefaultHasher::new();
             SEED.get().unwrap().hash(&mut hasher);
