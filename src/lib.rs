@@ -178,24 +178,24 @@ impl DebugMessage {
 
 #[derive(Default, Debug, PartialEq)]
 pub struct MousePressedInfo {
-    left: bool,
-    right: bool,
-    middle: bool,
+    pub left: bool,
+    pub right: bool,
+    pub middle: bool,
 }
 
 pub struct SharedState {
-    mouse_info: MouseInfo,
-    mouse_pressed: MousePressedInfo,
-    mouse_events: MouseEvents,
-    target_fps: Option<f64>,
-    display_info: DisplayInfo,
-    pressed_keys: PressedKeys,
-    debounced_down_keys: HashSet<KeyCode>,
-    debug_info: DebugInfo,
-    debug_messages: SmallVec<[DebugMessage; 16]>,
-    extensions: AnyMap,
-    components_to_add: Vec<Box<dyn Component>>,
-    fake_events_for_next_frame: Vec<Event>,
+    pub mouse_info: MouseInfo,
+    pub mouse_pressed: MousePressedInfo,
+    pub mouse_events: MouseEvents,
+    pub target_fps: Option<f64>,
+    pub display_info: DisplayInfo,
+    pub pressed_keys: PressedKeys,
+    pub debounced_down_keys: HashSet<KeyCode>,
+    pub debug_info: DebugInfo,
+    pub debug_messages: SmallVec<[DebugMessage; 16]>,
+    pub extensions: AnyMap,
+    pub components_to_add: Vec<Box<dyn Component>>,
+    pub fake_events_for_next_frame: Vec<Event>,
 }
 
 impl SharedState {

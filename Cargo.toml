@@ -15,6 +15,10 @@ path = "src/main.rs"
 name = "flappy-bird"
 path = "examples/flappy-bird/main.rs"
 
+[[example]]
+name = "fpschecker"
+path = "examples/fpschecker.rs"
+
 [dependencies]
 crossterm = { version = "0.28.1", features = ["serde"] }
 smallvec = "1.13.2"

@@ -218,7 +218,6 @@ fn main() -> io::Result<()> {
     // game.add_component(Box::new(VideoComponent::new()));
     // game.add_component(Box::new(FallingSimulationComponent::new()));
     // game.add_component(Box::new(RasterizeComponent::new()));
-    // game.add_component(Box::new(FpsCheckerComponent::new()));
 
     let res = game.run();
 
