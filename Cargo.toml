@@ -11,6 +11,10 @@ path = "src/lib.rs"
 name = "termill"
 path = "src/main.rs"
 
+[[example]]
+name = "flappy-bird"
+path = "examples/flappy-bird/main.rs"
+
 [dependencies]
 crossterm = { version = "0.28.1", features = ["serde"] }
 smallvec = "1.13.2"
