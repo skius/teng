@@ -64,36 +64,6 @@ struct Args {
     benchmark: Option<PathBuf>,
 }
 
-fn terminal_setup() -> io::Result<()> {
-    let mut stdout = stdout();
-
-    execute!(stdout, crossterm::terminal::EnterAlternateScreen)?;
-    enable_raw_mode()?;
-    execute!(stdout, EnableMouseCapture)?;
-    // don't print cursor
-    execute!(stdout, cursor::Hide)?;
-
-    Ok(())
-}
-
-fn cleanup() -> io::Result<()> {
-    let mut stdout = stdout();
-    execute!(stdout, DisableMouseCapture)?;
-    execute!(stdout, cursor::Show)?;
-
-    // show cursor
-    execute!(
-        stdout,
-        crossterm::terminal::Clear(crossterm::terminal::ClearType::All)
-    )?;
-
-    disable_raw_mode()?;
-
-    execute!(stdout, crossterm::terminal::LeaveAlternateScreen)?;
-
-    Ok(())
-}
-
 fn process_seed(seed: String) {
     let seed = seed.parse::<u64>().unwrap_or_else(|_| {
         // if the seed is not a number, hash or generate random
@@ -183,11 +153,11 @@ fn main() -> io::Result<()> {
     // fps_test();
     // panic!("done");
 
-    terminal_setup()?;
+    teng::terminal_setup()?;
 
     // install panic handler
     std::panic::set_hook(Box::new(|pinfo| {
-        cleanup().unwrap();
+        teng::terminal_cleanup().unwrap();
         eprintln!("{}", pinfo);
     }));
 
@@ -221,7 +191,7 @@ fn main() -> io::Result<()> {
 
     let res = game.run();
 
-    cleanup()?;
+    teng::terminal_cleanup()?;
 
     if let Err(err) = res {
         println!("Error: {:?}", err);

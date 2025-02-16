@@ -1,12 +1,14 @@
 use anymap::AnyMap;
-use crossterm::event::{Event, KeyCode};
+use crossterm::event::{DisableMouseCapture, EnableMouseCapture, Event, KeyCode};
 use smallvec::SmallVec;
 use std::any::Any;
 use std::collections::HashSet;
 use std::io;
-use std::io::Write;
+use std::io::{stdout, Write};
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
+use crossterm::{cursor, execute};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
 pub mod components;
 pub mod display;
@@ -540,4 +542,34 @@ impl<W: Write> Game<W> {
             .join()
             .unwrap();
     }
+}
+
+pub fn terminal_setup() -> io::Result<()> {
+    let mut stdout = stdout();
+
+    execute!(stdout, crossterm::terminal::EnterAlternateScreen)?;
+    enable_raw_mode()?;
+    execute!(stdout, EnableMouseCapture)?;
+    // don't print cursor
+    execute!(stdout, cursor::Hide)?;
+
+    Ok(())
+}
+
+pub fn terminal_cleanup() -> io::Result<()> {
+    let mut stdout = stdout();
+    execute!(stdout, DisableMouseCapture)?;
+    execute!(stdout, cursor::Show)?;
+
+    // show cursor
+    execute!(
+        stdout,
+        crossterm::terminal::Clear(crossterm::terminal::ClearType::All)
+    )?;
+
+    disable_raw_mode()?;
+
+    execute!(stdout, crossterm::terminal::LeaveAlternateScreen)?;
+
+    Ok(())
 }
