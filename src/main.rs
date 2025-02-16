@@ -13,38 +13,6 @@ use std::time::Instant;
 use clap::Parser;
 use teng::components::eventrecorder::{BenchFrameCounter, EventRecorderComponent, EventReplayerComponent, Recording};
 
-/// Custom buffer writer that _only_ flushes explicitly
-/// Surprisingly leads to a speedup from 2000 fps to 4800 fps on a full screen terminal
-/// Update: Since diff rendering, the difference between this and Stdout directly is smaller.
-struct CustomBufWriter {
-    buf: Vec<u8>,
-    stdout: Stdout,
-}
-
-impl CustomBufWriter {
-    fn new() -> Self {
-        Self {
-            buf: vec![],
-            stdout: stdout(),
-        }
-    }
-}
-
-impl Write for CustomBufWriter {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.buf.extend_from_slice(buf);
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        let mut lock = self.stdout.lock();
-        lock.write_all(&self.buf)?;
-        lock.flush()?;
-        self.buf.clear();
-        Ok(())
-    }
-}
-
 /// A game running inside the terminal.
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -157,8 +125,7 @@ fn main() -> io::Result<()> {
 
     process_seed(args.seed);
 
-    let sink = CustomBufWriter::new();
-    let mut game = Game::new(sink);
+    let mut game = Game::new_with_custom_buf_writer();
     game.add_component(Box::new(KeyPressRecorderComponent::new()));
     game.add_component(Box::new(EventRecorderComponent::new()));
 

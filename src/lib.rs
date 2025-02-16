@@ -4,7 +4,7 @@ use smallvec::SmallVec;
 use std::any::Any;
 use std::collections::HashSet;
 use std::io;
-use std::io::{stdout, Write};
+use std::io::{stdout, Stdout, Write};
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 use crossterm::{cursor, execute};
@@ -259,6 +259,20 @@ pub struct Game<W: Write> {
     event_read_thread_handle: Option<std::thread::JoinHandle<()>>,
     event_reader: Receiver<Event>,
     event_read_stop_signal: std::sync::mpsc::Sender<()>,
+}
+
+impl Game<CustomBufWriter> {
+    pub fn new_with_custom_buf_writer() -> Self {
+        let buf_writer = CustomBufWriter::new();
+        Self::new(buf_writer)
+    }
+}
+
+impl Game<Stdout> {
+    pub fn new_with_stdout() -> Self {
+        let stdout = stdout();
+        Self::new(stdout)
+    }
 }
 
 impl<W: Write> Game<W> {
@@ -572,4 +586,36 @@ pub fn terminal_cleanup() -> io::Result<()> {
     execute!(stdout, crossterm::terminal::LeaveAlternateScreen)?;
 
     Ok(())
+}
+
+/// Custom buffer writer that _only_ flushes explicitly
+/// Surprisingly leads to a speedup from 2000 fps to 4800 fps on a full screen terminal
+/// Update: Since diff rendering, the difference between this and Stdout directly is smaller.
+pub struct CustomBufWriter {
+    buf: Vec<u8>,
+    stdout: Stdout,
+}
+
+impl CustomBufWriter {
+    fn new() -> Self {
+        Self {
+            buf: vec![],
+            stdout: stdout(),
+        }
+    }
+}
+
+impl Write for CustomBufWriter {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.buf.extend_from_slice(buf);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        let mut lock = self.stdout.lock();
+        lock.write_all(&self.buf)?;
+        lock.flush()?;
+        self.buf.clear();
+        Ok(())
+    }
 }
