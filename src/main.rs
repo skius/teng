@@ -158,7 +158,7 @@ fn main() -> io::Result<()> {
     process_seed(args.seed);
 
     let sink = CustomBufWriter::new();
-    let mut game = Game::new(sink);
+    let mut game = Game::new(stdout());
     game.add_component(Box::new(KeyPressRecorderComponent::new()));
     game.add_component(Box::new(EventRecorderComponent::new()));
 
