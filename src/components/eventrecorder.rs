@@ -174,6 +174,11 @@ impl EventReplayerComponent {
 }
 
 impl Component for EventReplayerComponent {
+    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
+        assert_eq!(setup_info.width, self.recording.initial_display_size.0, "Width mismatch for replay");
+        assert_eq!(setup_info.height, self.recording.initial_display_size.1, "Height mismatch for replay");
+    }
+
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
         let current_time = update_info.current_time;
         self.play_events_until(current_time, shared_state);
