@@ -335,7 +335,8 @@ impl World {
                         let below_ground_removal_factor =
                             1.0 - ((ground_offset_height - 6 - y) as f64 / 10.0).clamp(0.0, 1.0);
                         let dirt_val = dirt_val * dirt_removal_factor * below_ground_removal_factor;
-                        if dirt_val > 0.3 {
+                        let dirt_disabled = true;
+                        if dirt_val > 0.3 && !dirt_disabled {
                             // Add some dirt
                             let dirt_color = [139, 69, 19];
                             final_pixel =

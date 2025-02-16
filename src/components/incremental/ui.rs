@@ -597,8 +597,8 @@ impl Component for UiBarComponent {
         .render(&mut renderer, x, y, content_depth);
         y += 1;
         x = 1;
-        let received_blocks_str = format!("High Score: {}", max_received_blocks);
-        received_blocks_str.render(&mut renderer, x, y, content_depth);
+        let high_score_str = format!("High score: {}", max_received_blocks);
+        high_score_str.render(&mut renderer, x, y, content_depth);
         y += 1;
         x = 1;
         let controls_str = match (phase, self.hover_button) {

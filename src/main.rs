@@ -4,12 +4,6 @@ use teng::components::{
 };
 use teng::seeds::set_seed;
 use teng::Game;
-use crossterm::{
-    cursor,
-    event::{DisableMouseCapture, EnableMouseCapture},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode},
-};
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io;
 use std::io::{stdout, Stdout, Write};
