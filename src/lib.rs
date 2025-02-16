@@ -541,23 +541,3 @@ impl<W: Write> Game<W> {
             .unwrap();
     }
 }
-
-struct Timeout {
-    end: Instant,
-}
-
-impl Timeout {
-    fn new(duration: Duration) -> Self {
-        Self {
-            end: Instant::now() + duration,
-        }
-    }
-
-    fn leftover(&self) -> Duration {
-        self.end.saturating_duration_since(Instant::now())
-    }
-
-    fn is_elapsed(&self) -> bool {
-        self.leftover() == Duration::from_secs(0)
-    }
-}
