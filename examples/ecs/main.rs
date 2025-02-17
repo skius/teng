@@ -22,25 +22,6 @@ struct Draw {
 #[derive(Hash, Eq, PartialEq, Clone, Copy)]
 struct Entity(usize);
 
-/// Use like:
-/// ```
-/// for_entities_with_components! { ecs, position: Position, draw: Draw, {
-///     // Do something with variables `position` and `draw`.
-/// }
-/// ```
-macro_rules! for_entities_with_components {
-    ($ecs:expr, $($name:ident: $component:ty),* $(,)? $block:block) => {
-        for entity in &$ecs.entities {
-            $(
-                let Some($name) = $ecs.get_component::<$component>(*entity) else {
-                    continue;
-                };
-            )*
-            $block
-        }
-    };
-}
-
 /// An ECS-system that draws entities with a `Position` and `Draw` component.
 struct DrawSystem;
 
@@ -58,19 +39,6 @@ impl teng::Component for DrawSystem {
                 teng::Pixel::new(draw.ch),
                 depth_base,
             );
-        }
-
-        for_entities_with_components! { ecs,
-            position: Position,
-            draw: Draw,
-            {
-                renderer.render_pixel(
-                    position.x,
-                    position.y,
-                    teng::Pixel::new(draw.ch),
-                    depth_base,
-                );
-            }
         }
     }
 }
