@@ -1,6 +1,9 @@
+use std::any::{Any, TypeId};
+use std::collections::HashSet;
 use std::time::Instant;
 use crossterm::event::Event;
 use crate::{BreakingAction, Component, Pixel, Render, Renderer, SetupInfo, SharedState, Sprite, UpdateInfo};
+use crate::components::{KeyPressRecorderComponent, MouseTrackerComponent};
 
 pub struct TitleScreenComponent {
     width: usize,
@@ -24,12 +27,19 @@ impl TitleScreenComponent {
             sprite_positions: vec![],
         }
     }
+
+    fn exit(&mut self, shared_state: &mut SharedState) {
+        self.finished = true;
+        shared_state.remove_components.insert(TypeId::of::<Self>());
+        shared_state.whitelisted_components = None;
+    }
 }
 
 impl Component for TitleScreenComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
         self.width = setup_info.width;
         self.height = setup_info.height;
+        shared_state.whitelisted_components = Some(HashSet::from([TypeId::of::<Self>(), TypeId::of::<KeyPressRecorderComponent>(), TypeId::of::<MouseTrackerComponent>()]));
     }
 
     fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState) {
@@ -74,20 +84,14 @@ impl Component for TitleScreenComponent {
                 *y < self.height as f64
             });
         }
+
+        if shared_state.pressed_keys.inner.len() > 0 || shared_state.mouse_pressed.any() {
+            self.exit(shared_state);
+        }
     }
 
     fn is_active(&self, shared_state: &SharedState) -> bool {
         !self.finished
-    }
-
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
-        match event {
-            Event::Key(_) => {
-                self.finished = true;
-            }
-            _ => {}
-        }
-        None
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {

@@ -179,11 +179,21 @@ impl DebugMessage {
     }
 }
 
+/// Information about mouse button presses since last frame.
 #[derive(Default, Debug, PartialEq)]
 pub struct MousePressedInfo {
+    /// Has the left mouse button been pressed since the last frame?
     pub left: bool,
+    /// Has the right mouse button been pressed since the last frame?
     pub right: bool,
+    /// Has the middle mouse button been pressed since the last frame?
     pub middle: bool,
+}
+
+impl MousePressedInfo {
+    pub fn any(&self) -> bool {
+        self.left || self.right || self.middle
+    }
 }
 
 pub struct SharedState {
@@ -199,6 +209,8 @@ pub struct SharedState {
     pub extensions: AnyMap,
     pub components_to_add: Vec<Box<dyn Component>>,
     pub fake_events_for_next_frame: Vec<Event>,
+    pub remove_components: HashSet<std::any::TypeId>,
+    pub whitelisted_components: Option<HashSet<std::any::TypeId>>,
 }
 
 impl SharedState {
@@ -216,11 +228,22 @@ impl SharedState {
             extensions: AnyMap::new(),
             components_to_add: Vec::new(),
             fake_events_for_next_frame: Vec::new(),
+            remove_components: HashSet::new(),
+            whitelisted_components: None,
         }
     }
 
     pub fn resize(&mut self, width: usize, height: usize) {
         self.display_info = DisplayInfo::new(width, height);
+    }
+
+    fn is_component_active(&self, component: &dyn Component) -> bool {
+        if let Some(whitelist) = &self.whitelisted_components {
+            if !whitelist.contains(&component.type_id()) {
+                return false;
+            }
+        }
+        component.is_active(self)
     }
 }
 
@@ -392,21 +415,6 @@ impl<W: Write> Game<W> {
     }
 
     fn consume_events(&mut self) -> io::Result<Option<BreakingAction>> {
-        // let mut timeout = Timeout::new(max_duration);
-        //
-        // let poll_duration = Duration::from_nanos(1);
-        //
-        // while !timeout.is_elapsed() {
-        //     if crossterm::event::poll(timeout.leftover().min(poll_duration))? {
-        //         let event = crossterm::event::read()?;
-        //         if let Some(action) = self.on_event(event) {
-        //             return Ok(Some(action));
-        //         }
-        //     } else {
-        //         break;
-        //     }
-        // }
-
         while let Ok(event) = self.event_reader.try_recv() {
             if let Some(action) = self.on_event(event) {
                 return Ok(Some(action));
@@ -426,7 +434,7 @@ impl<W: Write> Game<W> {
 
     fn on_event(&mut self, event: Event) -> Option<BreakingAction> {
         for component in self.components.iter_mut() {
-            if !component.is_active(&self.shared_state) {
+            if !self.shared_state.is_component_active(component.as_ref()) {
                 continue;
             }
             if let Some(action) = component.on_event(event.clone(), &mut self.shared_state) {
@@ -460,7 +468,7 @@ impl<W: Write> Game<W> {
 
     fn update(&mut self, update_info: UpdateInfo) {
         for component in self.components.iter_mut() {
-            if !component.is_active(&self.shared_state) {
+            if !self.shared_state.is_component_active(component.as_ref()) {
                 continue;
             }
             component.update(update_info, &mut self.shared_state);
@@ -509,14 +517,18 @@ impl<W: Write> Game<W> {
                 Box::new(DebugInfoComponent::new())
             });
         }
+        for remove_component in self.shared_state.remove_components.drain() {
+            self.components.retain(|c| c.type_id() != remove_component);
+        }
         for new_component in self.shared_state.components_to_add.drain(..) {
+            // TODO: these components need to be setup() as well
             self.components.push(new_component);
         }
     }
 
     fn render(&mut self) -> io::Result<()> {
         for (idx, component) in self.components.iter().enumerate() {
-            if !component.is_active(&self.shared_state) {
+            if !self.shared_state.is_component_active(component.as_ref()) {
                 continue;
             }
             component.render(
