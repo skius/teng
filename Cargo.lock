@@ -467,7 +467,6 @@ version = "0.1.0"
 dependencies = [
  "anymap",
  "bincode",
- "clap",
  "crossterm",
  "micromap",
  "noise",
