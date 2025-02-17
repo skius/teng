@@ -1,0 +1,13 @@
+[package]
+name = "termill"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "termill"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5.29", features = ["derive"] }
+teng = { path = "../teng", version = "0.1" }
+rand = "0.8.5"
