@@ -12,7 +12,7 @@ A minimal, cross-platform game engine for the terminal in Rust
 ## Features
 - Fast rendering by only printing changed pixels to the terminal
 - Built-in FPS limiter
-- Battery-included components for common tasks (e.g. input handling, FPS display, mouse interpolation, half block rendering)
+- Batteries included: Components for common tasks (e.g. input handling, FPS display, mouse interpolation, half block rendering)
 
 ## Getting Started
 teng uses components as the building blocks. Every frame, each component (optionally):
@@ -59,6 +59,12 @@ fn main() -> io::Result<()> {
 This results in the following:
 
 ![simple-example](img/simple-example.png)
+
+## Showcase
+See below for a clip of an unreleased game built in teng:
+TODO: change relative links to absolute github blobs so they work in docs.rs too
+TODO: record termill
+![showcase](img/showcase.gif)
 
 ## Is teng an ECS?
 Not really. teng's "Components" are quite similar to "Systems" in an ECS, but there is no built-in notion of entities or components in the ECS sense.
