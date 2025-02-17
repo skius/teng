@@ -193,7 +193,7 @@ impl Component for GameComponent {
                 .components_to_add
                 .push(Box::new(TitleScreenComponent::new()));
         }
-            
+
         shared_state.extensions.insert(GameState::new(setup_info));
     }
 

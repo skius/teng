@@ -1,9 +1,10 @@
-use std::time::Instant;
-
 use std::io;
 use std::io::stdout;
-use teng::{install_panic_handler, terminal_cleanup, terminal_setup, Component, Game, Pixel, Renderer, SharedState, UpdateInfo};
-use teng::components::{FpsLockerComponent, QuitterComponent};
+use std::time::Instant;
+use teng::{
+    install_panic_handler, terminal_cleanup, terminal_setup, Component, Game, Pixel, Renderer,
+    SharedState, UpdateInfo,
+};
 
 fn main() -> io::Result<()> {
     terminal_setup()?;
@@ -63,9 +64,7 @@ pub struct FpsCheckerFrameCountComponent {
 
 impl FpsCheckerFrameCountComponent {
     pub fn new() -> Self {
-        Self {
-            count: 0,
-        }
+        Self { count: 0 }
     }
 }
 

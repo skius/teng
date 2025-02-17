@@ -66,8 +66,6 @@ impl teng::Component for PhysicsSystem {
     }
 }
 
-
-
 fn main() -> io::Result<()> {
     teng::terminal_setup()?;
     teng::install_panic_handler();

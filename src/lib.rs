@@ -18,7 +18,10 @@ pub mod seeds;
 pub mod util;
 
 use crate::components::incremental::titlescreen::TitleScreenComponent;
-use crate::components::{DebugInfo, DebugInfoComponent, FpsLockerComponent, KeyPressRecorderComponent, KeypressDebouncerComponent, MouseEvents, MouseTrackerComponent, PressedKeys, QuitterComponent};
+use crate::components::{
+    DebugInfo, DebugInfoComponent, FpsLockerComponent, KeyPressRecorderComponent,
+    KeypressDebouncerComponent, MouseEvents, MouseTrackerComponent, PressedKeys, QuitterComponent,
+};
 use crate::Color::Transparent;
 pub use render::*;
 pub use renderer::*;
@@ -570,7 +573,7 @@ impl<W: Write> Game<W> {
             .join()
             .unwrap();
     }
-    
+
     pub fn install_recommended_components(&mut self) {
         self.add_component(Box::new(KeyPressRecorderComponent::new()));
         self.add_component(Box::new(FpsLockerComponent::new(144.0)));
