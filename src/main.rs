@@ -1,17 +1,19 @@
-use teng::components::{
-    incremental, DebugInfoComponent, FPSLockerComponent, KeyPressRecorderComponent,
-    KeypressDebouncerComponent, MouseTrackerComponent, QuitterComponent,
-};
-use teng::seeds::set_seed;
-use teng::Game;
+use clap::Parser;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io;
 use std::io::{stdout, Stdout, Write};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::time::Instant;
-use clap::Parser;
-use teng::components::eventrecorder::{BenchFrameCounter, EventRecorderComponent, EventReplayerComponent, Recording};
+use teng::components::eventrecorder::{
+    BenchFrameCounter, EventRecorderComponent, EventReplayerComponent, Recording,
+};
+use teng::components::{
+    incremental, DebugInfoComponent, FPSLockerComponent, KeyPressRecorderComponent,
+    KeypressDebouncerComponent, MouseTrackerComponent, QuitterComponent,
+};
+use teng::seeds::set_seed;
+use teng::Game;
 
 /// A game running inside the terminal.
 #[derive(Parser, Debug)]

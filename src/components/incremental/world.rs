@@ -6,9 +6,7 @@ use crate::components::incremental::ui::UiBarComponent;
 use crate::components::incremental::GameState;
 use crate::seeds::get_u32_seed_for;
 use crate::util::{get_lerp_t_i64_clamped, lerp_color};
-use crate::{
-    Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo,
-};
+use crate::{Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
 use noise::{NoiseFn, Simplex};
 use std::ops::{Index, IndexMut, RangeBounds};
 use std::time::Instant;

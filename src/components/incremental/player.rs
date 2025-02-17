@@ -3,9 +3,7 @@ use crate::components::incremental::collisionboard::PhysicsEntity2d;
 use crate::components::incremental::world::World;
 use crate::components::incremental::{GamePhase, GameState, PlayerHistoryElement};
 use crate::components::PressedKeys;
-use crate::{
-    Component, Render, Renderer, SharedState, Sprite, UpdateInfo,
-};
+use crate::{Component, Render, Renderer, SharedState, Sprite, UpdateInfo};
 use std::time::{Duration, Instant};
 
 #[derive(Debug)]

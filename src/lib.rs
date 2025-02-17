@@ -1,5 +1,7 @@
 use anymap::AnyMap;
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture, Event, KeyCode};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use crossterm::{cursor, execute};
 use smallvec::SmallVec;
 use std::any::Any;
 use std::collections::HashSet;
@@ -7,8 +9,6 @@ use std::io;
 use std::io::{stdout, Stdout, Write};
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
-use crossterm::{cursor, execute};
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
 pub mod components;
 pub mod display;
@@ -17,11 +17,11 @@ mod renderer;
 pub mod seeds;
 pub mod util;
 
+use crate::components::incremental::titlescreen::TitleScreenComponent;
 use crate::components::{DebugInfo, DebugInfoComponent, MouseEvents, PressedKeys};
 use crate::Color::Transparent;
 pub use render::*;
 pub use renderer::*;
-use crate::components::incremental::titlescreen::TitleScreenComponent;
 
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub enum Color {

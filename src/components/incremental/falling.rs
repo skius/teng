@@ -1,7 +1,7 @@
 use crate::components::incremental::planarvec::{Bounds, PlanarVec};
 use crate::{
-    Color, Component, DisplayInfo, HalfBlockDisplayRender, Render,
-    Renderer, SetupInfo, SharedState, UpdateInfo,
+    Color, Component, DisplayInfo, HalfBlockDisplayRender, Render, Renderer, SetupInfo,
+    SharedState, UpdateInfo,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]

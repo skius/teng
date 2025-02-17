@@ -1,8 +1,8 @@
-use std::path::Path;
-use std::time::SystemTime;
+use crate::{BreakingAction, Component, DebugMessage, SetupInfo, SharedState, UpdateInfo};
 use crossterm::event::Event;
 use serde::{Deserialize, Serialize};
-use crate::{BreakingAction, Component, DebugMessage, SetupInfo, SharedState, UpdateInfo};
+use std::path::Path;
+use std::time::SystemTime;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RecordedEvent {
@@ -84,7 +84,9 @@ impl EventRecorderComponent {
     pub fn record_event(&mut self, event: Event) {
         if self.is_recording() {
             let ns_offset = self.current_start_time.elapsed().as_nanos();
-            self.active_recording.events.push(RecordedEvent { event, ns_offset });
+            self.active_recording
+                .events
+                .push(RecordedEvent { event, ns_offset });
         }
     }
 
@@ -120,10 +122,14 @@ impl Component for EventRecorderComponent {
         if shared_state.pressed_keys.did_press_char_ignore_case('r') {
             if self.is_recording() {
                 self.stop_and_save_recording();
-                shared_state.debug_messages.push(DebugMessage::new_3s("Recording stopped and saved"));
+                shared_state
+                    .debug_messages
+                    .push(DebugMessage::new_3s("Recording stopped and saved"));
             } else {
                 self.start_recording();
-                shared_state.debug_messages.push(DebugMessage::new_3s("Recording started"));
+                shared_state
+                    .debug_messages
+                    .push(DebugMessage::new_3s("Recording started"));
             }
         }
     }
@@ -149,7 +155,11 @@ impl EventReplayerComponent {
         }
     }
 
-    fn play_events_until(&mut self, current_time: std::time::Instant, shared_state: &mut SharedState) {
+    fn play_events_until(
+        &mut self,
+        current_time: std::time::Instant,
+        shared_state: &mut SharedState,
+    ) {
         if !self.replaying {
             return;
         }
@@ -158,7 +168,9 @@ impl EventReplayerComponent {
         let mut events_played = 0;
         for event in &self.recording.events[self.finished_events..] {
             if event.ns_offset <= ns_offset {
-                shared_state.fake_events_for_next_frame.push(event.event.clone());
+                shared_state
+                    .fake_events_for_next_frame
+                    .push(event.event.clone());
                 events_played += 1;
             } else {
                 break;
@@ -168,15 +180,23 @@ impl EventReplayerComponent {
         if self.finished_events == self.recording.events.len() {
             self.replaying = false;
             self.finished_events = 0;
-            shared_state.debug_messages.push(DebugMessage::new_3s("Replay finished"));
+            shared_state
+                .debug_messages
+                .push(DebugMessage::new_3s("Replay finished"));
         }
     }
 }
 
 impl Component for EventReplayerComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
-        assert_eq!(setup_info.width, self.recording.initial_display_size.0, "Width mismatch for replay");
-        assert_eq!(setup_info.height, self.recording.initial_display_size.1, "Height mismatch for replay");
+        assert_eq!(
+            setup_info.width, self.recording.initial_display_size.0,
+            "Width mismatch for replay"
+        );
+        assert_eq!(
+            setup_info.height, self.recording.initial_display_size.1,
+            "Height mismatch for replay"
+        );
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
@@ -192,7 +212,10 @@ pub struct BenchFrameCounter {
 
 impl BenchFrameCounter {
     pub fn new(report_fn: impl Fn(usize) + 'static) -> Self {
-        Self { frame_count: 0, report_fn: Box::new(report_fn) }
+        Self {
+            frame_count: 0,
+            report_fn: Box::new(report_fn),
+        }
     }
 }
 

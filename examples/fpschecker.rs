@@ -8,7 +8,6 @@ fn main() -> io::Result<()> {
     let mut game = Game::new(stdout());
     game.add_component(Box::new(FpsCheckerComponent::new()));
 
-
     game.run()
 }
 

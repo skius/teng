@@ -42,17 +42,15 @@
 //! - At high fall gravities, the red background screen starts flashing when the player is on the floor.
 //!    maybe add override for when the player is on the floor and skip it?
 
-use crate::components::incremental::player::{
-    NewPlayerComponent, NewPlayerState, PlayerGhost,
-};
+use crate::components::incremental::player::{NewPlayerComponent, NewPlayerState, PlayerGhost};
 use crate::components::incremental::slingshot::SlingshotComponent;
+use crate::components::incremental::titlescreen::TitleScreenComponent;
 use crate::components::incremental::ui::UiBarComponent;
 use crate::components::incremental::world::{World, WorldComponent};
 use crate::components::incremental::worldmap::WorldMapComponent;
 use crate::{Component, DebugMessage, SetupInfo, SharedState, UpdateInfo};
 use crossterm::event::KeyCode;
 use std::time::Instant;
-use crate::components::incremental::titlescreen::TitleScreenComponent;
 
 mod animation;
 mod bidivec;
@@ -62,10 +60,10 @@ pub mod falling;
 mod planarvec;
 mod player;
 mod slingshot;
+pub mod titlescreen;
 pub mod ui;
 pub mod world;
 pub mod worldmap;
-pub mod titlescreen;
 
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 enum GamePhase {

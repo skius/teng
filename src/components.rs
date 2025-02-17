@@ -1,12 +1,9 @@
-pub mod incremental;
 pub mod eventrecorder;
+pub mod incremental;
 
 use crate::seeds::get_seed;
 use crate::util::for_coord_in_line;
-use crate::{
-    BreakingAction, Component, MouseInfo, Render, Renderer, SharedState,
-    UpdateInfo,
-};
+use crate::{BreakingAction, Component, MouseInfo, Render, Renderer, SharedState, UpdateInfo};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, MouseEvent, MouseEventKind};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -67,7 +64,11 @@ impl DebugInfoComponent {
 }
 
 impl Component for DebugInfoComponent {
-    fn on_event(&mut self, _event: Event, _shared_state: &mut SharedState) -> Option<BreakingAction> {
+    fn on_event(
+        &mut self,
+        _event: Event,
+        _shared_state: &mut SharedState,
+    ) -> Option<BreakingAction> {
         self.num_events += 1;
         None
     }

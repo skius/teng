@@ -1,9 +1,11 @@
+use crate::components::{KeyPressRecorderComponent, MouseTrackerComponent};
+use crate::{
+    BreakingAction, Component, Pixel, Render, Renderer, SetupInfo, SharedState, Sprite, UpdateInfo,
+};
+use crossterm::event::Event;
 use std::any::{Any, TypeId};
 use std::collections::HashSet;
 use std::time::Instant;
-use crossterm::event::Event;
-use crate::{BreakingAction, Component, Pixel, Render, Renderer, SetupInfo, SharedState, Sprite, UpdateInfo};
-use crate::components::{KeyPressRecorderComponent, MouseTrackerComponent};
 
 pub struct TitleScreenComponent {
     width: usize,
@@ -39,7 +41,11 @@ impl Component for TitleScreenComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
         self.width = setup_info.width;
         self.height = setup_info.height;
-        shared_state.whitelisted_components = Some(HashSet::from([TypeId::of::<Self>(), TypeId::of::<KeyPressRecorderComponent>(), TypeId::of::<MouseTrackerComponent>()]));
+        shared_state.whitelisted_components = Some(HashSet::from([
+            TypeId::of::<Self>(),
+            TypeId::of::<KeyPressRecorderComponent>(),
+            TypeId::of::<MouseTrackerComponent>(),
+        ]));
     }
 
     fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState) {
@@ -58,15 +64,18 @@ impl Component for TitleScreenComponent {
                 let mean = 100.0;
                 let std_dev = 80.0;
                 let offset = rand::random::<f64>() * std_dev + mean;
-                self.next_char_time = update_info.current_time + std::time::Duration::from_millis(offset as u64);
+                self.next_char_time =
+                    update_info.current_time + std::time::Duration::from_millis(offset as u64);
                 if self.current_prefix_length == self.final_text.len() {
-                    self.next_char_time = update_info.current_time + std::time::Duration::from_millis(300);
+                    self.next_char_time =
+                        update_info.current_time + std::time::Duration::from_millis(300);
                 }
             }
         }
 
-
-        if self.current_prefix_length == self.final_text.len() && update_info.current_time > self.next_char_time {
+        if self.current_prefix_length == self.final_text.len()
+            && update_info.current_time > self.next_char_time
+        {
             // spawn some sprites
             if self.sprite_positions.len() < 50 {
                 let x = rand::random::<f64>() * self.width as f64;
@@ -80,9 +89,8 @@ impl Component for TitleScreenComponent {
             }
 
             // remove sprites that are off screen
-            self.sprite_positions.retain(|(_, y)| {
-                *y < self.height as f64
-            });
+            self.sprite_positions
+                .retain(|(_, y)| *y < self.height as f64);
         }
 
         if shared_state.pressed_keys.inner.len() > 0 || shared_state.mouse_pressed.any() {
@@ -101,7 +109,7 @@ impl Component for TitleScreenComponent {
         // render a black screen over everything
         for x in 0..self.width {
             for y in 0..self.height {
-                renderer.render_pixel(x, y, Pixel::new(' ').with_bg_color([0,0,0]), depth_base);
+                renderer.render_pixel(x, y, Pixel::new(' ').with_bg_color([0, 0, 0]), depth_base);
             }
         }
 
@@ -109,16 +117,28 @@ impl Component for TitleScreenComponent {
         let center_x = self.width / 2;
         let text_x_start = center_x - self.final_text.len() / 2;
         let mut curr_y = center_y;
-        (&self.final_text[..self.current_prefix_length]).render(&mut renderer, text_x_start, curr_y, depth_text);
+        (&self.final_text[..self.current_prefix_length]).render(
+            &mut renderer,
+            text_x_start,
+            curr_y,
+            depth_text,
+        );
         curr_y += 2;
 
-        if self.current_prefix_length == self.final_text.len() && Instant::now() > self.next_char_time {
+        if self.current_prefix_length == self.final_text.len()
+            && Instant::now() > self.next_char_time
+        {
             let credit_text_grey = "A game by ";
             let credit_text_white = "skius";
             let all_credit_len = credit_text_grey.len() + credit_text_white.len();
             let credit_text_grey_x_start = center_x - all_credit_len / 2;
             let credit_text_white_x_start = credit_text_grey_x_start + credit_text_grey.len();
-            credit_text_grey.with_color([160; 3]).render(&mut renderer, credit_text_grey_x_start, curr_y, depth_text);
+            credit_text_grey.with_color([160; 3]).render(
+                &mut renderer,
+                credit_text_grey_x_start,
+                curr_y,
+                depth_text,
+            );
             credit_text_white.render(&mut renderer, credit_text_white_x_start, curr_y, depth_text);
             curr_y += 3;
 
@@ -129,7 +149,10 @@ impl Component for TitleScreenComponent {
             if elapsed % 1300 < 750 {
                 continue_text.render(&mut renderer, text_x_start, curr_y, depth_text);
             } else {
-                continue_text.with_color([0,0,0]).with_bg_color([255, 255, 255]).render(&mut renderer, text_x_start, curr_y, depth_text);
+                continue_text
+                    .with_color([0, 0, 0])
+                    .with_bg_color([255, 255, 255])
+                    .render(&mut renderer, text_x_start, curr_y, depth_text);
             }
         }
 

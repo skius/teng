@@ -2,8 +2,8 @@ use crate::components::incremental::ui::UiBarComponent;
 use crate::components::incremental::{GamePhase, GameState};
 use crate::util::for_coord_in_line;
 use crate::{
-    BreakingAction, Color, Component, HalfBlockDisplayRender, Render,
-    Renderer, SetupInfo, SharedState, UpdateInfo,
+    BreakingAction, Color, Component, HalfBlockDisplayRender, Render, Renderer, SetupInfo,
+    SharedState, UpdateInfo,
 };
 use crossterm::event::{Event, MouseButton, MouseEventKind};
 
