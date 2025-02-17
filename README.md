@@ -64,7 +64,7 @@ fn main() -> io::Result<()> {
 ```
 This results in the following:
 
-![simple-example](https://github.com/skius/teng/blob/86c4878a0195b22a85946e24da698d3e6f9f467b/img/simple-example.png?raw=true)
+[![simple-example](https://github.com/skius/teng/blob/86c4878a0195b22a85946e24da698d3e6f9f467b/img/simple-example.png?raw=true)](examples/simple.rs)
 
 ## FAQ
 
