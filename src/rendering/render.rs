@@ -1,4 +1,4 @@
-use crate::rendering::{display::Display, renderer::Renderer, color::Color, pixel::Pixel};
+use crate::rendering::{color::Color, display::Display, pixel::Pixel, renderer::Renderer};
 use std::fmt::Debug;
 use std::io::Write;
 

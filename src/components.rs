@@ -1,15 +1,13 @@
 pub mod eventrecorder;
 pub mod incremental;
 
+use crate::rendering::render::Render;
 use crate::seeds::{get_seed, get_seed_opt};
 use crate::util::for_coord_in_line;
-use crate::{
-    BreakingAction, Component, MouseInfo, Renderer, SetupInfo, SharedState, UpdateInfo,
-};
+use crate::{BreakingAction, Component, MouseInfo, Renderer, SetupInfo, SharedState, UpdateInfo};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, MouseEvent, MouseEventKind};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
-use crate::rendering::render::Render;
 
 #[derive(Debug, Default, Clone)]
 pub struct DebugInfo {

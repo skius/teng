@@ -1,13 +1,10 @@
 use crate::components::incremental::ui::UiBarComponent;
 use crate::components::incremental::{GamePhase, GameState};
-use crate::util::for_coord_in_line;
-use crate::{
-    BreakingAction, Component, Renderer, SetupInfo,
-    SharedState, UpdateInfo,
-};
-use crossterm::event::{Event, MouseButton, MouseEventKind};
 use crate::rendering::color::Color;
 use crate::rendering::render::{HalfBlockDisplayRender, Render};
+use crate::util::for_coord_in_line;
+use crate::{BreakingAction, Component, Renderer, SetupInfo, SharedState, UpdateInfo};
+use crossterm::event::{Event, MouseButton, MouseEventKind};
 
 pub struct SlingshotComponent {
     // 'Some' with screen coords of the first mouse down event during this slingshot

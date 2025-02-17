@@ -10,9 +10,9 @@ use std::collections::HashMap;
 use std::io;
 use std::io::stdout;
 use teng::components::KeyPressRecorderComponent;
-use teng::{BreakingAction, Game, SetupInfo, SharedState};
 use teng::rendering::pixel::Pixel;
 use teng::rendering::renderer::Renderer;
+use teng::{BreakingAction, Game, SetupInfo, SharedState};
 
 /// An ECS-component that holds the position of an entity.
 struct Position {
@@ -40,12 +40,7 @@ impl teng::Component for DrawSystem {
             let draw = ecs.get_component::<Draw>(*entity)?;
             Some((position, draw))
         }) {
-            renderer.render_pixel(
-                position.x,
-                position.y,
-                Pixel::new(draw.ch),
-                depth_base,
-            );
+            renderer.render_pixel(position.x, position.y, Pixel::new(draw.ch), depth_base);
         }
     }
 }

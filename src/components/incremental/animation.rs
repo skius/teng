@@ -1,7 +1,7 @@
+use crate::rendering::render::Render;
 use crate::Renderer;
 use std::fmt::Debug;
 use std::time::{Duration, Instant};
-use crate::rendering::render::Render;
 
 pub trait Animation {
     /// Returns true if the animation is done.

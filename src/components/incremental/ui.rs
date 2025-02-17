@@ -1,11 +1,9 @@
 use crate::components::incremental::{GamePhase, GameState, PlayerGhost};
-use crate::{
-    BreakingAction, Component, Renderer, SetupInfo, SharedState, UpdateInfo,
-};
-use anymap::any::Any;
-use crossterm::event::{Event, MouseEventKind};
 use crate::rendering::pixel::Pixel;
 use crate::rendering::render::Render;
+use crate::{BreakingAction, Component, Renderer, SetupInfo, SharedState, UpdateInfo};
+use anymap::any::Any;
+use crossterm::event::{Event, MouseEventKind};
 
 #[derive(Clone, Copy)]
 enum OffsetX {

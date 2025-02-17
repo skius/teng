@@ -3,9 +3,9 @@ use crate::components::incremental::collisionboard::PhysicsEntity2d;
 use crate::components::incremental::world::World;
 use crate::components::incremental::{GamePhase, GameState, PlayerHistoryElement};
 use crate::components::PressedKeys;
+use crate::rendering::render::{Render, Sprite};
 use crate::{Component, Renderer, SharedState, UpdateInfo};
 use std::time::{Duration, Instant};
-use crate::rendering::render::{Render, Sprite};
 
 #[derive(Debug)]
 pub struct NewPlayerState {

@@ -1,7 +1,7 @@
 use crate::rendering::color::Color;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Pixel { 
+pub struct Pixel {
     pub c: char,
     pub color: Color,
     pub bg_color: Color,
