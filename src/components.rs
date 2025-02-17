@@ -3,7 +3,7 @@ pub mod incremental;
 
 use crate::seeds::get_seed;
 use crate::util::for_coord_in_line;
-use crate::{BreakingAction, Component, MouseInfo, Render, Renderer, SharedState, UpdateInfo};
+use crate::{BreakingAction, Component, MouseInfo, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, MouseEvent, MouseEventKind};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -209,6 +209,10 @@ impl FPSLockerComponent {
 }
 
 impl Component for FPSLockerComponent {
+    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
+        shared_state.target_fps = Some(self.default_fps);
+    }
+    
     fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
         match event {
             Event::Mouse(me) => match me.kind {

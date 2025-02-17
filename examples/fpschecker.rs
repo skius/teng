@@ -2,13 +2,19 @@ use std::time::Instant;
 
 use std::io;
 use std::io::stdout;
-use teng::{Component, Game, Pixel, Renderer, SharedState};
+use teng::{install_panic_handler, terminal_cleanup, terminal_setup, Component, Game, Pixel, Renderer, SharedState};
 
 fn main() -> io::Result<()> {
+    terminal_setup()?;
+    install_panic_handler();
+
     let mut game = Game::new(stdout());
     game.add_component(Box::new(FpsCheckerComponent::new()));
+    game.run()?;
 
-    game.run()
+    terminal_cleanup()?;
+
+    Ok(())
 }
 
 pub struct FpsCheckerComponent {

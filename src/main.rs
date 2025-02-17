@@ -118,12 +118,7 @@ fn main() -> io::Result<()> {
     // panic!("done");
 
     teng::terminal_setup()?;
-
-    // install panic handler
-    std::panic::set_hook(Box::new(|pinfo| {
-        teng::terminal_cleanup().unwrap();
-        eprintln!("{}", pinfo);
-    }));
+    teng::install_panic_handler();
 
     process_seed(args.seed);
 

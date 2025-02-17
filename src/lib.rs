@@ -219,7 +219,7 @@ impl SharedState {
             mouse_info: MouseInfo::default(),
             mouse_pressed: MousePressedInfo::default(),
             mouse_events: MouseEvents::new(),
-            target_fps: Some(150.0),
+            target_fps: None,
             display_info: DisplayInfo::new(width, height),
             pressed_keys: PressedKeys::new(),
             debounced_down_keys: HashSet::new(),
@@ -599,6 +599,16 @@ pub fn terminal_cleanup() -> io::Result<()> {
     execute!(stdout, crossterm::terminal::LeaveAlternateScreen)?;
 
     Ok(())
+}
+
+/// Installs a panic handler that cleans up the terminal before panicking.
+/// Without this, the panic message would not be displayed properly because we're in a different
+/// terminal mode and in the alternate screen.
+pub fn install_panic_handler() {
+    std::panic::set_hook(Box::new(|pinfo| {
+        terminal_cleanup().unwrap();
+        eprintln!("{}", pinfo);
+    }));
 }
 
 /// Custom buffer writer that _only_ flushes explicitly
