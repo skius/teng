@@ -49,9 +49,8 @@ struct PhysicsSystem;
 impl teng::Component for PhysicsSystem {
     fn update(&mut self, _update_info: teng::UpdateInfo, shared_state: &mut SharedState) {
         let ecs = shared_state.extensions.get_mut::<Ecs>().unwrap();
-        let components = &mut ecs.components;
         for &entity in &ecs.entities {
-            let Some(position) = components.get_mut_from_entity::<Position>(entity) else {
+            let Some(position) = ecs.components.get_mut_from_entity::<Position>(entity) else {
                 continue;
             };
             position.y += 1;
