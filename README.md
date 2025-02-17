@@ -1,5 +1,18 @@
-# teng 📟 
-A minimal, cross-platform game engine for the terminal with a focus on performance
+# teng 📟
+<div align="center">
+
+[![Crate Badge]][Crate] [![Repo Badge]][Repo] [![Docs Badge]][Docs] [![License Badge]][License]  \
+[Docs] · [Examples]
+
+</div>
+
+A minimal, cross-platform game engine for the terminal in Rust
+
+
+## Features
+- Fast rendering by only printing changed pixels to the terminal
+- Built-in FPS limiter
+- Battery-included components for common tasks (e.g. input handling, FPS display, mouse interpolation, half block rendering)
 
 ## Getting Started
 teng uses components as the building blocks. Every frame, each component (optionally):
@@ -43,7 +56,19 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 ```
+This results in the following: ![simple-example](img/simple-example.png)
 
 ## Is teng an ECS?
 Not really. teng's "Components" are quite similar to "Systems" in an ECS, but there is no built-in notion of entities or components in the ECS sense.
 However, you can build an ECS inside teng quite easily, see [`examples/ecs`](examples/ecs/main.rs) for an example.
+
+
+[Repo]: https://github.com/skius/teng
+[Docs]: https://docs.rs/teng
+[Examples]: https://github.com/ratatui/ratatui/tree/main/examples
+[Crate]: https://crates.io/crates/teng
+[Crate Badge]: https://img.shields.io/crates/v/teng?logo=rust&style=flat-square&color=E05D44
+[Repo Badge]: https://img.shields.io/badge/repo-skius/teng-3370D3?style=flat-square&logo=github
+[License Badge]: https://img.shields.io/crates/l/teng?style=flat-square&color=1370D3
+[Docs Badge]: https://img.shields.io/badge/docs-teng-1370D3?style=flat-square&logo=rust
+[License]: ./LICENSE
