@@ -17,7 +17,7 @@ A minimal, cross-platform game engine for the terminal in Rust
 ## Showcase
 See below for a clip of an unreleased game built in **teng**:
 TODO: record termill (replace with blob or asciinema)
-![showcase](img/showcase.gif)
+![showcase](video/termill-showcase.mp4)
 
 ## Getting Started
 **teng** uses components as the building blocks. Every frame, each component (optionally):
