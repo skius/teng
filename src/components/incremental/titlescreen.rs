@@ -40,17 +40,23 @@ impl Component for TitleScreenComponent {
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
         // simulate typing out the text
         if self.current_prefix_length < self.final_text.len() {
-            if Instant::now() >= self.next_char_time {
+            if update_info.current_time >= self.next_char_time {
+                if self.final_text.as_bytes()[self.current_prefix_length] != b' ' {
+                    print!("\x1b[1;1;1,~");
+                }
                 self.current_prefix_length += 1;
                 let mean = 100.0;
                 let std_dev = 80.0;
                 let offset = rand::random::<f64>() * std_dev + mean;
-                self.next_char_time = Instant::now() + std::time::Duration::from_millis(offset as u64);
+                self.next_char_time = update_info.current_time + std::time::Duration::from_millis(offset as u64);
+                if self.current_prefix_length == self.final_text.len() {
+                    self.next_char_time = update_info.current_time + std::time::Duration::from_millis(300);
+                }
             }
         }
 
 
-        if self.current_prefix_length == self.final_text.len() {
+        if self.current_prefix_length == self.final_text.len() && update_info.current_time > self.next_char_time {
             // spawn some sprites
             if self.sprite_positions.len() < 50 {
                 let x = rand::random::<f64>() * self.width as f64;
@@ -102,13 +108,13 @@ impl Component for TitleScreenComponent {
         (&self.final_text[..self.current_prefix_length]).render(&mut renderer, text_x_start, curr_y, depth_text);
         curr_y += 2;
 
-        if self.current_prefix_length == self.final_text.len() {
+        if self.current_prefix_length == self.final_text.len() && Instant::now() > self.next_char_time {
             let credit_text_grey = "A game by ";
             let credit_text_white = "Niels Saurer";
             let all_credit_len = credit_text_grey.len() + credit_text_white.len();
             let credit_text_grey_x_start = center_x - all_credit_len / 2;
             let credit_text_white_x_start = credit_text_grey_x_start + credit_text_grey.len();
-            credit_text_grey.with_color([200, 200, 200]).render(&mut renderer, credit_text_grey_x_start, curr_y, depth_text);
+            credit_text_grey.with_color([160; 3]).render(&mut renderer, credit_text_grey_x_start, curr_y, depth_text);
             credit_text_white.render(&mut renderer, credit_text_white_x_start, curr_y, depth_text);
             curr_y += 3;
 
