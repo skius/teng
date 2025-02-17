@@ -13,9 +13,6 @@ use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 
 pub mod components;
-pub mod display;
-mod render;
-mod renderer;
 pub mod rendering;
 pub mod seeds;
 pub mod util;
