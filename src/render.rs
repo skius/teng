@@ -56,14 +56,14 @@ impl Render for String {
 }
 
 impl Render for char {
-    fn render(&self, mut renderer: &mut dyn Renderer, x: usize, y: usize, depth: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, x: usize, y: usize, depth: i32) {
         let pixel = Pixel::new(*self);
         renderer.render_pixel(x, y, pixel, depth);
     }
 }
 
 impl Render for Pixel {
-    fn render(&self, mut renderer: &mut dyn Renderer, x: usize, y: usize, depth: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, x: usize, y: usize, depth: i32) {
         renderer.render_pixel(x, y, *self, depth);
     }
 }
@@ -93,7 +93,7 @@ impl<const WIDTH: usize, const HEIGHT: usize> Sprite<WIDTH, HEIGHT> {
 }
 
 impl<const WIDTH: usize, const HEIGHT: usize> Render for Sprite<WIDTH, HEIGHT> {
-    fn render(&self, mut renderer: &mut dyn Renderer, x: usize, y: usize, depth: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, x: usize, y: usize, depth: i32) {
         let (center_x, center_y) = self.center_pos;
         let x = x as i32 - center_x as i32;
         let y = y as i32 - center_y as i32;
