@@ -56,7 +56,9 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 ```
-This results in the following: ![simple-example](img/simple-example.png)
+This results in the following:
+
+![simple-example](img/simple-example.png)
 
 ## Is teng an ECS?
 Not really. teng's "Components" are quite similar to "Systems" in an ECS, but there is no built-in notion of entities or components in the ECS sense.
