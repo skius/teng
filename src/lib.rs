@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 use anymap::AnyMap;
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture, Event, KeyCode};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
@@ -289,6 +291,8 @@ pub struct Game<W: Write> {
 }
 
 impl Game<CustomBufWriter> {
+    /// Creates a new game with a sink that only flushes once every frame.
+    /// This is the recommended sink.
     pub fn new_with_custom_buf_writer() -> Self {
         let buf_writer = CustomBufWriter::new();
         Self::new(buf_writer)

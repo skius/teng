@@ -26,6 +26,11 @@ path = "examples/fpschecker.rs"
 name = "ecs"
 path = "examples/ecs/main.rs"
 
+[[example]]
+name = "simple"
+path = "examples/simple.rs"
+
+
 [dependencies]
 crossterm = { version = "0.28.1", features = ["serde"] }
 smallvec = "1.13.2"
