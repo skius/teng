@@ -30,7 +30,10 @@ https://github.com/user-attachments/assets/c124958a-6093-41e9-90fe-56a2eb5d4618
 Here's a simple example that renders static content to the screen:
 ```rust ,no_run
 use std::io;
-use teng::{install_panic_handler, terminal_cleanup, terminal_setup, Game, Pixel, Render, Renderer, SharedState};
+use teng::rendering::pixel::Pixel;
+use teng::rendering::render::Render;
+use teng::rendering::renderer::Renderer;
+use teng::{install_panic_handler, terminal_cleanup, terminal_setup, Game, SharedState};
 
 struct MyComponent;
 
@@ -43,7 +46,9 @@ impl teng::Component for MyComponent {
         let pixel = Pixel::new('█').with_color([0, 255, 0]);
         renderer.render_pixel(x, y, pixel, depth_base);
 
-        "Hello World".with_bg_color([255, 0, 0]).render(renderer, x, y+1, depth_base);
+        "Hello World"
+            .with_bg_color([255, 0, 0])
+            .render(renderer, x, y + 1, depth_base);
     }
 }
 
@@ -62,6 +67,7 @@ fn main() -> io::Result<()> {
 
     Ok(())
 }
+
 ```
 This results in the following:
 
