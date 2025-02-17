@@ -9,7 +9,7 @@ use teng::components::eventrecorder::{
     BenchFrameCounter, EventRecorderComponent, EventReplayerComponent, Recording,
 };
 use teng::components::{
-    incremental, DebugInfoComponent, FPSLockerComponent, KeyPressRecorderComponent,
+    incremental, DebugInfoComponent, FpsLockerComponent, KeyPressRecorderComponent,
     KeypressDebouncerComponent, MouseTrackerComponent, QuitterComponent,
 };
 use teng::seeds::set_seed;
@@ -135,7 +135,7 @@ fn main() -> io::Result<()> {
         })));
     }
 
-    game.add_component(Box::new(FPSLockerComponent::new(150.0)));
+    game.add_component(Box::new(FpsLockerComponent::new(150.0)));
     // needs to be early in the update loop
     game.add_component(Box::new(KeypressDebouncerComponent::new(520)));
     game.add_component(Box::new(MouseTrackerComponent::new()));

@@ -194,12 +194,12 @@ impl Component for DebugInfoComponent {
     }
 }
 
-pub struct FPSLockerComponent {
+pub struct FpsLockerComponent {
     locked: bool,
     default_fps: f64,
 }
 
-impl FPSLockerComponent {
+impl FpsLockerComponent {
     pub fn new(default_fps: f64) -> Self {
         Self {
             locked: true,
@@ -208,7 +208,7 @@ impl FPSLockerComponent {
     }
 }
 
-impl Component for FPSLockerComponent {
+impl Component for FpsLockerComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
         shared_state.target_fps = Some(self.default_fps);
     }
