@@ -64,7 +64,7 @@ fn main() -> io::Result<()> {
 ```
 This results in the following:
 
-![simple-example](img/simple-example.png)
+![simple-example](https://github.com/skius/teng/blob/86c4878a0195b22a85946e24da698d3e6f9f467b/img/simple-example.png?raw=true)
 
 ## FAQ
 
@@ -77,6 +77,9 @@ Also, if you're looking to just get started with game development in the termina
 Not really. **teng**'s "Components" are quite similar to "Systems" in an ECS, but there is no built-in notion of entities or components in the ECS sense.
 However, you can build an ECS inside **teng** quite easily, see [`examples/ecs`](examples/ecs/main.rs) for an example.
 
+### Missing features
+- Currently, each pixel must be a single unicode scalar value, and its width is assumed to be 1. This means that wide graphemes, and graphemes consisting of multiple unicode scalar values, will most likely not be rendered correctly.
+- **teng** makes a few assumptions about the capabilities of the terminal, without providing any fallbacks. For example, colors are RGB.
 
 [Repo]: https://github.com/skius/teng
 [Docs]: https://docs.rs/teng
