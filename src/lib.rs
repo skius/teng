@@ -508,6 +508,7 @@ impl<W: Write> Game<W> {
     // }
 
     fn update_game(&mut self, update_info: UpdateInfo) {
+        // TODO: Only swap component if it existed in the first place, or add some config option
         if self
             .shared_state
             .pressed_keys
@@ -575,7 +576,6 @@ impl<W: Write> Game<W> {
         self.add_component(Box::new(FpsLockerComponent::new(144.0)));
         self.add_component(Box::new(MouseTrackerComponent::new()));
         self.add_component(Box::new(QuitterComponent));
-        self.add_component(Box::new(DebugInfoComponent::new()));
     }
 }
 
