@@ -110,7 +110,7 @@ impl Component for TitleScreenComponent {
 
         if self.current_prefix_length == self.final_text.len() && Instant::now() > self.next_char_time {
             let credit_text_grey = "A game by ";
-            let credit_text_white = "Niels Saurer";
+            let credit_text_white = "skius";
             let all_credit_len = credit_text_grey.len() + credit_text_white.len();
             let credit_text_grey_x_start = center_x - all_credit_len / 2;
             let credit_text_white_x_start = credit_text_grey_x_start + credit_text_grey.len();
