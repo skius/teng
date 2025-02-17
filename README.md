@@ -16,8 +16,7 @@ A minimal, cross-platform game engine for the terminal in Rust
 
 ## Showcase
 See below for a clip of an unreleased game built in **teng**:
-TODO: change relative links to absolute github blobs so they work in docs.rs too
-TODO: record termill
+TODO: record termill (replace with blob or asciinema)
 ![showcase](img/showcase.gif)
 
 ## Getting Started
