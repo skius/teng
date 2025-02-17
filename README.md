@@ -14,8 +14,14 @@ A minimal, cross-platform game engine for the terminal in Rust
 - Built-in FPS limiter
 - Batteries included: Components for common tasks (e.g. input handling, FPS display, mouse interpolation, half block rendering)
 
+## Showcase
+See below for a clip of an unreleased game built in **teng**:
+TODO: change relative links to absolute github blobs so they work in docs.rs too
+TODO: record termill
+![showcase](img/showcase.gif)
+
 ## Getting Started
-teng uses components as the building blocks. Every frame, each component (optionally):
+**teng** uses components as the building blocks. Every frame, each component (optionally):
 - Handles received events (mouse, keyboard, resizes, etc.)
 - Updates the game state
 - Renders its core concept (if any) to the screen
@@ -60,15 +66,16 @@ This results in the following:
 
 ![simple-example](img/simple-example.png)
 
-## Showcase
-See below for a clip of an unreleased game built in teng:
-TODO: change relative links to absolute github blobs so they work in docs.rs too
-TODO: record termill
-![showcase](img/showcase.gif)
+## FAQ
 
-## Is teng an ECS?
-Not really. teng's "Components" are quite similar to "Systems" in an ECS, but there is no built-in notion of entities or components in the ECS sense.
-However, you can build an ECS inside teng quite easily, see [`examples/ecs`](examples/ecs/main.rs) for an example.
+### Why should I use **teng** over other TUI libraries?
+**teng** particularly shines when you are not aware of libraries like [ratatui](https://github.com/ratatui/ratatui/) or [yeehaw](https://github.com/bogzbonny/yeehaw/).
+
+Also, if you're looking to just get started with game development in the terminal, **teng** may be a good choice due to its simplicity and focus on traditional, frame-based game loops and pixel-based rendering.
+
+### Is **teng** an ECS?
+Not really. **teng**'s "Components" are quite similar to "Systems" in an ECS, but there is no built-in notion of entities or components in the ECS sense.
+However, you can build an ECS inside **teng** quite easily, see [`examples/ecs`](examples/ecs/main.rs) for an example.
 
 
 [Repo]: https://github.com/skius/teng
