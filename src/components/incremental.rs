@@ -153,11 +153,15 @@ impl GameState {
     }
 }
 
-pub struct GameComponent {}
+pub struct GameComponent {
+    install_title_screen: bool,
+}
 
 impl GameComponent {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(install_title_screen: bool) -> Self {
+        Self {
+            install_title_screen,
+        }
     }
 }
 
@@ -184,10 +188,12 @@ impl Component for GameComponent {
         shared_state
             .components_to_add
             .push(Box::new(WorldMapComponent::new(30, 30, 600, 600, 50)));
-        shared_state
-            .components_to_add
-            .push(Box::new(TitleScreenComponent::new()));
-
+        if self.install_title_screen {
+            shared_state
+                .components_to_add
+                .push(Box::new(TitleScreenComponent::new()));
+        }
+            
         shared_state.extensions.insert(GameState::new(setup_info));
     }
 

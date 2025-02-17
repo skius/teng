@@ -113,6 +113,11 @@ impl Component for EventRecorderComponent {
     }
 
     fn on_quit(&mut self, shared_state: &mut SharedState) {
+        // Add 'q' key
+        self.record_event(Event::Key(crossterm::event::KeyEvent::new(
+            crossterm::event::KeyCode::Char('q'),
+            crossterm::event::KeyModifiers::empty(),
+        )));
         self.stop_and_save_recording();
     }
 

@@ -6,7 +6,7 @@
 # The CSV file should have the following columns:
 #   git hash,unix time,bench recording name,frames
 
-CSV_FILE="bench.csv"
+CSV_FILE="history_bench.csv"
 if [[ ! -f "$CSV_FILE" ]]; then
     echo "Error: $CSV_FILE not found!"
     exit 1

@@ -10,10 +10,9 @@ fn main() -> io::Result<()> {
     install_panic_handler();
 
     let mut game = Game::new(stdout());
+    game.install_recommended_components();
     // game.add_component(Box::new(FpsCheckerComponent::new()));
     game.add_component(Box::new(FpsCheckerFrameCountComponent::new()));
-    game.add_component(Box::new(QuitterComponent));
-    game.add_component(Box::new(FpsLockerComponent::new(144.0)));
     game.run()?;
 
     terminal_cleanup()?;

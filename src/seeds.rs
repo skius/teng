@@ -15,6 +15,10 @@ pub fn get_seed() -> u64 {
     *SEED.get().unwrap()
 }
 
+pub fn get_seed_opt() -> Option<u64> {
+    SEED.get().copied()
+}
+
 macro_rules! seed_impl {
     ($fn_name:ident, $typ:ty) => {
         #[allow(unused)]

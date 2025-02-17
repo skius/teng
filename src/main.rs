@@ -89,7 +89,7 @@ fn save_bench_result(recording_path: &Path) {
     let mut file = std::fs::OpenOptions::new()
         .append(true)
         .create(true)
-        .open("bench.csv")
+        .open("history_bench.csv")
         .unwrap();
 
     let git_hash = std::process::Command::new("git")
@@ -123,7 +123,7 @@ fn main() -> io::Result<()> {
     process_seed(args.seed);
 
     let mut game = Game::new_with_custom_buf_writer();
-    game.add_component(Box::new(KeyPressRecorderComponent::new()));
+    game.install_recommended_components();
     game.add_component(Box::new(EventRecorderComponent::new()));
 
     // if we're benchmarking, run the benchmark
@@ -135,17 +135,12 @@ fn main() -> io::Result<()> {
         })));
     }
 
-    game.add_component(Box::new(FpsLockerComponent::new(150.0)));
-    // needs to be early in the update loop
+    // needs to be early in the update loop (before any clients of KeypressDebouncer)
     game.add_component(Box::new(KeypressDebouncerComponent::new(520)));
-    game.add_component(Box::new(MouseTrackerComponent::new()));
-    game.add_component(Box::new(QuitterComponent));
-    game.add_component(Box::new(incremental::GameComponent::new()));
-    game.add_component(Box::new(DebugInfoComponent::new()));
+    // only add title screen if we are not in a benchmark
+    game.add_component(Box::new(incremental::GameComponent::new(args.benchmark.is_none())));
     // game.add_component(Box::new(BoundsCheckerComponent::new()));
-    // game.add_component(Box::new(VideoComponent::new()));
     // game.add_component(Box::new(FallingSimulationComponent::new()));
-    // game.add_component(Box::new(RasterizeComponent::new()));
 
     let res = game.run();
 

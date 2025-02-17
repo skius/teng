@@ -1,7 +1,7 @@
 pub mod eventrecorder;
 pub mod incremental;
 
-use crate::seeds::get_seed;
+use crate::seeds::{get_seed, get_seed_opt};
 use crate::util::for_coord_in_line;
 use crate::{BreakingAction, Component, MouseInfo, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, MouseEvent, MouseEventKind};
@@ -171,7 +171,7 @@ impl Component for DebugInfoComponent {
         )
         .render(&mut renderer, 0, y, depth_base);
         y += 1;
-        format!("Game seed: {}", get_seed()).render(&mut renderer, 0, y, depth_base);
+        format!("Game seed: {:?}", get_seed_opt()).render(&mut renderer, 0, y, depth_base);
         y += 1;
         format!("Debounced keys: {:?}", shared_state.debounced_down_keys).render(
             &mut renderer,
