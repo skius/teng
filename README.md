@@ -8,5 +8,5 @@ teng uses components as the building blocks. Every frame, each component (option
 - Renders its core concept (if any) to the screen
 
 ## Is teng an ECS?
-No, not really. While teng's "Components" are like "Systems" in an ECS, the similarities end there.
-You can build an ECS inside teng, but teng itself is not an ECS and does not have any concept of attaching components to entities.
+Not really. teng's "Components" are quite similar to "Systems" in an ECS, but there is no built-in notion of entities or components in the ECS sense.
+However, you can build an ECS inside teng quite easily, see [`examples/ecs`](examples/ecs/main.rs) for an example.

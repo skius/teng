@@ -1,3 +1,8 @@
+//! A simple example of an ECS (Entity-Component-System) in teng.
+//!
+//! Arbitrary structs can be registered and used as components, and systems are just
+//! types that implement `teng::Component`.
+
 use anymap::AnyMap;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use std::any::{Any, TypeId};
@@ -153,7 +158,7 @@ impl Ecs {
     }
 }
 
-/// A teng-component that sets up the ECS and creates new entities.
+/// A wrapper component that sets up the ECS and creates new entities.
 #[derive(Default)]
 struct EcsComponent {
     width: usize,
