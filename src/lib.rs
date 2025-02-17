@@ -21,6 +21,7 @@ use crate::components::{DebugInfo, DebugInfoComponent, MouseEvents, PressedKeys}
 use crate::Color::Transparent;
 pub use render::*;
 pub use renderer::*;
+use crate::components::incremental::titlescreen::TitleScreenComponent;
 
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub enum Color {

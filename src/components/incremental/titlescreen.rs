@@ -1,0 +1,136 @@
+use std::time::Instant;
+use crossterm::event::Event;
+use crate::{BreakingAction, Component, Pixel, Render, Renderer, SetupInfo, SharedState, Sprite, UpdateInfo};
+
+pub struct TitleScreenComponent {
+    width: usize,
+    height: usize,
+    final_text: String,
+    current_prefix_length: usize,
+    next_char_time: Instant,
+    finished: bool,
+    sprite_positions: Vec<(f64, f64)>,
+}
+
+impl TitleScreenComponent {
+    pub fn new() -> Self {
+        Self {
+            width: 0,
+            height: 0,
+            final_text: "Terminally Ill".to_string(),
+            current_prefix_length: 0,
+            next_char_time: Instant::now(),
+            finished: false,
+            sprite_positions: vec![],
+        }
+    }
+}
+
+impl Component for TitleScreenComponent {
+    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
+        self.width = setup_info.width;
+        self.height = setup_info.height;
+    }
+
+    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState) {
+        self.width = width;
+        self.height = height;
+    }
+
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+        // simulate typing out the text
+        if self.current_prefix_length < self.final_text.len() {
+            if Instant::now() >= self.next_char_time {
+                self.current_prefix_length += 1;
+                let mean = 100.0;
+                let std_dev = 80.0;
+                let offset = rand::random::<f64>() * std_dev + mean;
+                self.next_char_time = Instant::now() + std::time::Duration::from_millis(offset as u64);
+            }
+        }
+
+
+        if self.current_prefix_length == self.final_text.len() {
+            // spawn some sprites
+            if self.sprite_positions.len() < 50 {
+                let x = rand::random::<f64>() * self.width as f64;
+                let y = rand::random::<f64>() * self.height as f64;
+                self.sprite_positions.push((x, -y));
+            }
+
+            // move the sprites
+            for (x, y) in &mut self.sprite_positions {
+                *y += 30.0 * update_info.dt;
+            }
+
+            // remove sprites that are off screen
+            self.sprite_positions.retain(|(_, y)| {
+                *y < self.height as f64
+            });
+        }
+    }
+
+    fn is_active(&self, shared_state: &SharedState) -> bool {
+        !self.finished
+    }
+
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
+        match event {
+            Event::Key(_) => {
+                self.finished = true;
+            }
+            _ => {}
+        }
+        None
+    }
+
+    fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+        let depth_base = i32::MAX - 3;
+        let depth_text = i32::MAX - 2;
+        let depth_sprites = i32::MAX - 1;
+        // render a black screen over everything
+        for x in 0..self.width {
+            for y in 0..self.height {
+                renderer.render_pixel(x, y, Pixel::new(' ').with_bg_color([0,0,0]), depth_base);
+            }
+        }
+
+        let center_y = self.height / 2;
+        let center_x = self.width / 2;
+        let text_x_start = center_x - self.final_text.len() / 2;
+        let mut curr_y = center_y;
+        (&self.final_text[..self.current_prefix_length]).render(&mut renderer, text_x_start, curr_y, depth_text);
+        curr_y += 2;
+
+        if self.current_prefix_length == self.final_text.len() {
+            let credit_text_grey = "A game by ";
+            let credit_text_white = "Niels Saurer";
+            let all_credit_len = credit_text_grey.len() + credit_text_white.len();
+            let credit_text_grey_x_start = center_x - all_credit_len / 2;
+            let credit_text_white_x_start = credit_text_grey_x_start + credit_text_grey.len();
+            credit_text_grey.with_color([200, 200, 200]).render(&mut renderer, credit_text_grey_x_start, curr_y, depth_text);
+            credit_text_white.render(&mut renderer, credit_text_white_x_start, curr_y, depth_text);
+            curr_y += 3;
+
+            // invert colors every 500ms
+            let continue_text = "Press any key to continue";
+            let text_x_start = center_x - continue_text.len() / 2;
+            let elapsed = self.next_char_time.elapsed().as_millis();
+            if elapsed % 1300 < 750 {
+                continue_text.render(&mut renderer, text_x_start, curr_y, depth_text);
+            } else {
+                continue_text.with_color([0,0,0]).with_bg_color([255, 255, 255]).render(&mut renderer, text_x_start, curr_y, depth_text);
+            }
+        }
+
+        for (x, y) in &self.sprite_positions {
+            let x = *x as usize;
+            if *y < 0.0 {
+                continue;
+            }
+            let y = *y as usize;
+            let sprite = Sprite::new([['▁', '▄', '▁'], ['▗', '▀', '▖']], 1, 1);
+            sprite.render(&mut renderer, x, y, depth_sprites);
+        }
+    }
+}

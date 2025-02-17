@@ -224,6 +224,7 @@ impl Component for WorldMapComponent {
     }
 
     fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+        let depth_base = i32::MAX - 10;
         if !self.enabled {
             return;
         }
@@ -232,7 +233,7 @@ impl Component for WorldMapComponent {
             &mut renderer,
             self.display_attach_x,
             self.display_attach_y,
-            i32::MAX,
+            depth_base,
         );
     }
 }

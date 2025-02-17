@@ -52,6 +52,7 @@ use crate::components::incremental::worldmap::WorldMapComponent;
 use crate::{Component, DebugMessage, SetupInfo, SharedState, UpdateInfo};
 use crossterm::event::KeyCode;
 use std::time::Instant;
+use crate::components::incremental::titlescreen::TitleScreenComponent;
 
 mod animation;
 mod bidivec;
@@ -64,6 +65,7 @@ mod slingshot;
 pub mod ui;
 pub mod world;
 pub mod worldmap;
+pub mod titlescreen;
 
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 enum GamePhase {
@@ -184,6 +186,9 @@ impl Component for GameComponent {
         shared_state
             .components_to_add
             .push(Box::new(WorldMapComponent::new(30, 30, 600, 600, 50)));
+        shared_state
+            .components_to_add
+            .push(Box::new(TitleScreenComponent::new()));
 
         shared_state.extensions.insert(GameState::new(setup_info));
     }
