@@ -148,7 +148,7 @@ macro_rules! new_button {
                 }
             }
 
-            fn render(&$self2, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+            fn render(&$self2, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
                 let $game_state2 = shared_state.extensions.get::<GameState>().unwrap();
                 let is_hover = $self2.mouse_hover(shared_state.mouse_info.last_mouse_pos.0, shared_state.mouse_info.last_mouse_pos.1);
                 let lmb_down = shared_state.mouse_info.left_mouse_down;
@@ -175,7 +175,7 @@ macro_rules! new_button {
                 }
                 let (x, y) = $self2.screen_pos();
                 $self2.button_text.with_color(fg_color).with_bg_color(bg_color).render(
-                    &mut renderer,
+                    renderer,
                     x,
                     y,
                     depth_base,
@@ -183,7 +183,7 @@ macro_rules! new_button {
                 let left_text = $render;
                 // render to the left
                 let len = left_text.len();
-                left_text.render(&mut renderer, x - len as usize, y, depth_base);
+                left_text.render(renderer, x - len as usize, y, depth_base);
             }
         }
         |x, y, screen_height, screen_width| Box::new($name::new(x, y, screen_height, screen_width))
@@ -495,7 +495,7 @@ impl Component for UiBarComponent {
         }
     }
 
-    fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let game_state = shared_state.extensions.get::<GameState>().unwrap();
         let blocks = game_state.blocks;
         let max_blocks = game_state.max_blocks;
@@ -519,8 +519,7 @@ impl Component for UiBarComponent {
 
         // draw entire background
         for y in top_y..(top_y + Self::HEIGHT) {
-            " ".repeat(width)
-                .render(&mut renderer, 0, y, background_depth);
+            " ".repeat(width).render(renderer, 0, y, background_depth);
         }
 
         // draw top corners
@@ -554,17 +553,17 @@ impl Component for UiBarComponent {
         let mut x = 1;
         let mut y = top_y + 1;
         let mut s = "Phase: ";
-        s.render(&mut renderer, x, y, content_depth);
+        s.render(renderer, x, y, content_depth);
         x += s.len();
         s = phase_str;
         s.with_color(phase_color)
-            .render(&mut renderer, x, y, content_depth);
+            .render(renderer, x, y, content_depth);
         x = 1;
         y += 1;
         // Render game runtime
         let runtime = game_state.start_of_game.elapsed().as_secs_f64();
         let runtime_str = format!("Time: {:.1}s", runtime);
-        runtime_str.render(&mut renderer, x, y, content_depth);
+        runtime_str.render(renderer, x, y, content_depth);
         y += 1;
         x = 1;
         // render block numbers constant sized
@@ -584,7 +583,7 @@ impl Component for UiBarComponent {
             // format!("Blocks: {:width$}/{} {recv_s}", blocks, max_blocks)
             format!("Blocks: {:width$}/{}", blocks, max_blocks)
         };
-        block_s.render(&mut renderer, x, y, content_depth);
+        block_s.render(renderer, x, y, content_depth);
         y += 1;
         x = 1;
         // TODO: factor in building time to bps?
@@ -594,11 +593,11 @@ impl Component for UiBarComponent {
             "Last round: {} at {:.2}/s",
             game_state.last_received_blocks, bps
         )
-        .render(&mut renderer, x, y, content_depth);
+        .render(renderer, x, y, content_depth);
         y += 1;
         x = 1;
         let high_score_str = format!("High score: {}", max_received_blocks);
-        high_score_str.render(&mut renderer, x, y, content_depth);
+        high_score_str.render(renderer, x, y, content_depth);
         y += 1;
         x = 1;
         let controls_str = match (phase, self.hover_button) {
@@ -612,11 +611,11 @@ impl Component for UiBarComponent {
             Goal: Die from falling from increasing heights to earn more blocks"
             }
         };
-        controls_str.render(&mut renderer, x, y, content_depth);
+        controls_str.render(renderer, x, y, content_depth);
 
         // render buttons
         for &button_idx in &self.pages[self.active_page_idx] {
-            self.buttons[button_idx].render(&mut renderer, shared_state, button_depth);
+            self.buttons[button_idx].render(renderer, shared_state, button_depth);
         }
 
         // Render page navigation
@@ -627,6 +626,6 @@ impl Component for UiBarComponent {
         );
         let page_str_len = page_str.len();
         let page_str_x = shared_state.display_info.width() - page_str_len - 1;
-        page_str.render(&mut renderer, page_str_x, bottom_y - 1, content_depth);
+        page_str.render(renderer, page_str_x, bottom_y - 1, content_depth);
     }
 }

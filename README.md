@@ -35,7 +35,7 @@ use teng::{install_panic_handler, terminal_cleanup, terminal_setup, Game, Pixel,
 struct MyComponent;
 
 impl teng::Component for MyComponent {
-    fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let width = shared_state.display_info.width();
         let height = shared_state.display_info.height();
         let x = width / 2;
@@ -43,7 +43,7 @@ impl teng::Component for MyComponent {
         let pixel = Pixel::new('█').with_color([0, 255, 0]);
         renderer.render_pixel(x, y, pixel, depth_base);
 
-        "Hello World".with_bg_color([255, 0, 0]).render(&mut renderer, x, y+1, depth_base);
+        "Hello World".with_bg_color([255, 0, 0]).render(renderer, x, y+1, depth_base);
     }
 }
 

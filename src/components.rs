@@ -125,25 +125,20 @@ impl Component for DebugInfoComponent {
         }
     }
 
-    fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let depth_base = i32::MAX - 100;
         let mut y = 0;
         format!("Help: q to quit, l to lock/unlock FPS, scroll to change FPS, b to cheat blocks, p to toggle parallax, m to toggle minimap, i to toggle debug info, r to start/stop recording").render(
-            &mut renderer,
+            renderer,
             0,
             y,
             depth_base,
         );
         y += 1;
 
-        format!("Frame time: {} ns", self.frametime_ns).render(&mut renderer, 0, y, depth_base);
+        format!("Frame time: {} ns", self.frametime_ns).render(renderer, 0, y, depth_base);
         y += 1;
-        format!("Max frame time: {} ns", self.max_frametime_ns).render(
-            &mut renderer,
-            0,
-            y,
-            depth_base,
-        );
+        format!("Max frame time: {} ns", self.max_frametime_ns).render(renderer, 0, y, depth_base);
         y += 1;
         // format!("Min frame time: {} ns", self.min_frametime_ns).render(&mut renderer, 0, y, depth_base);
         // y += 1;
@@ -152,7 +147,7 @@ impl Component for DebugInfoComponent {
         } else {
             "Unlocked".to_string()
         };
-        format!("FPS: {:.2} ({})", self.fps, target_str).render(&mut renderer, 0, y, depth_base);
+        format!("FPS: {:.2} ({})", self.fps, target_str).render(renderer, 0, y, depth_base);
         y += 1;
         // format!("Achievable FPS: {:.2}", self.last_actual_fps_computed).render(
         //     &mut renderer,
@@ -171,16 +166,12 @@ impl Component for DebugInfoComponent {
             shared_state.display_info.width(),
             shared_state.display_info.height()
         )
-        .render(&mut renderer, 0, y, depth_base);
+        .render(renderer, 0, y, depth_base);
         y += 1;
-        format!("Game seed: {:?}", get_seed_opt()).render(&mut renderer, 0, y, depth_base);
+        format!("Game seed: {:?}", get_seed_opt()).render(renderer, 0, y, depth_base);
         y += 1;
-        format!("Debounced keys: {:?}", shared_state.debounced_down_keys).render(
-            &mut renderer,
-            0,
-            y,
-            depth_base,
-        );
+        format!("Debounced keys: {:?}", shared_state.debounced_down_keys)
+            .render(renderer, 0, y, depth_base);
         y += 1;
         // format!("Events: {}", self.num_events).render(&mut renderer, 0, y, depth_base);
         // y += 1;
@@ -189,7 +180,7 @@ impl Component for DebugInfoComponent {
         // format!("Update calls: {}", self.num_update_calls).render(&mut renderer, 0, y, depth_base);
         for dbg_msg in shared_state.debug_messages.iter() {
             for line in dbg_msg.message.as_str().lines() {
-                line.render(&mut renderer, 0, y, depth_base);
+                line.render(renderer, 0, y, depth_base);
                 y += 1;
             }
         }

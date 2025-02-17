@@ -170,8 +170,8 @@ impl Component for SlingshotComponent {
         }
     }
 
-    fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         self.half_block_display_render
-            .render(&mut renderer, 0, 0, depth_base);
+            .render(renderer, 0, 0, depth_base);
     }
 }

@@ -14,15 +14,15 @@ pub trait Renderer {
     }
 }
 
-impl Renderer for &mut dyn Renderer {
-    fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32) {
-        Renderer::render_pixel(*self, x, y, pixel, depth);
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Renderer::flush(*self)
-    }
-}
+// impl Renderer for &mut dyn Renderer {
+//     fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32) {
+//         Renderer::render_pixel(*self, x, y, pixel, depth);
+//     }
+//
+//     fn flush(&mut self) -> io::Result<()> {
+//         Renderer::flush(*self)
+//     }
+// }
 
 impl<W: Write> Renderer for DisplayRenderer<W> {
     fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32) {

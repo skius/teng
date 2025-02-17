@@ -290,20 +290,16 @@ impl Component for FallingSimulationComponent {
         }
     }
 
-    fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let depth_base = i32::MAX - 99;
         let data = shared_state
             .extensions
             .get::<FallingSimulationData>()
             .unwrap();
-        format!("FallingSimulationComponent: {}", data.secs_passed).render(
-            &mut renderer,
-            0,
-            0,
-            depth_base,
-        );
-        format!("sands: [{}]", data.total_pieces).render(&mut renderer, 0, 1, depth_base);
+        format!("FallingSimulationComponent: {}", data.secs_passed)
+            .render(renderer, 0, 0, depth_base);
+        format!("sands: [{}]", data.total_pieces).render(renderer, 0, 1, depth_base);
 
-        self.hb_display.render(&mut renderer, 0, 0, depth_base);
+        self.hb_display.render(renderer, 0, 0, depth_base);
     }
 }

@@ -5,7 +5,7 @@ use std::io::Write;
 
 pub trait Render {
     /// Render the object at the given position with the given depth
-    fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32);
+    fn render(&self, renderer: &mut dyn Renderer, x: usize, y: usize, depth: i32);
 
     /// Render the object with a given color
     fn with_color(&self, color: [u8; 3]) -> impl Render
@@ -33,7 +33,7 @@ pub trait Render {
 }
 
 impl Render for &str {
-    fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, x: usize, y: usize, depth: i32) {
         let mut y = y;
         let mut draw_x = x;
         for (i, c) in self.chars().enumerate() {
@@ -50,20 +50,20 @@ impl Render for &str {
 }
 
 impl Render for String {
-    fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, x: usize, y: usize, depth: i32) {
         self.as_str().render(renderer, x, y, depth);
     }
 }
 
 impl Render for char {
-    fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
+    fn render(&self, mut renderer: &mut dyn Renderer, x: usize, y: usize, depth: i32) {
         let pixel = Pixel::new(*self);
         renderer.render_pixel(x, y, pixel, depth);
     }
 }
 
 impl Render for Pixel {
-    fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
+    fn render(&self, mut renderer: &mut dyn Renderer, x: usize, y: usize, depth: i32) {
         renderer.render_pixel(x, y, *self, depth);
     }
 }
@@ -93,7 +93,7 @@ impl<const WIDTH: usize, const HEIGHT: usize> Sprite<WIDTH, HEIGHT> {
 }
 
 impl<const WIDTH: usize, const HEIGHT: usize> Render for Sprite<WIDTH, HEIGHT> {
-    fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
+    fn render(&self, mut renderer: &mut dyn Renderer, x: usize, y: usize, depth: i32) {
         let (center_x, center_y) = self.center_pos;
         let x = x as i32 - center_x as i32;
         let y = y as i32 - center_y as i32;
@@ -112,7 +112,7 @@ impl<const WIDTH: usize, const HEIGHT: usize> Render for Sprite<WIDTH, HEIGHT> {
 }
 
 impl<T: Render> Render for &T {
-    fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, x: usize, y: usize, depth: i32) {
         (*self).render(renderer, x, y, depth);
     }
 }
@@ -120,7 +120,7 @@ impl<T: Render> Render for &T {
 struct WithColor<T>(pub [u8; 3], pub T);
 
 impl<T: Render> Render for WithColor<T> {
-    fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, x: usize, y: usize, depth: i32) {
         let mut adapter = ColorRendererAdapter {
             renderer,
             color: self.0,
@@ -132,7 +132,7 @@ impl<T: Render> Render for WithColor<T> {
 struct WithBgColor<T>(pub [u8; 3], pub T);
 
 impl<T: Render> Render for WithBgColor<T> {
-    fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, x: usize, y: usize, depth: i32) {
         let mut adapter = BgColorRendererAdapter {
             renderer,
             bg_color: self.0,
@@ -144,18 +144,18 @@ impl<T: Render> Render for WithBgColor<T> {
 struct WithTransparency<T>(pub T);
 
 impl<T: Render> Render for WithTransparency<T> {
-    fn render<R: Renderer>(&self, renderer: &mut R, x: usize, y: usize, depth: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, x: usize, y: usize, depth: i32) {
         let mut adapter = TransparentRendererAdapter { renderer };
         self.0.render(&mut adapter, x, y, depth);
     }
 }
 
-struct ColorRendererAdapter<'a, R> {
-    renderer: &'a mut R,
+struct ColorRendererAdapter<'a> {
+    renderer: &'a mut dyn Renderer,
     color: [u8; 3],
 }
 
-impl<'a, R: Renderer> Renderer for ColorRendererAdapter<'a, R> {
+impl<'a> Renderer for ColorRendererAdapter<'a> {
     fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32) {
         self.renderer
             .render_pixel(x, y, pixel.with_color(self.color), depth);
@@ -166,12 +166,12 @@ impl<'a, R: Renderer> Renderer for ColorRendererAdapter<'a, R> {
     }
 }
 
-struct BgColorRendererAdapter<'a, R> {
-    renderer: &'a mut R,
+struct BgColorRendererAdapter<'a> {
+    renderer: &'a mut dyn Renderer,
     bg_color: [u8; 3],
 }
 
-impl<'a, R: Renderer> Renderer for BgColorRendererAdapter<'a, R> {
+impl<'a> Renderer for BgColorRendererAdapter<'a> {
     fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32) {
         self.renderer
             .render_pixel(x, y, pixel.with_bg_color(self.bg_color), depth);
@@ -182,11 +182,11 @@ impl<'a, R: Renderer> Renderer for BgColorRendererAdapter<'a, R> {
     }
 }
 
-struct TransparentRendererAdapter<'a, R> {
-    renderer: &'a mut R,
+struct TransparentRendererAdapter<'a> {
+    renderer: &'a mut dyn Renderer,
 }
 
-impl<'a, R: Renderer> Renderer for TransparentRendererAdapter<'a, R> {
+impl<'a> Renderer for TransparentRendererAdapter<'a> {
     fn render_pixel(&mut self, x: usize, y: usize, mut pixel: Pixel, depth: i32) {
         pixel.color = Color::Transparent;
         self.renderer.render_pixel(x, y, pixel, depth);
@@ -236,7 +236,7 @@ impl HalfBlockDisplayRender {
 }
 
 impl Render for HalfBlockDisplayRender {
-    fn render<R: Renderer>(&self, renderer: &mut R, base_x: usize, base_y: usize, depth: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, base_x: usize, base_y: usize, depth: i32) {
         for y_offset in 0..(self.height / 2) {
             for x_offset in 0..self.width {
                 let x = base_x + x_offset;

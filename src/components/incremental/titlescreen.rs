@@ -102,7 +102,7 @@ impl Component for TitleScreenComponent {
         !self.finished
     }
 
-    fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let depth_base = i32::MAX - 3;
         let depth_text = i32::MAX - 2;
         let depth_sprites = i32::MAX - 1;
@@ -118,7 +118,7 @@ impl Component for TitleScreenComponent {
         let text_x_start = center_x - self.final_text.len() / 2;
         let mut curr_y = center_y;
         (&self.final_text[..self.current_prefix_length]).render(
-            &mut renderer,
+            renderer,
             text_x_start,
             curr_y,
             depth_text,
@@ -134,12 +134,12 @@ impl Component for TitleScreenComponent {
             let credit_text_grey_x_start = center_x - all_credit_len / 2;
             let credit_text_white_x_start = credit_text_grey_x_start + credit_text_grey.len();
             credit_text_grey.with_color([160; 3]).render(
-                &mut renderer,
+                renderer,
                 credit_text_grey_x_start,
                 curr_y,
                 depth_text,
             );
-            credit_text_white.render(&mut renderer, credit_text_white_x_start, curr_y, depth_text);
+            credit_text_white.render(renderer, credit_text_white_x_start, curr_y, depth_text);
             curr_y += 3;
 
             // invert colors every 500ms
@@ -147,12 +147,12 @@ impl Component for TitleScreenComponent {
             let text_x_start = center_x - continue_text.len() / 2;
             let elapsed = self.next_char_time.elapsed().as_millis();
             if elapsed % 1300 < 750 {
-                continue_text.render(&mut renderer, text_x_start, curr_y, depth_text);
+                continue_text.render(renderer, text_x_start, curr_y, depth_text);
             } else {
                 continue_text
                     .with_color([0, 0, 0])
                     .with_bg_color([255, 255, 255])
-                    .render(&mut renderer, text_x_start, curr_y, depth_text);
+                    .render(renderer, text_x_start, curr_y, depth_text);
             }
         }
 
@@ -163,7 +163,7 @@ impl Component for TitleScreenComponent {
             }
             let y = *y as usize;
             let sprite = Sprite::new([['▁', '▄', '▁'], ['▗', '▀', '▖']], 1, 1);
-            sprite.render(&mut renderer, x, y, depth_sprites);
+            sprite.render(renderer, x, y, depth_sprites);
         }
     }
 }

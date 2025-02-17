@@ -293,7 +293,7 @@ impl Component for NewPlayerComponent {
         }
     }
 
-    fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let game_state = shared_state.extensions.get::<GameState>().unwrap();
         let player = &game_state.new_player_state;
         let player_world_x = player.entity.position.0.floor() as i64;
@@ -308,15 +308,15 @@ impl Component for NewPlayerComponent {
             .to_screen_pos(player_world_x, player_world_y);
         if let Some((x, y)) = player_screen_pos {
             if player.dead_time.is_some() {
-                player.dead_sprite.render(&mut renderer, x, y, player_depth);
+                player.dead_sprite.render(renderer, x, y, player_depth);
             } else {
-                player.sprite.render(&mut renderer, x, y, player_depth);
+                player.sprite.render(renderer, x, y, player_depth);
             }
         }
 
         for ghost in &game_state.player_ghosts {
             ghost.render(
-                &mut renderer,
+                renderer,
                 shared_state,
                 ghost_depth,
                 &game_state.new_player_state.sprite,
@@ -338,7 +338,7 @@ impl Component for NewPlayerComponent {
                         if let Some((x, y)) = screen_pos {
                             '░'
                                 .with_color([0, 0, 200])
-                                .render(&mut renderer, x, y, debug_depth);
+                                .render(renderer, x, y, debug_depth);
                         }
                     }
                 }
@@ -413,7 +413,7 @@ impl PlayerGhost {
 
     fn render(
         &self,
-        mut renderer: &mut dyn Renderer,
+        renderer: &mut dyn Renderer,
         shared_state: &SharedState,
         depth_base: i32,
         player_sprite: &Sprite<3, 2>,
@@ -438,11 +438,11 @@ impl PlayerGhost {
             if render_state.dead {
                 death_sprite
                     .with_color([130, 130, 130])
-                    .render(&mut renderer, x, y, depth_base);
+                    .render(renderer, x, y, depth_base);
             } else {
                 player_sprite
                     .with_color([130u8.saturating_add(cuteness as u8), 130, 130])
-                    .render(&mut renderer, x, y, depth_base);
+                    .render(renderer, x, y, depth_base);
             }
         }
     }

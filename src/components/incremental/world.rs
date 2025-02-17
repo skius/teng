@@ -8,6 +8,7 @@ use crate::seeds::get_u32_seed_for;
 use crate::util::{get_lerp_t_i64_clamped, lerp_color};
 use crate::{Component, Pixel, Render, Renderer, SetupInfo, SharedState, UpdateInfo};
 use noise::{NoiseFn, Simplex};
+use std::fmt::Debug;
 use std::ops::{Index, IndexMut, RangeBounds};
 use std::time::Instant;
 
@@ -33,11 +34,19 @@ impl Tile {
     }
 }
 
-#[derive(Debug)]
 struct AnimationInWorld {
     animation: Box<dyn Animation>,
     world_x: i64,
     world_y: i64,
+}
+
+impl Debug for AnimationInWorld {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AnimationInWorld")
+            .field("world_x", &self.world_x)
+            .field("world_y", &self.world_y)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A world is a 2D grid of tiles.
@@ -446,7 +455,7 @@ impl Component for WorldComponent {
         world.expand_to_contain(world.collision_board.bounds());
     }
 
-    fn render(&self, mut renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let depth_parallax_stars = depth_base + 1;
         let depth_parallax_mountains = depth_base + 2;
         let depth_ground_level = depth_base + 3;
@@ -466,7 +475,7 @@ impl Component for WorldComponent {
             // nope! by introducing bg_depth into renderer we can render it whenever we want.
 
             if world_y % 10 == 0 {
-                format!("{:?}", world_y).render(&mut renderer, 0, y, depth_ground_level);
+                format!("{:?}", world_y).render(renderer, 0, y, depth_ground_level);
             }
         }
 
@@ -474,7 +483,7 @@ impl Component for WorldComponent {
             let world_x = camera_x + x as i64;
             if world_x % 100 == 0 {
                 format!("|{:?}", world_x).render(
-                    &mut renderer,
+                    renderer,
                     x,
                     screen_height - 1,
                     depth_ground_level,
@@ -538,10 +547,9 @@ impl Component for WorldComponent {
             else {
                 continue;
             };
-            let delete =
-                animation
-                    .animation
-                    .render((screen_x, screen_y), current_time, &mut renderer);
+            let delete = animation
+                .animation
+                .render((screen_x, screen_y), current_time, renderer);
             if delete {
                 // TODO: remove animation
             }
