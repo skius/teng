@@ -16,6 +16,7 @@ pub mod components;
 pub mod display;
 mod render;
 mod renderer;
+pub mod rendering;
 pub mod seeds;
 pub mod util;
 
@@ -24,103 +25,7 @@ use crate::components::{
     DebugInfo, DebugInfoComponent, FpsLockerComponent, KeyPressRecorderComponent,
     KeypressDebouncerComponent, MouseEvents, MouseTrackerComponent, PressedKeys, QuitterComponent,
 };
-use crate::Color::Transparent;
-pub use render::*;
-pub use renderer::*;
-
-#[derive(Clone, Copy, Debug, PartialEq, Default)]
-pub enum Color {
-    #[default]
-    Default,
-    /// A transparent color does not overwrite the existing color
-    /// If there is no other color, it will behave the same as default.
-    Transparent,
-    Rgb([u8; 3]),
-}
-
-impl Color {
-    pub fn unwrap_or(self, other: [u8; 3]) -> [u8; 3] {
-        match self {
-            Color::Default => other,
-            Color::Transparent => other,
-            Color::Rgb(c) => c,
-        }
-    }
-
-    pub fn is_solid(self) -> bool {
-        match self {
-            Color::Default => true,
-            Color::Transparent => false,
-            Color::Rgb(_) => true,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Pixel {
-    c: char,
-    color: Color,
-    bg_color: Color,
-}
-
-impl Pixel {
-    pub fn new(c: char) -> Self {
-        Self {
-            c,
-            color: Color::Default,
-            bg_color: Color::Transparent,
-        }
-    }
-
-    pub fn transparent() -> Self {
-        Self {
-            c: ' ',
-            color: Transparent,
-            bg_color: Transparent,
-        }
-    }
-
-    pub fn with_color(self, color: [u8; 3]) -> Self {
-        Self {
-            color: Color::Rgb(color),
-            c: self.c,
-            bg_color: self.bg_color,
-        }
-    }
-
-    pub fn with_bg_color(self, bg_color: [u8; 3]) -> Self {
-        Self {
-            bg_color: Color::Rgb(bg_color),
-            c: self.c,
-            color: self.color,
-        }
-    }
-
-    pub fn put_over(self, other: Pixel) -> Self {
-        // works with priorities: transparent < default < color
-        // and other < self
-
-        let mut new_pixel = self;
-        if new_pixel.color == Transparent {
-            new_pixel.color = other.color;
-            new_pixel.c = other.c;
-        }
-        if new_pixel.bg_color == Transparent {
-            new_pixel.bg_color = other.bg_color;
-        }
-        new_pixel
-    }
-}
-
-impl Default for Pixel {
-    fn default() -> Self {
-        Self {
-            c: ' ',
-            color: Color::Default,
-            bg_color: Color::Default,
-        }
-    }
-}
+use crate::rendering::renderer::{DisplayRenderer, Renderer};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UpdateInfo {

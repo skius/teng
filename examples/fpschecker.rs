@@ -2,9 +2,11 @@ use std::io;
 use std::io::stdout;
 use std::time::Instant;
 use teng::{
-    install_panic_handler, terminal_cleanup, terminal_setup, Component, Game, Pixel, Renderer,
+    install_panic_handler, terminal_cleanup, terminal_setup, Component, Game,
     SharedState, UpdateInfo,
 };
+use teng::rendering::pixel::Pixel;
+use teng::rendering::renderer::Renderer;
 
 fn main() -> io::Result<()> {
     terminal_setup()?;

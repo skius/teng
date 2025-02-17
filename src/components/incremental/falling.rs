@@ -1,8 +1,10 @@
 use crate::components::incremental::planarvec::{Bounds, PlanarVec};
 use crate::{
-    Color, Component, DisplayInfo, HalfBlockDisplayRender, Render, Renderer, SetupInfo,
+    Component, DisplayInfo, Renderer, SetupInfo,
     SharedState, UpdateInfo,
 };
+use crate::rendering::color::Color;
+use crate::rendering::render::{HalfBlockDisplayRender, Render};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum PieceKind {

@@ -1,11 +1,13 @@
 use crate::components::{KeyPressRecorderComponent, MouseTrackerComponent};
 use crate::{
-    BreakingAction, Component, Pixel, Render, Renderer, SetupInfo, SharedState, Sprite, UpdateInfo,
+    BreakingAction, Component, Renderer, SetupInfo, SharedState, UpdateInfo,
 };
 use crossterm::event::Event;
 use std::any::{Any, TypeId};
 use std::collections::HashSet;
 use std::time::Instant;
+use crate::rendering::pixel::Pixel;
+use crate::rendering::render::{Render, Sprite};
 
 pub struct TitleScreenComponent {
     width: usize,

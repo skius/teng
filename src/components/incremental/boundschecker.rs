@@ -1,5 +1,6 @@
 use crate::components::incremental::planarvec::Bounds;
-use crate::{Component, Pixel, Renderer, SharedState, UpdateInfo};
+use crate::{Component, Renderer, SharedState, UpdateInfo};
+use crate::rendering::pixel::Pixel;
 
 pub struct BoundsCheckerComponent {
     first_loc: Option<(usize, usize)>,
