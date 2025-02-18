@@ -1,7 +1,5 @@
 use crate::components::incremental::animation::Animation;
-use crate::components::incremental::bidivec::BidiVec;
 use crate::components::incremental::collisionboard::{CollisionBoard, CollisionCell};
-use crate::components::incremental::planarvec::{Bounds, PlanarVec};
 use crate::components::incremental::ui::UiBarComponent;
 use crate::components::incremental::GameState;
 use crate::rendering::pixel::Pixel;
@@ -13,6 +11,8 @@ use noise::{NoiseFn, Simplex};
 use std::fmt::Debug;
 use std::ops::{Index, IndexMut, RangeBounds};
 use std::time::Instant;
+use crate::util::bidivec::BidiVec;
+use crate::util::planarvec::{Bounds, PlanarVec};
 
 #[derive(Debug, Clone)]
 pub struct InitializedTile {

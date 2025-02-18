@@ -30,6 +30,10 @@ path = "examples/ecs/main.rs"
 name = "simple"
 path = "examples/simple.rs"
 
+[[example]]
+name = "boundschecker"
+path = "examples/boundschecker.rs"
+
 
 [dependencies]
 crossterm = { version = "0.28.1", features = ["serde"] }

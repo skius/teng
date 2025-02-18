@@ -1,6 +1,39 @@
 use crossterm::event::{Event, MouseEvent, MouseEventKind};
-use crate::{BreakingAction, Component, MouseInfo, SharedState, UpdateInfo};
+use crate::{BreakingAction, Component, SharedState, UpdateInfo};
 use crate::util::for_coord_in_line;
+
+/// Information about the current *state* of the mouse.
+/// If you are interested in mouse button presses, see `MousePressedInfo`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct MouseInfo {
+    // x, y
+    /// The last known position of the mouse.
+    pub last_mouse_pos: (usize, usize),
+    /// Is the left mouse button currently down?
+    pub left_mouse_down: bool,
+    /// Is the right mouse button currently down?
+    pub right_mouse_down: bool,
+    /// Is the middle mouse button currently down?
+    pub middle_mouse_down: bool,
+}
+
+/// Information about mouse button presses since last frame.
+#[derive(Default, Debug, PartialEq)]
+pub struct MousePressedInfo {
+    /// Has the left mouse button been pressed since the last frame?
+    pub left: bool,
+    /// Has the right mouse button been pressed since the last frame?
+    pub right: bool,
+    /// Has the middle mouse button been pressed since the last frame?
+    pub middle: bool,
+}
+
+impl MousePressedInfo {
+    /// Has any mouse button been pressed since the last frame?
+    pub fn any(&self) -> bool {
+        self.left || self.right || self.middle
+    }
+}
 
 pub struct MouseEvents {
     events: Vec<MouseInfo>,

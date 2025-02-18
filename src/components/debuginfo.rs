@@ -5,6 +5,24 @@ use crate::rendering::render::Render;
 use crate::rendering::renderer::Renderer;
 use crate::seeds::get_seed_opt;
 
+pub struct DebugMessage {
+    message: String,
+    expiry_time: Instant,
+}
+
+impl DebugMessage {
+    pub fn new(message: impl Into<String>, expiry_time: Instant) -> Self {
+        Self {
+            message: message.into(),
+            expiry_time,
+        }
+    }
+
+    pub fn new_3s(message: impl Into<String>) -> Self {
+        Self::new(message.into(), Instant::now() + Duration::from_secs(3))
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct DebugInfo {
     player_y: f64,

@@ -19,10 +19,10 @@ pub mod util;
 
 use crate::components::incremental::titlescreen::TitleScreenComponent;
 use crate::components::Component;
-use crate::components::debuginfo::{DebugInfo, DebugInfoComponent};
+use crate::components::debuginfo::{DebugInfo, DebugInfoComponent, DebugMessage};
 use crate::components::fpslocker::FpsLockerComponent;
 use crate::components::keyboard::{KeyPressRecorderComponent, PressedKeys};
-use crate::components::mouse::{MouseEvents, MouseTrackerComponent};
+use crate::components::mouse::{MouseEvents, MouseInfo, MousePressedInfo, MouseTrackerComponent};
 use crate::components::quitter::QuitterComponent;
 use crate::rendering::renderer::{DisplayRenderer, Renderer};
 
@@ -39,14 +39,7 @@ pub enum BreakingAction {
     Quit,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct MouseInfo {
-    // x, y
-    last_mouse_pos: (usize, usize),
-    left_mouse_down: bool,
-    right_mouse_down: bool,
-    middle_mouse_down: bool,
-}
+
 
 pub struct DisplayInfo {
     _height: usize,
@@ -70,41 +63,9 @@ impl DisplayInfo {
     }
 }
 
-pub struct DebugMessage {
-    message: String,
-    expiry_time: Instant,
-}
 
-impl DebugMessage {
-    pub fn new(message: String, expiry_time: Instant) -> Self {
-        Self {
-            message,
-            expiry_time,
-        }
-    }
 
-    pub fn new_3s(message: impl Into<String>) -> Self {
-        Self::new(message.into(), Instant::now() + Duration::from_secs(3))
-    }
-}
 
-/// Information about mouse button presses since last frame.
-#[derive(Default, Debug, PartialEq)]
-pub struct MousePressedInfo {
-    /// Has the left mouse button been pressed since the last frame?
-    pub left: bool,
-    /// Has the right mouse button been pressed since the last frame?
-    pub right: bool,
-    /// Has the middle mouse button been pressed since the last frame?
-    pub middle: bool,
-}
-
-impl MousePressedInfo {
-    /// Has any mouse button been pressed since the last frame?
-    pub fn any(&self) -> bool {
-        self.left || self.right || self.middle
-    }
-}
 
 /// The shared state that is passed to all components when they are executed.
 pub struct SharedState {

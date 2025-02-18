@@ -1,5 +1,8 @@
 //! Common utility functions.
 
+pub mod bidivec;
+pub mod planarvec;
+
 /// Runs a function for each coordinate in a line.
 /// If `exclude_start` is true, the start coordinate will not be included, unless it's the same as the end coordinate.
 pub fn for_coord_in_line(

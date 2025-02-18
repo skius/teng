@@ -1,4 +1,4 @@
-use crate::components::incremental::bidivec::BidiVec;
+use crate::util::bidivec::BidiVec;
 use std::ops::{Index, IndexMut};
 
 /// Bounds for a 2D plane. Includes all indices.

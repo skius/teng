@@ -1,5 +1,5 @@
-use crate::components::incremental::planarvec::{Bounds, PlanarVec};
 use std::ops::{Index, IndexMut};
+use crate::util::planarvec::{Bounds, PlanarVec};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CollisionCell {

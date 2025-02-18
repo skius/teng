@@ -53,11 +53,8 @@ use crossterm::event::KeyCode;
 use std::time::Instant;
 
 mod animation;
-mod bidivec;
-pub mod boundschecker;
 mod collisionboard;
 pub mod falling;
-mod planarvec;
 mod player;
 mod slingshot;
 pub mod titlescreen;
