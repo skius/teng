@@ -1,18 +1,17 @@
-use std::any::Any;
-use crossterm::event::Event;
-use crate::{BreakingAction, SetupInfo, SharedState, UpdateInfo};
 use crate::rendering::renderer::Renderer;
+use crate::{BreakingAction, SetupInfo, SharedState, UpdateInfo};
+use crossterm::event::Event;
+use std::any::Any;
 
-pub mod eventrecorder;
-pub mod incremental;
-pub mod mouse;
-pub mod keyboard;
-pub mod quitter;
-pub mod fpslocker;
 pub mod debuginfo;
+pub mod eventrecorder;
+pub mod fpslocker;
+pub mod keyboard;
+pub mod mouse;
+pub mod quitter;
 
 /// A game component that can listen to events, perform logic, and render itself.
-pub trait Component<S>: Any {
+pub trait Component<S = ()>: Any {
     /// Called in the very beginning. Useful to initialize more components or extension states.
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<S>) {}
     /// Called to determine if this component is active. If not, none of the other methods will be invoked.
@@ -25,7 +24,11 @@ pub trait Component<S>: Any {
     /// Called when the game exits. Useful for cleanup.
     fn on_quit(&mut self, shared_state: &mut SharedState<S>) {}
     /// Called when an event is received. This could happen multiple times per frame. Runs before update.
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState<S>) -> Option<BreakingAction> {
+    fn on_event(
+        &mut self,
+        event: Event,
+        shared_state: &mut SharedState<S>,
+    ) -> Option<BreakingAction> {
         None
     }
     /// Called once per frame to update the component's state. Runs after the frame's events have been processed.

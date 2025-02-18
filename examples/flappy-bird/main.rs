@@ -3,6 +3,6 @@ use std::io::stdout;
 use teng::Game;
 
 fn main() -> io::Result<()> {
-    let mut game = Game::new(stdout());
+    let mut game = Game::<_, ()>::new(stdout());
     game.run()
 }

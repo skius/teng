@@ -1,10 +1,14 @@
-use crossterm::event::{Event, KeyCode, KeyEvent};
 use crate::{BreakingAction, Component, SharedState};
+use crossterm::event::{Event, KeyCode, KeyEvent};
 
 pub struct QuitterComponent;
 
 impl<S> Component<S> for QuitterComponent {
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState<S>) -> Option<BreakingAction> {
+    fn on_event(
+        &mut self,
+        event: Event,
+        shared_state: &mut SharedState<S>,
+    ) -> Option<BreakingAction> {
         if matches!(
             event,
             Event::Key(KeyEvent {

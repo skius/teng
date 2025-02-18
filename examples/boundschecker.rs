@@ -3,14 +3,13 @@
 use std::io;
 use std::io::stdout;
 use std::time::Instant;
+use teng::components::Component;
 use teng::rendering::pixel::Pixel;
 use teng::rendering::renderer::Renderer;
-use teng::{
-    install_panic_handler, terminal_cleanup, terminal_setup, Game, SharedState,
-    UpdateInfo,
-};
-use teng::components::Component;
 use teng::util::planarvec::Bounds;
+use teng::{
+    install_panic_handler, terminal_cleanup, terminal_setup, Game, SharedState, UpdateInfo,
+};
 
 fn main() -> io::Result<()> {
     terminal_setup()?;
@@ -25,7 +24,6 @@ fn main() -> io::Result<()> {
 
     Ok(())
 }
-
 
 pub struct BoundsCheckerComponent {
     first_loc: Option<(usize, usize)>,
@@ -47,7 +45,7 @@ impl BoundsCheckerComponent {
     }
 }
 
-impl<S> Component<S> for BoundsCheckerComponent {
+impl Component<()> for BoundsCheckerComponent {
     fn update(&mut self, _update_info: UpdateInfo, shared_state: &mut SharedState) {
         // was there a mouse down event?
         let pressed = shared_state.mouse_pressed.left;
@@ -159,7 +157,12 @@ impl<S> Component<S> for BoundsCheckerComponent {
                     let bound = b1.union(b2);
                     for x in bound.min_x..=bound.max_x {
                         for y in bound.min_y..=bound.max_y {
-                            renderer.render_pixel(x as usize, y as usize, Pixel::new('█'), depth_base);
+                            renderer.render_pixel(
+                                x as usize,
+                                y as usize,
+                                Pixel::new('█'),
+                                depth_base,
+                            );
                         }
                     }
                 }
@@ -173,7 +176,12 @@ impl<S> Component<S> for BoundsCheckerComponent {
                 for bound in the_bounds.iter() {
                     for x in bound.min_x..=bound.max_x {
                         for y in bound.min_y..=bound.max_y {
-                            renderer.render_pixel(x as usize, y as usize, Pixel::new('█'), depth_base);
+                            renderer.render_pixel(
+                                x as usize,
+                                y as usize,
+                                Pixel::new('█'),
+                                depth_base,
+                            );
                         }
                     }
                 }

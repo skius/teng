@@ -103,7 +103,11 @@ impl<S> Component<S> for EventRecorderComponent {
         self.current_display_size = (setup_info.width, setup_info.height);
     }
 
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState<S>) -> Option<BreakingAction> {
+    fn on_event(
+        &mut self,
+        event: Event,
+        shared_state: &mut SharedState<S>,
+    ) -> Option<BreakingAction> {
         self.record_event(event);
         None
     }

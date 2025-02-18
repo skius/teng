@@ -1,7 +1,7 @@
+use crate::{BreakingAction, Component, SharedState, UpdateInfo};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use std::collections::HashMap;
 use std::time::Instant;
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
-use crate::{BreakingAction, Component, SharedState, UpdateInfo};
 
 pub struct PressedKeys {
     inner: micromap::Map<KeyCode, u8, 16>,
@@ -47,14 +47,18 @@ impl KeyPressRecorderComponent {
 }
 
 impl<S> Component<S> for KeyPressRecorderComponent {
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState<S>) -> Option<BreakingAction> {
+    fn on_event(
+        &mut self,
+        event: Event,
+        shared_state: &mut SharedState<S>,
+    ) -> Option<BreakingAction> {
         match event {
             // only capture presses to work on windows as well (where we get Release too)
             Event::Key(KeyEvent {
-                           kind: KeyEventKind::Press,
-                           code,
-                           ..
-                       }) => {
+                kind: KeyEventKind::Press,
+                code,
+                ..
+            }) => {
                 if let Some(count) = self.pressed_keys.get_mut(&code) {
                     *count += 1;
                 } else {
@@ -90,14 +94,18 @@ impl KeypressDebouncerComponent {
 }
 
 impl<S> Component<S> for KeypressDebouncerComponent {
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState<S>) -> Option<BreakingAction> {
+    fn on_event(
+        &mut self,
+        event: Event,
+        shared_state: &mut SharedState<S>,
+    ) -> Option<BreakingAction> {
         match event {
             // only capture presses to work on windows as well (where we get Release too)
             Event::Key(KeyEvent {
-                           kind: KeyEventKind::Press,
-                           code,
-                           ..
-                       }) => {
+                kind: KeyEventKind::Press,
+                code,
+                ..
+            }) => {
                 self.last_keypress.insert(code, Instant::now());
             }
             _ => {}

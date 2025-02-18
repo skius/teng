@@ -1,6 +1,6 @@
-use crossterm::event::{Event, MouseEvent, MouseEventKind};
-use crate::{BreakingAction, Component, SharedState, UpdateInfo};
 use crate::util::for_coord_in_line;
+use crate::{BreakingAction, Component, SharedState, UpdateInfo};
+use crossterm::event::{Event, MouseEvent, MouseEventKind};
 
 /// Information about the current *state* of the mouse.
 /// If you are interested in mouse button presses, see `MousePressedInfo`.
@@ -172,7 +172,11 @@ impl MouseTrackerComponent {
 }
 
 impl<S> Component<S> for MouseTrackerComponent {
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState<S>) -> Option<BreakingAction> {
+    fn on_event(
+        &mut self,
+        event: Event,
+        shared_state: &mut SharedState<S>,
+    ) -> Option<BreakingAction> {
         if let Event::Mouse(event) = event {
             Self::fill_mouse_info(event, &mut self.last_mouse_info);
             self.mouse_events.push(self.last_mouse_info);

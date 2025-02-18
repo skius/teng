@@ -1,9 +1,9 @@
-use std::time::{Duration, Instant};
-use crossterm::event::Event;
-use crate::{BreakingAction, Component, SharedState, UpdateInfo};
 use crate::rendering::render::Render;
 use crate::rendering::renderer::Renderer;
 use crate::seeds::get_seed_opt;
+use crate::{BreakingAction, Component, SharedState, UpdateInfo};
+use crossterm::event::Event;
+use std::time::{Duration, Instant};
 
 pub struct DebugMessage {
     message: String,
@@ -179,7 +179,7 @@ impl<S> Component<S> for DebugInfoComponent {
             shared_state.display_info.width(),
             shared_state.display_info.height()
         )
-            .render(renderer, 0, y, depth_base);
+        .render(renderer, 0, y, depth_base);
         y += 1;
         format!("Game seed: {:?}", get_seed_opt()).render(renderer, 0, y, depth_base);
         y += 1;

@@ -1,13 +1,12 @@
 use std::io;
 use std::io::stdout;
 use std::time::Instant;
+use teng::components::Component;
 use teng::rendering::pixel::Pixel;
 use teng::rendering::renderer::Renderer;
 use teng::{
-    install_panic_handler, terminal_cleanup, terminal_setup, Game, SharedState,
-    UpdateInfo,
+    install_panic_handler, terminal_cleanup, terminal_setup, Game, SharedState, UpdateInfo,
 };
-use teng::components::Component;
 
 fn main() -> io::Result<()> {
     terminal_setup()?;
@@ -37,7 +36,7 @@ impl FpsCheckerFrameTimeComponent {
     }
 }
 
-impl<S> Component<S> for FpsCheckerFrameTimeComponent {
+impl Component for FpsCheckerFrameTimeComponent {
     fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         // render a block at half height and x corresponding to the position at 144 blocks per second
         let elapsed = Instant::now() - self.start_time;
@@ -71,7 +70,7 @@ impl FpsCheckerFrameCountComponent {
     }
 }
 
-impl<S> Component<S> for FpsCheckerFrameCountComponent {
+impl Component for FpsCheckerFrameCountComponent {
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
         self.count += 1;
     }

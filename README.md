@@ -30,15 +30,15 @@ https://github.com/user-attachments/assets/c124958a-6093-41e9-90fe-56a2eb5d4618
 Here's a simple example that renders static content to the screen:
 ```rust ,no_run
 use std::io;
+use teng::components::Component;
 use teng::rendering::pixel::Pixel;
 use teng::rendering::render::Render;
 use teng::rendering::renderer::Renderer;
 use teng::{install_panic_handler, terminal_cleanup, terminal_setup, Game, SharedState};
-use teng::components::Component;
 
 struct MyComponent;
 
-impl<S> Component<S> for MyComponent {
+impl Component for MyComponent {
     fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let width = shared_state.display_info.width();
         let height = shared_state.display_info.height();

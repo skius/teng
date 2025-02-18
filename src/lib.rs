@@ -17,29 +17,26 @@ pub mod rendering;
 pub mod seeds;
 pub mod util;
 
-use crate::components::incremental::titlescreen::TitleScreenComponent;
-use crate::components::Component;
 use crate::components::debuginfo::{DebugInfo, DebugInfoComponent, DebugMessage};
 use crate::components::fpslocker::FpsLockerComponent;
 use crate::components::keyboard::{KeyPressRecorderComponent, PressedKeys};
 use crate::components::mouse::{MouseEvents, MouseInfo, MousePressedInfo, MouseTrackerComponent};
 use crate::components::quitter::QuitterComponent;
+use crate::components::Component;
 use crate::rendering::renderer::{DisplayRenderer, Renderer};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UpdateInfo {
-    last_time: Instant,
-    current_time: Instant,
-    dt: f64,
+    pub last_time: Instant,
+    pub current_time: Instant,
+    pub dt: f64,
     // the dt that the computations took without sleeping
-    actual_dt: f64,
+    pub actual_dt: f64,
 }
 
 pub enum BreakingAction {
     Quit,
 }
-
-
 
 pub struct DisplayInfo {
     _height: usize,
@@ -64,11 +61,19 @@ impl DisplayInfo {
 }
 
 
-
-
-
+// note: the anymap is a part of SharedState because plugin libraries may want to be generic over the kind
+// of SharedState<S> they support, so moving `extensions` into a users custom data would not allow
+// those plugins to access the anymap anymore.
 /// The shared state that is passed to all components when they are executed.
-pub struct SharedState<T> {
+///
+/// # Custom state
+/// **teng** supports custom state that can be shared between components.
+/// This can be used to store game state, configuration, etc.
+/// For often used state, `SharedState` allows embedding that state directly into the struct via the generic parameter.
+/// For arbitrary data that may not be known statically, `SharedState` contains an `AnyMap` that can store arbitrary data.
+///
+/// See `examples/ecs/` for an example of how to use embedded custom state.
+pub struct SharedState<S = ()> {
     pub mouse_info: MouseInfo,
     pub mouse_pressed: MousePressedInfo,
     pub mouse_events: MouseEvents,
@@ -79,14 +84,14 @@ pub struct SharedState<T> {
     pub debug_info: DebugInfo,
     pub debug_messages: SmallVec<[DebugMessage; 16]>,
     pub extensions: AnyMap,
-    pub components_to_add: Vec<Box<dyn Component<T>>>,
+    pub components_to_add: Vec<Box<dyn Component<S>>>,
     pub fake_events_for_next_frame: Vec<Event>,
     pub remove_components: HashSet<std::any::TypeId>,
     pub whitelisted_components: Option<HashSet<std::any::TypeId>>,
-    pub custom: T,
+    pub custom: S,
 }
 
-impl<T: Default + 'static> SharedState<T> {
+impl<S: Default + 'static> SharedState<S> {
     fn new(width: usize, height: usize) -> Self {
         Self {
             mouse_info: MouseInfo::default(),
@@ -103,7 +108,7 @@ impl<T: Default + 'static> SharedState<T> {
             fake_events_for_next_frame: Vec::new(),
             remove_components: HashSet::new(),
             whitelisted_components: None,
-            custom: T::default(),
+            custom: S::default(),
         }
     }
 
@@ -111,7 +116,7 @@ impl<T: Default + 'static> SharedState<T> {
         self.display_info = DisplayInfo::new(width, height);
     }
 
-    fn is_component_active(&self, component: &dyn Component<T>) -> bool {
+    fn is_component_active(&self, component: &dyn Component<S>) -> bool {
         if let Some(whitelist) = &self.whitelisted_components {
             if !whitelist.contains(&component.type_id()) {
                 return false;
@@ -126,8 +131,7 @@ pub struct SetupInfo {
     pub height: usize,
 }
 
-
-pub struct Game<W: Write, S: Default> {
+pub struct Game<W: Write, S: Default = ()> {
     display_renderer: DisplayRenderer<W>,
     components: Vec<Box<dyn Component<S>>>,
     shared_state: SharedState<S>,
@@ -195,7 +199,10 @@ impl<W: Write, S: Default + 'static> Game<W, S> {
         self.components.push(component);
     }
 
-    pub fn add_component_with(&mut self, init_fn: impl FnOnce(usize, usize) -> Box<dyn Component<S>>) {
+    pub fn add_component_with(
+        &mut self,
+        init_fn: impl FnOnce(usize, usize) -> Box<dyn Component<S>>,
+    ) {
         self.components.push(init_fn(self.width(), self.height()));
     }
 

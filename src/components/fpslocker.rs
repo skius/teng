@@ -1,5 +1,5 @@
-use crossterm::event::{Event, MouseEventKind};
 use crate::{BreakingAction, Component, SetupInfo, SharedState, UpdateInfo};
+use crossterm::event::{Event, MouseEventKind};
 
 pub struct FpsLockerComponent {
     locked: bool,
@@ -20,7 +20,11 @@ impl<S> Component<S> for FpsLockerComponent {
         shared_state.target_fps = Some(self.default_fps);
     }
 
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState<S>) -> Option<BreakingAction> {
+    fn on_event(
+        &mut self,
+        event: Event,
+        shared_state: &mut SharedState<S>,
+    ) -> Option<BreakingAction> {
         match event {
             Event::Mouse(me) => match me.kind {
                 MouseEventKind::ScrollDown => {

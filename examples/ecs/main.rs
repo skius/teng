@@ -9,10 +9,10 @@ use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::io;
 use std::io::stdout;
+use teng::components::Component as TengComponent;
 use teng::rendering::pixel::Pixel;
 use teng::rendering::renderer::Renderer;
 use teng::{BreakingAction, Game, SetupInfo, SharedState};
-use teng::components::Component as TengComponent;
 
 /// An ECS-component that holds the position of an entity.
 struct Position {
@@ -32,9 +32,14 @@ struct Entity(usize);
 /// An ECS-system that draws entities with a `Position` and `Draw` component.
 struct DrawSystem;
 
-impl TengComponent for DrawSystem {
-    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
-        let ecs = shared_state.extensions.get::<Ecs>().unwrap();
+impl TengComponent<Ecs> for DrawSystem {
+    fn render(
+        &self,
+        renderer: &mut dyn Renderer,
+        shared_state: &SharedState<Ecs>,
+        depth_base: i32,
+    ) {
+        let ecs = &shared_state.custom;
         for (position, draw) in ecs.entities.iter().filter_map(|entity| {
             let position = ecs.get_component::<Position>(*entity)?;
             let draw = ecs.get_component::<Draw>(*entity)?;
@@ -48,9 +53,9 @@ impl TengComponent for DrawSystem {
 /// An ECS-system that applies rudimentary physics to entities with a `Position` component.
 struct PhysicsSystem;
 
-impl TengComponent for PhysicsSystem {
-    fn update(&mut self, _update_info: teng::UpdateInfo, shared_state: &mut SharedState) {
-        let ecs = shared_state.extensions.get_mut::<Ecs>().unwrap();
+impl TengComponent<Ecs> for PhysicsSystem {
+    fn update(&mut self, _update_info: teng::UpdateInfo, shared_state: &mut SharedState<Ecs>) {
+        let ecs = &mut shared_state.custom;
         for &entity in &ecs.entities {
             let Some(position) = ecs.components.get_mut_from_entity::<Position>(entity) else {
                 continue;
@@ -80,6 +85,12 @@ fn main() -> io::Result<()> {
 
 struct ComponentList {
     inner: AnyMap,
+}
+
+impl Default for ComponentList {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ComponentList {
@@ -118,6 +129,7 @@ impl ComponentList {
 }
 
 /// Shared state for ECS.
+#[derive(Default)]
 struct Ecs {
     entities: Vec<Entity>,
     max_key: usize,
@@ -160,20 +172,22 @@ struct EcsComponent {
     height: usize,
 }
 
-impl TengComponent for EcsComponent {
-    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
+impl TengComponent<Ecs> for EcsComponent {
+    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<Ecs>) {
         self.width = setup_info.width;
         self.height = setup_info.height;
 
-        let mut ecs = Ecs::new();
+        let ecs = &mut shared_state.custom;
         ecs.components.register::<Position>();
         ecs.components.register::<Draw>();
-
-        shared_state.extensions.insert(ecs);
     }
 
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
-        let ecs = shared_state.extensions.get_mut::<Ecs>().unwrap();
+    fn on_event(
+        &mut self,
+        event: Event,
+        shared_state: &mut SharedState<Ecs>,
+    ) -> Option<BreakingAction> {
+        let ecs = &mut shared_state.custom;
         if let Event::Key(KeyEvent {
             kind: KeyEventKind::Press,
             code: KeyCode::Char(ch),
