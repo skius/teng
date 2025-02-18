@@ -76,7 +76,7 @@ This results in the following:
 ## FAQ
 
 ### Why should I use **teng** over other TUI libraries?
-**teng** particularly shines when you are not aware of libraries like [ratatui](https://github.com/ratatui/ratatui/) or [yeehaw](https://github.com/bogzbonny/yeehaw/).
+**teng** particularly shines when you are not aware of libraries like [ratatui](https://github.com/ratatui/ratatui/), [yeehaw](https://github.com/bogzbonny/yeehaw/), [cursive](https://github.com/gyscos/cursive), and more.
 
 Also, if you're looking to just get started with game development in the terminal, **teng** may be a good choice due to its simplicity and focus on traditional, frame-based game loops and pixel-based rendering.
 All you need is a single component and you can individually target every pixel on the screen.

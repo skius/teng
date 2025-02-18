@@ -98,11 +98,13 @@ pub struct MousePressedInfo {
 }
 
 impl MousePressedInfo {
+    /// Has any mouse button been pressed since the last frame?
     pub fn any(&self) -> bool {
         self.left || self.right || self.middle
     }
 }
 
+/// The shared state that is passed to all components when they are executed.
 pub struct SharedState {
     pub mouse_info: MouseInfo,
     pub mouse_pressed: MousePressedInfo,
@@ -121,7 +123,7 @@ pub struct SharedState {
 }
 
 impl SharedState {
-    pub fn new(width: usize, height: usize) -> Self {
+    fn new(width: usize, height: usize) -> Self {
         Self {
             mouse_info: MouseInfo::default(),
             mouse_pressed: MousePressedInfo::default(),
@@ -140,7 +142,7 @@ impl SharedState {
         }
     }
 
-    pub fn resize(&mut self, width: usize, height: usize) {
+    fn resize(&mut self, width: usize, height: usize) {
         self.display_info = DisplayInfo::new(width, height);
     }
 

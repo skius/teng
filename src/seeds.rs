@@ -7,20 +7,25 @@ use std::sync::OnceLock;
 /// Can be initialized by the user or a default value.
 static SEED: OnceLock<u64> = OnceLock::new();
 
+/// Set the global seed. You can only set the seed once.
 pub fn set_seed(seed: u64) {
     SEED.set(seed).unwrap();
 }
 
+/// Get the global seed.
 pub fn get_seed() -> u64 {
     *SEED.get().unwrap()
 }
 
+/// Get the global seed, if it has been set.
 pub fn get_seed_opt() -> Option<u64> {
     SEED.get().copied()
 }
 
 macro_rules! seed_impl {
     ($fn_name:ident, $typ:ty) => {
+        /// Derive a deterministic seed for a given purpose from the global seed.
+        /// Per global seed and purpose, the returned seed will always be the same.
         #[allow(unused)]
         pub fn $fn_name(purpose: &str) -> $typ {
             let mut hasher = DefaultHasher::new();

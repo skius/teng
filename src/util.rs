@@ -1,3 +1,7 @@
+//! Common utility functions.
+
+/// Runs a function for each coordinate in a line.
+/// If `exclude_start` is true, the start coordinate will not be included, unless it's the same as the end coordinate.
 pub fn for_coord_in_line(
     exclude_start: bool,
     (start_x, start_y): (i64, i64),
@@ -35,6 +39,7 @@ pub fn for_coord_in_line(
 
 macro_rules! lerp_t_impl {
     ($fn_name:ident, $typ:ty) => {
+        /// Get the interpolation factor `t` for a value `current` between `from` and `to`.
         #[allow(unused)]
         pub fn $fn_name(from: $typ, to: $typ, current: $typ) -> f32 {
             (current as f32 - from as f32) / (to as f32 - from as f32)
@@ -44,6 +49,7 @@ macro_rules! lerp_t_impl {
 
 macro_rules! lerp_t_impl_clamped {
     ($fn_name:ident, $typ:ty) => {
+        /// Get the interpolation factor `t` for a value `current` between `from` and `to`, clamped to the range [0, 1].
         #[allow(unused)]
         pub fn $fn_name(from: $typ, to: $typ, current: $typ) -> f32 {
             let t = (current as f32 - from as f32) / (to as f32 - from as f32);
@@ -82,6 +88,8 @@ lerp_t_impl_clamped!(get_lerp_t_usize_clamped, usize);
 lerp_t_impl_clamped!(get_lerp_t_f32_clamped, f32);
 lerp_t_impl_clamped!(get_lerp_t_f64_clamped, f64);
 
+/// Linearly interpolate between two colors.
+/// Uses RGB color space.
 pub fn lerp_color(a: [u8; 3], b: [u8; 3], t: f32) -> [u8; 3] {
     [
         (a[0] as f32 + (b[0] as f32 - a[0] as f32) * t) as u8,
