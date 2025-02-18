@@ -1,13 +1,59 @@
+//! Rendering logic and the `Renderer` trait.
+//!
+//! This module defines the core rendering abstractions for `teng`:
+//!
+//! *   [`Renderer`] trait:  Defines the interface for rendering operations,
+//!     abstracting away the underlying rendering backend.
+//! *   [`DisplayRenderer`] struct:  A concrete implementation of the `Renderer` trait
+//!     that renders to a terminal using the `crossterm` library.
+//!
+//! **Key Functionality of `Renderer` and `DisplayRenderer`:**
+//!
+//! *   **Pixel Rendering:**  `render_pixel()` function allows you to draw individual [`Pixel`]s
+//!     at specific (x, y) coordinates on the display.
+//! *   **Display Buffer Management:** `DisplayRenderer` internally manages two [`Display`] buffers:
+//!     *   `display`:  The current frame being built.
+//!     *   `prev_display`:  The previously rendered frame, used for optimization to only
+//!         update changed pixels in the terminal.
+//! *   **Depth Buffering:** `DisplayRenderer` uses depth buffers (`depth_buffer` and `bg_depth_buffer`)
+//!     to handle overlapping pixels and ensure correct rendering order. Pixels with higher depth
+//!     values are rendered on top of pixels with lower depth values.
+//! *   **Color Management:**  `DisplayRenderer` manages default foreground and background colors
+//!     and efficiently sets terminal colors only when they change.
+//! *   **Flushing to Terminal:** `flush()` function writes the contents of the `display` buffer
+//!     to the terminal, optimizing updates by only sending changes since the last frame.
+//! *   **Resizing:**  `resize_discard()` and `resize_keep()` functions allow you to resize the
+//!     rendering area, either discarding or preserving existing content.
+
 use crate::rendering::{display::Display, pixel::Pixel, render::Render};
 use crossterm::queue;
 use rand::Rng;
 use std::io;
 use std::io::{Stdout, Write};
 
+/// Trait for rendering operations.
+///
+/// Implementors of this trait provide methods for rendering pixels and flushing
+/// the rendered output to a target (e.g., a terminal).
 pub trait Renderer {
+    /// Renders a single pixel at the specified coordinates with the given depth.
+    ///
+    /// Higher depth values are rendered on top of lower depth values.  If two pixels
+    /// are rendered at the same depth, the first one rendered will take precedence.
+    ///
+    /// Coordinates are 0-indexed, starting from the top-left corner of the display.
     fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32);
+
+    /// Flushes the rendered output to the target.
+    ///
+    /// This function should be called after rendering all pixels for a frame to
+    /// actually display the changes on the terminal (or other rendering target).
     fn flush(&mut self) -> io::Result<()>;
 
+    /// Sets the default background color for subsequent rendering operations.
+    ///
+    /// This default color will be used when rendering pixels without an explicit
+    /// background color set. It applies to the next `flush()` operation.
     fn set_default_bg_color(&mut self, color: [u8; 3]) {
         // default implementation does nothing
     }
@@ -27,15 +73,20 @@ impl<W: Write> Renderer for DisplayRenderer<W> {
     }
 }
 
+/// Concrete `Renderer` implementation that renders to a terminal using `crossterm`.
+///
+/// `DisplayRenderer` manages two display buffers (`display` and `prev_display`) and
+/// uses depth buffers to handle pixel overlapping and efficient terminal updates.
 pub struct DisplayRenderer<W: Write> {
     width: usize,
     height: usize,
+    /// The current frame being built.
     display: Display<Pixel>,
+    /// The previously rendered frame, used for optimization to only update changed pixels.
     prev_display: Display<Pixel>,
-    // larger values are closer and get preference
+    /// Depth buffer for pixel rendering, larger values are rendered on top.
     depth_buffer: Display<i32>,
-    // same as above, but for the bg color.
-    // only keeps track of solid bg colors (in particular, which one is the top most)
+    /// Depth buffer for background color rendering. Only solid background colors are tracked.
     bg_depth_buffer: Display<i32>,
     default_fg_color: [u8; 3],
     last_fg_color: [u8; 3],
@@ -44,13 +95,10 @@ pub struct DisplayRenderer<W: Write> {
     sink: W,
 }
 
-impl DisplayRenderer<Stdout> {
-    pub fn new(width: usize, height: usize) -> Self {
-        Self::new_with_sink(width, height, std::io::stdout())
-    }
-}
-
 impl<W: Write> DisplayRenderer<W> {
+    /// Creates a new `DisplayRenderer` with a custom output sink.
+    ///
+    /// Allows rendering to targets such as `stdout`, files, or in-memory buffers.
     pub fn new_with_sink(width: usize, height: usize, sink: W) -> Self {
         // Need to initialize the prev display with the same default as the new display,
         // because that's the pixel that gets applied on every frame's reset screen.
@@ -74,10 +122,12 @@ impl<W: Write> DisplayRenderer<W> {
         }
     }
 
+    /// Gets the width of the display in characters.
     pub fn width(&self) -> usize {
         self.width
     }
 
+    /// Gets the height of the display in characters.
     pub fn height(&self) -> usize {
         self.height
     }
@@ -87,6 +137,7 @@ impl<W: Write> DisplayRenderer<W> {
         self.default_fg_color = color;
     }
 
+    /// Set the default bg color. Works on next flush.
     pub fn set_default_bg_color(&mut self, color: [u8; 3]) {
         self.default_bg_color = color;
     }
@@ -120,7 +171,13 @@ impl<W: Write> DisplayRenderer<W> {
         self.bg_depth_buffer.resize_keep(width, height);
     }
 
-    /// Higher depths have higher priority. At same depth, first write wins.
+    /// Renders a single pixel to the display buffer at the specified coordinates and depth.
+    ///
+    /// This function updates the internal `display` and `depth_buffer` based on the
+    /// pixel's depth and color information. It does not directly write to the terminal;
+    /// call `flush()` to perform the actual terminal output.
+    ///
+    /// Higher depths have higher priority. At same depth, the first call wins.
     pub fn render_pixel(&mut self, x: usize, y: usize, new_pixel: Pixel, new_depth: i32) {
         if x >= self.width || y >= self.height {
             return;
@@ -170,6 +227,10 @@ impl<W: Write> DisplayRenderer<W> {
         self.depth_buffer[(x, y)] = old_depth.max(new_depth);
     }
 
+    /// Resets the screen to a blank state.
+    ///
+    /// Clears both the `display` buffer and the depth buffers, effectively preparing
+    /// for a fresh frame of rendering.
     pub fn reset_screen(&mut self) {
         // needed because otherwise we get the 'solitaire bouncing cards' effect
         self.display.clear();
@@ -177,6 +238,11 @@ impl<W: Write> DisplayRenderer<W> {
         self.bg_depth_buffer.clear();
     }
 
+    /// Flushes the contents of the display buffer to the terminal.
+    ///
+    /// This function iterates through the `display` buffer and writes the changes
+    /// to the terminal output using `crossterm`. It optimizes updates by only
+    /// redrawing pixels that have changed since the last `flush()`.
     pub fn flush(&mut self) -> io::Result<()> {
         queue!(self.sink, crossterm::cursor::MoveTo(0, 0))?;
 

@@ -146,19 +146,19 @@ pub struct SetupInfo {
 /// A `Game` consists of a number of components that are executed in a loop and act on some shared state.
 ///
 /// # Example
-/// ```
+/// ```rust ,no_run
 /// use teng::{install_panic_handler, terminal_cleanup, terminal_setup, Game};
 ///
-/// terminal_setup()?;
+/// terminal_setup().unwrap();
 /// install_panic_handler();
 ///
-/// let mut game = Game::new_with_custom_buf_writer();
+/// let mut game: Game<_, ()> = Game::new_with_custom_buf_writer();
 /// game.install_recommended_components();
-/// game.run()?;
+/// game.run().unwrap();
 ///
-/// terminal_cleanup()?;
+/// terminal_cleanup().unwrap();
 /// ```
-pub struct Game<W: Write, S: Default = ()> {
+pub struct Game<W: Write, S = ()> {
     display_renderer: DisplayRenderer<W>,
     components: Vec<Box<dyn Component<S>>>,
     shared_state: SharedState<S>,

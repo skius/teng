@@ -1,9 +1,23 @@
+//! Defines `BidiVec`, a bidirectional vector for efficient front and back insertions with stable i64 indexing.
+//!
+//! The `bidivec` module provides the `BidiVec` data structure, which is designed to be efficiently growable
+//! at both the beginning and the end, while maintaining stable `i64` indices. This is achieved by internally
+//! using two `Vec<T>` to store elements with positive and negative indices separately.
+
 use std::ops::{Index, IndexMut, RangeBounds};
 
-/// A vector that can be efficiently appended to both the front and back and has stable i64 indices.
+/// `BidiVec` (Bidirectional Vector) is a data structure similar to `Vec<T>`, but it allows efficient
+/// insertion and access at both the beginning and end. It uses stable `i64` indices, meaning that
+/// indices are preserved even after growing towards positive or negative infinity.
+///
+/// Internally, it uses two `Vec<T>`: one for positive indices (`pos`) and one for negative indices (`neg`).
+/// Index `0` is the start of the `pos` vector, index `-1` is the start of the `neg` vector, and so on.
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BidiVec<T> {
+    /// Vector for storing elements with non-negative indices (0, 1, 2, ...).
     pos: Vec<T>,
+    /// Vector for storing elements with negative indices (-1, -2, -3, ...).
     neg: Vec<T>,
 }
 
@@ -95,10 +109,12 @@ impl<T> BidiVec<T> {
         }
     }
 
+    /// Returns an iterator over the elements of the `BidiVec`.
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.neg.iter().chain(self.pos.iter())
     }
 
+    /// Returns a mutable iterator over the elements of the `BidiVec`.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
         self.neg.iter_mut().chain(self.pos.iter_mut())
     }
