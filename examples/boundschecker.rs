@@ -47,7 +47,7 @@ impl BoundsCheckerComponent {
     }
 }
 
-impl Component for BoundsCheckerComponent {
+impl<S> Component<S> for BoundsCheckerComponent {
     fn update(&mut self, _update_info: UpdateInfo, shared_state: &mut SharedState) {
         // was there a mouse down event?
         let pressed = shared_state.mouse_pressed.left;

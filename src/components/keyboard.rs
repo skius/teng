@@ -46,8 +46,8 @@ impl KeyPressRecorderComponent {
     }
 }
 
-impl Component for KeyPressRecorderComponent {
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
+impl<S> Component<S> for KeyPressRecorderComponent {
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState<S>) -> Option<BreakingAction> {
         match event {
             // only capture presses to work on windows as well (where we get Release too)
             Event::Key(KeyEvent {
@@ -69,7 +69,7 @@ impl Component for KeyPressRecorderComponent {
         None
     }
 
-    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {
         std::mem::swap(&mut shared_state.pressed_keys.inner, &mut self.pressed_keys);
         self.pressed_keys.clear();
     }
@@ -89,8 +89,8 @@ impl KeypressDebouncerComponent {
     }
 }
 
-impl Component for KeypressDebouncerComponent {
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
+impl<S> Component<S> for KeypressDebouncerComponent {
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState<S>) -> Option<BreakingAction> {
         match event {
             // only capture presses to work on windows as well (where we get Release too)
             Event::Key(KeyEvent {
@@ -105,7 +105,7 @@ impl Component for KeypressDebouncerComponent {
         None
     }
 
-    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {
         // go through all keys, consume the ones that have expired
         shared_state.debounced_down_keys.clear();
         self.last_keypress = self

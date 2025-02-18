@@ -142,12 +142,12 @@ impl NewPlayerComponent {
     }
 }
 
-impl Component for NewPlayerComponent {
-    fn is_active(&self, shared_state: &SharedState) -> bool {
+impl<S> Component<S> for NewPlayerComponent {
+    fn is_active(&self, shared_state: &SharedState<S>) -> bool {
         shared_state.extensions.get::<GameState>().unwrap().phase == GamePhase::Moving
     }
 
-    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {
         let current_time = update_info.current_time;
         let dt = update_info.dt;
 
@@ -294,7 +294,7 @@ impl Component for NewPlayerComponent {
         }
     }
 
-    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState<S>, depth_base: i32) {
         let game_state = shared_state.extensions.get::<GameState>().unwrap();
         let player = &game_state.new_player_state;
         let player_world_x = player.entity.position.0.floor() as i64;
@@ -412,10 +412,10 @@ impl PlayerGhost {
         (just_died, expired)
     }
 
-    fn render(
+    fn render<S>(
         &self,
         renderer: &mut dyn Renderer,
-        shared_state: &SharedState,
+        shared_state: &SharedState<S>,
         depth_base: i32,
         player_sprite: &Sprite<3, 2>,
         death_sprite: &Sprite<5, 1>,

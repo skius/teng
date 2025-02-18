@@ -35,9 +35,9 @@ trait UiButton: Any {
         mouse_x >= x && mouse_x < x + width && mouse_y >= y && mouse_y < y + height
     }
 
-    fn on_click(&mut self, shared_state: &mut SharedState);
+    fn on_click(&mut self, shared_state: &mut SharedState<()>);
 
-    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32);
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState<()>, depth_base: i32);
 }
 
 macro_rules! new_button {
@@ -134,7 +134,7 @@ macro_rules! new_button {
                 (x, y, self.width, self.height)
             }
 
-            fn on_click(&mut $self, shared_state: &mut SharedState) {
+            fn on_click(&mut $self, shared_state: &mut SharedState<()>) {
                 let $game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
                 if $game_state.phase != GamePhase::Building && !$allow_in_moving {
                     return;
@@ -148,7 +148,7 @@ macro_rules! new_button {
                 }
             }
 
-            fn render(&$self2, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+            fn render(&$self2, renderer: &mut dyn Renderer, shared_state: &SharedState<()>, depth_base: i32) {
                 let $game_state2 = shared_state.extensions.get::<GameState>().unwrap();
                 let is_hover = $self2.mouse_hover(shared_state.mouse_info.last_mouse_pos.0, shared_state.mouse_info.last_mouse_pos.1);
                 let lmb_down = shared_state.mouse_info.left_mouse_down;
@@ -234,8 +234,8 @@ impl UiBarComponent {
     }
 }
 
-impl Component for UiBarComponent {
-    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
+impl Component<()> for UiBarComponent {
+    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<()>) {
         let mut y_offset = Self::HEIGHT - 2;
         let initial_y_offset = y_offset;
         let x_offset = 1;
@@ -447,13 +447,13 @@ impl Component for UiBarComponent {
         );
     }
 
-    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState) {
+    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState<()>) {
         self.buttons.iter_mut().for_each(|button| {
             button.update_screen_dimensions(height, width);
         });
     }
 
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState<()>) -> Option<BreakingAction> {
         if let Event::Mouse(me) = event {
             // only change if we're in the UI bar range
             let (x, y) = (me.column as usize, me.row as usize);
@@ -470,7 +470,7 @@ impl Component for UiBarComponent {
         None
     }
 
-    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<()>) {
         let game_state = shared_state.extensions.get::<GameState>().unwrap();
         let last_mouse_info = shared_state.mouse_info;
         // Check if we're hovering a button
@@ -495,7 +495,7 @@ impl Component for UiBarComponent {
         }
     }
 
-    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState<()>, depth_base: i32) {
         let game_state = shared_state.extensions.get::<GameState>().unwrap();
         let blocks = game_state.blocks;
         let max_blocks = game_state.max_blocks;

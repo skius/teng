@@ -3,8 +3,8 @@ use crate::{BreakingAction, Component, SharedState};
 
 pub struct QuitterComponent;
 
-impl Component for QuitterComponent {
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
+impl<S> Component<S> for QuitterComponent {
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState<S>) -> Option<BreakingAction> {
         if matches!(
             event,
             Event::Key(KeyEvent {

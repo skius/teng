@@ -436,13 +436,13 @@ impl WorldComponent {
     }
 }
 
-impl Component for WorldComponent {
-    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState) {
+impl<S> Component<S> for WorldComponent {
+    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState<S>) {
         let game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
         game_state.world.on_resize(width, height);
     }
 
-    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {
         let world = &mut shared_state
             .extensions
             .get_mut::<GameState>()
@@ -457,7 +457,7 @@ impl Component for WorldComponent {
         world.expand_to_contain(world.collision_board.bounds());
     }
 
-    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState<S>, depth_base: i32) {
         let depth_parallax_stars = depth_base + 1;
         let depth_parallax_mountains = depth_base + 2;
         let depth_ground_level = depth_base + 3;

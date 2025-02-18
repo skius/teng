@@ -38,7 +38,7 @@ use teng::components::Component;
 
 struct MyComponent;
 
-impl Component for MyComponent {
+impl<S> Component<S> for MyComponent {
     fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let width = shared_state.display_info.width();
         let height = shared_state.display_info.height();

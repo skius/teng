@@ -15,12 +15,12 @@ impl FpsLockerComponent {
     }
 }
 
-impl Component for FpsLockerComponent {
-    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
+impl<S> Component<S> for FpsLockerComponent {
+    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<S>) {
         shared_state.target_fps = Some(self.default_fps);
     }
 
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState<S>) -> Option<BreakingAction> {
         match event {
             Event::Mouse(me) => match me.kind {
                 MouseEventKind::ScrollDown => {
@@ -39,7 +39,7 @@ impl Component for FpsLockerComponent {
         None
     }
 
-    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {
         if shared_state.pressed_keys.did_press_char_ignore_case('l') {
             self.locked = !self.locked;
         }

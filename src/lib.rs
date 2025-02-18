@@ -68,7 +68,7 @@ impl DisplayInfo {
 
 
 /// The shared state that is passed to all components when they are executed.
-pub struct SharedState {
+pub struct SharedState<T> {
     pub mouse_info: MouseInfo,
     pub mouse_pressed: MousePressedInfo,
     pub mouse_events: MouseEvents,
@@ -79,13 +79,14 @@ pub struct SharedState {
     pub debug_info: DebugInfo,
     pub debug_messages: SmallVec<[DebugMessage; 16]>,
     pub extensions: AnyMap,
-    pub components_to_add: Vec<Box<dyn Component>>,
+    pub components_to_add: Vec<Box<dyn Component<T>>>,
     pub fake_events_for_next_frame: Vec<Event>,
     pub remove_components: HashSet<std::any::TypeId>,
     pub whitelisted_components: Option<HashSet<std::any::TypeId>>,
+    pub custom: T,
 }
 
-impl SharedState {
+impl<T: Default + 'static> SharedState<T> {
     fn new(width: usize, height: usize) -> Self {
         Self {
             mouse_info: MouseInfo::default(),
@@ -102,6 +103,7 @@ impl SharedState {
             fake_events_for_next_frame: Vec::new(),
             remove_components: HashSet::new(),
             whitelisted_components: None,
+            custom: T::default(),
         }
     }
 
@@ -109,7 +111,7 @@ impl SharedState {
         self.display_info = DisplayInfo::new(width, height);
     }
 
-    fn is_component_active(&self, component: &dyn Component) -> bool {
+    fn is_component_active(&self, component: &dyn Component<T>) -> bool {
         if let Some(whitelist) = &self.whitelisted_components {
             if !whitelist.contains(&component.type_id()) {
                 return false;
@@ -125,16 +127,16 @@ pub struct SetupInfo {
 }
 
 
-pub struct Game<W: Write> {
+pub struct Game<W: Write, S: Default> {
     display_renderer: DisplayRenderer<W>,
-    components: Vec<Box<dyn Component>>,
-    shared_state: SharedState,
+    components: Vec<Box<dyn Component<S>>>,
+    shared_state: SharedState<S>,
     event_read_thread_handle: Option<std::thread::JoinHandle<()>>,
     event_reader: Receiver<Event>,
     event_read_stop_signal: std::sync::mpsc::Sender<()>,
 }
 
-impl Game<CustomBufWriter> {
+impl<S: Default + 'static> Game<CustomBufWriter, S> {
     /// Creates a new game with a sink that only flushes once every frame.
     /// This is the recommended sink.
     pub fn new_with_custom_buf_writer() -> Self {
@@ -143,14 +145,14 @@ impl Game<CustomBufWriter> {
     }
 }
 
-impl Game<Stdout> {
+impl<S: Default + 'static> Game<Stdout, S> {
     pub fn new_with_stdout() -> Self {
         let stdout = stdout();
         Self::new(stdout)
     }
 }
 
-impl<W: Write> Game<W> {
+impl<W: Write, S: Default + 'static> Game<W, S> {
     pub fn new(sink: W) -> Self {
         let (width, height) = crossterm::terminal::size().unwrap();
         let width = width as usize;
@@ -174,7 +176,7 @@ impl<W: Write> Game<W> {
         Self {
             display_renderer,
             components: Vec::new(),
-            shared_state: SharedState::new(width, height),
+            shared_state: SharedState::<S>::new(width, height),
             event_read_thread_handle: Some(event_read_thread_handle),
             event_reader,
             event_read_stop_signal,
@@ -189,11 +191,11 @@ impl<W: Write> Game<W> {
         self.display_renderer.height()
     }
 
-    pub fn add_component(&mut self, component: Box<dyn Component>) {
+    pub fn add_component(&mut self, component: Box<dyn Component<S>>) {
         self.components.push(component);
     }
 
-    pub fn add_component_with(&mut self, init_fn: impl FnOnce(usize, usize) -> Box<dyn Component>) {
+    pub fn add_component_with(&mut self, init_fn: impl FnOnce(usize, usize) -> Box<dyn Component<S>>) {
         self.components.push(init_fn(self.width(), self.height()));
     }
 
@@ -331,9 +333,9 @@ impl<W: Write> Game<W> {
         self.update_game(update_info);
     }
 
-    fn swap_component<C: Component>(
+    fn swap_component<C: Component<S>>(
         &mut self,
-        new: impl FnOnce(usize, usize) -> Box<dyn Component>,
+        new: impl FnOnce(usize, usize) -> Box<dyn Component<S>>,
     ) {
         let mut found = false;
         for idx in 0..self.components.len() {

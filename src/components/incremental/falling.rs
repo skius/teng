@@ -189,7 +189,7 @@ impl FallingSimulationComponent {
         }
     }
 
-    fn update_simulation(&mut self, shared_state: &mut SharedState) {
+    fn update_simulation<S>(&mut self, shared_state: &mut SharedState<S>) {
         let data = shared_state
             .extensions
             .get_mut::<FallingSimulationData>()
@@ -242,14 +242,14 @@ impl FallingSimulationComponent {
     }
 }
 
-impl Component for FallingSimulationComponent {
-    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
+impl<S> Component<S> for FallingSimulationComponent {
+    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<S>) {
         self.hb_display
             .resize_discard(setup_info.width, setup_info.height * 2);
         shared_state.extensions.insert(FallingSimulationData::new());
     }
 
-    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {
         let dt = update_info.dt;
         self.dt_budget += dt;
 
@@ -289,7 +289,7 @@ impl Component for FallingSimulationComponent {
         }
     }
 
-    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState<S>, depth_base: i32) {
         let depth_base = i32::MAX - 99;
         let data = shared_state
             .extensions

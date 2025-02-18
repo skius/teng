@@ -37,7 +37,7 @@ impl FpsCheckerFrameTimeComponent {
     }
 }
 
-impl Component for FpsCheckerFrameTimeComponent {
+impl<S> Component<S> for FpsCheckerFrameTimeComponent {
     fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         // render a block at half height and x corresponding to the position at 144 blocks per second
         let elapsed = Instant::now() - self.start_time;
@@ -71,7 +71,7 @@ impl FpsCheckerFrameCountComponent {
     }
 }
 
-impl Component for FpsCheckerFrameCountComponent {
+impl<S> Component<S> for FpsCheckerFrameCountComponent {
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
         self.count += 1;
     }

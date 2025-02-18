@@ -98,21 +98,21 @@ impl EventRecorderComponent {
     }
 }
 
-impl Component for EventRecorderComponent {
-    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
+impl<S> Component<S> for EventRecorderComponent {
+    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<S>) {
         self.current_display_size = (setup_info.width, setup_info.height);
     }
 
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState<S>) -> Option<BreakingAction> {
         self.record_event(event);
         None
     }
 
-    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState) {
+    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState<S>) {
         self.current_display_size = (width, height);
     }
 
-    fn on_quit(&mut self, shared_state: &mut SharedState) {
+    fn on_quit(&mut self, shared_state: &mut SharedState<S>) {
         // Add 'q' key
         self.record_event(Event::Key(crossterm::event::KeyEvent::new(
             crossterm::event::KeyCode::Char('q'),
@@ -121,7 +121,7 @@ impl Component for EventRecorderComponent {
         self.stop_and_save_recording();
     }
 
-    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {
         // Check whether we start/stop a recording here, so we're starting/stopping event recording
         // at a frame boundary.
         if shared_state.pressed_keys.did_press_char_ignore_case('r') {
@@ -160,10 +160,10 @@ impl EventReplayerComponent {
         }
     }
 
-    fn play_events_until(
+    fn play_events_until<S>(
         &mut self,
         current_time: std::time::Instant,
-        shared_state: &mut SharedState,
+        shared_state: &mut SharedState<S>,
     ) {
         if !self.replaying {
             return;
@@ -192,8 +192,8 @@ impl EventReplayerComponent {
     }
 }
 
-impl Component for EventReplayerComponent {
-    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
+impl<S> Component<S> for EventReplayerComponent {
+    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<S>) {
         assert_eq!(
             setup_info.width, self.recording.initial_display_size.0,
             "Width mismatch for replay"
@@ -204,7 +204,7 @@ impl Component for EventReplayerComponent {
         );
     }
 
-    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {
         let current_time = update_info.current_time;
         self.play_events_until(current_time, shared_state);
     }
@@ -224,12 +224,12 @@ impl BenchFrameCounter {
     }
 }
 
-impl Component for BenchFrameCounter {
-    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+impl<S> Component<S> for BenchFrameCounter {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {
         self.frame_count += 1;
     }
 
-    fn on_quit(&mut self, shared_state: &mut SharedState) {
+    fn on_quit(&mut self, shared_state: &mut SharedState<S>) {
         // report the count
         (self.report_fn)(self.frame_count);
     }

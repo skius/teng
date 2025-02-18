@@ -31,15 +31,15 @@ impl TitleScreenComponent {
         }
     }
 
-    fn exit(&mut self, shared_state: &mut SharedState) {
+    fn exit<S>(&mut self, shared_state: &mut SharedState<S>) {
         self.finished = true;
         shared_state.remove_components.insert(TypeId::of::<Self>());
         shared_state.whitelisted_components = None;
     }
 }
 
-impl Component for TitleScreenComponent {
-    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
+impl<S> Component<S> for TitleScreenComponent {
+    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<S>) {
         self.width = setup_info.width;
         self.height = setup_info.height;
         shared_state.whitelisted_components = Some(HashSet::from([
@@ -49,12 +49,12 @@ impl Component for TitleScreenComponent {
         ]));
     }
 
-    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState) {
+    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState<S>) {
         self.width = width;
         self.height = height;
     }
 
-    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {
         // simulate typing out the text
         if self.current_prefix_length < self.final_text.len() {
             if update_info.current_time >= self.next_char_time {
@@ -99,11 +99,11 @@ impl Component for TitleScreenComponent {
         }
     }
 
-    fn is_active(&self, shared_state: &SharedState) -> bool {
+    fn is_active(&self, shared_state: &SharedState<S>) -> bool {
         !self.finished
     }
 
-    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState<S>, depth_base: i32) {
         let depth_base = i32::MAX - 3;
         let depth_text = i32::MAX - 2;
         let depth_sprites = i32::MAX - 1;

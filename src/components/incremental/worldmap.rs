@@ -149,17 +149,17 @@ impl WorldMapComponent {
     }
 }
 
-impl Component for WorldMapComponent {
-    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
+impl<S> Component<S> for WorldMapComponent {
+    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<S>) {
         self.on_resize(setup_info.width, setup_info.height, shared_state);
     }
 
-    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState) {
+    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState<S>) {
         self.display_attach_x = width - self.attach_padding - self.window_width;
         self.display_attach_y = self.attach_padding / 2;
     }
 
-    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {
         if shared_state.pressed_keys.did_press_char_ignore_case('m') {
             self.enabled = !self.enabled;
         }
@@ -223,7 +223,7 @@ impl Component for WorldMapComponent {
         }
     }
 
-    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState<S>, depth_base: i32) {
         let depth_base = i32::MAX - 10;
         if !self.enabled {
             return;

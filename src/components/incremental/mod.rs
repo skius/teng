@@ -162,8 +162,8 @@ impl GameComponent {
     }
 }
 
-impl Component for GameComponent {
-    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
+impl<S: 'static> Component<S> for GameComponent {
+    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<S>) {
         shared_state
             .components_to_add
             .push(Box::new(WorldComponent::new()));
@@ -179,9 +179,9 @@ impl Component for GameComponent {
         shared_state
             .components_to_add
             .push(Box::new(SlingshotComponent::new()));
-        shared_state
-            .components_to_add
-            .push(Box::new(UiBarComponent::new()));
+        // shared_state
+        //     .components_to_add
+        //     .push(Box::new(UiBarComponent::new()));
         shared_state
             .components_to_add
             .push(Box::new(WorldMapComponent::new(30, 30, 600, 600, 50)));
@@ -194,7 +194,7 @@ impl Component for GameComponent {
         shared_state.extensions.insert(GameState::new(setup_info));
     }
 
-    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {
         let game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
 
         // cheats
@@ -257,12 +257,12 @@ impl BuildingDrawComponent {
     }
 }
 
-impl Component for BuildingDrawComponent {
-    fn is_active(&self, shared_state: &SharedState) -> bool {
+impl<S> Component<S> for BuildingDrawComponent {
+    fn is_active(&self, shared_state: &SharedState<S>) -> bool {
         shared_state.extensions.get::<GameState>().unwrap().phase == GamePhase::Building
     }
 
-    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {
         let game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
 
         // We use _sticky, because we want to keep drawing a pixel if we keep the mouse pressed.

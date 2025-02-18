@@ -78,17 +78,17 @@ impl DebugInfoComponent {
     const FPS_UPDATE_INTERVAL: Duration = Duration::from_millis(200);
 }
 
-impl Component for DebugInfoComponent {
+impl<S> Component<S> for DebugInfoComponent {
     fn on_event(
         &mut self,
         _event: Event,
-        _shared_state: &mut SharedState,
+        _shared_state: &mut SharedState<S>,
     ) -> Option<BreakingAction> {
         self.num_events += 1;
         None
     }
 
-    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {
         self.num_update_calls += 1;
         let UpdateInfo {
             last_time,
@@ -138,7 +138,7 @@ impl Component for DebugInfoComponent {
         }
     }
 
-    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState<S>, depth_base: i32) {
         let depth_base = i32::MAX - 100;
         let mut y = 0;
         format!("Help: q to quit, l to lock/unlock FPS, scroll to change FPS, b to cheat blocks, p to toggle parallax, m to toggle minimap, i to toggle debug info, r to start/stop recording").render(

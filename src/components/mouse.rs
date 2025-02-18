@@ -171,8 +171,8 @@ impl MouseTrackerComponent {
     }
 }
 
-impl Component for MouseTrackerComponent {
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
+impl<S> Component<S> for MouseTrackerComponent {
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState<S>) -> Option<BreakingAction> {
         if let Event::Mouse(event) = event {
             Self::fill_mouse_info(event, &mut self.last_mouse_info);
             self.mouse_events.push(self.last_mouse_info);
@@ -201,7 +201,7 @@ impl Component for MouseTrackerComponent {
         None
     }
 
-    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {
         shared_state.mouse_info = self.last_mouse_info;
         shared_state.mouse_pressed.right = self.did_press_right;
         shared_state.mouse_pressed.left = self.did_press_left;

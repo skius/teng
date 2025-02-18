@@ -27,23 +27,23 @@ impl SlingshotComponent {
     }
 }
 
-impl Component for SlingshotComponent {
-    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
+impl<S> Component<S> for SlingshotComponent {
+    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<S>) {
         self.half_block_display_render =
             HalfBlockDisplayRender::new(setup_info.width, 2 * setup_info.height);
     }
 
-    fn is_active(&self, shared_state: &SharedState) -> bool {
+    fn is_active(&self, shared_state: &SharedState<S>) -> bool {
         let game_state = shared_state.extensions.get::<GameState>().unwrap();
         game_state.phase == GamePhase::Moving && game_state.upgrades.slingshot
     }
 
-    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState) {
+    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState<S>) {
         self.half_block_display_render
             .resize_discard(width, 2 * height);
     }
 
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState) -> Option<BreakingAction> {
+    fn on_event(&mut self, event: Event, shared_state: &mut SharedState<S>) -> Option<BreakingAction> {
         match event {
             Event::Mouse(event) => {
                 let (x, y) = (event.column as usize, event.row as usize);
@@ -64,7 +64,7 @@ impl Component for SlingshotComponent {
         None
     }
 
-    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState) {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {
         let game_state = shared_state.extensions.get_mut::<GameState>().unwrap();
         // don't do anything except reset if we're dead
         if game_state.new_player_state.dead_time.is_some() {
@@ -169,7 +169,7 @@ impl Component for SlingshotComponent {
         }
     }
 
-    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState<S>, depth_base: i32) {
         self.half_block_display_render
             .render(renderer, 0, 0, depth_base);
     }
