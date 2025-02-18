@@ -258,6 +258,10 @@ impl<W: Write> Game<W> {
     }
 
     pub fn run(&mut self) -> io::Result<()> {
+        // TODO: think about taking ownership of self and making `event_read_thread_handle` non-optional
+        // Right now it feels like you can just run `run` multiple times, but this will not spawn new event reader threads.
+        // Better fix perhaps: Move the event read setup into self.setup().
+        
         // Setup phase
         self.setup()?;
 
