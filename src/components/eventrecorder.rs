@@ -100,7 +100,10 @@ impl EventRecorderComponent {
 
 impl<S> Component<S> for EventRecorderComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<S>) {
-        self.current_display_size = (setup_info.display_info.width(), setup_info.display_info.height());
+        self.current_display_size = (
+            setup_info.display_info.width(),
+            setup_info.display_info.height(),
+        );
     }
 
     fn on_event(
@@ -199,11 +202,13 @@ impl EventReplayerComponent {
 impl<S> Component<S> for EventReplayerComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<S>) {
         assert_eq!(
-            setup_info.display_info.width(), self.recording.initial_display_size.0,
+            setup_info.display_info.width(),
+            self.recording.initial_display_size.0,
             "Width mismatch for replay"
         );
         assert_eq!(
-            setup_info.display_info.height(), self.recording.initial_display_size.1,
+            setup_info.display_info.height(),
+            self.recording.initial_display_size.1,
             "Height mismatch for replay"
         );
     }
