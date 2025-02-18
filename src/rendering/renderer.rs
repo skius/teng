@@ -172,6 +172,8 @@ impl<W: Write> DisplayRenderer<W> {
         } else {
             (new_pixel, old_pixel)
         };
+        // TODO: "put_over" can be reworked; we're replacing bg_color anyway, so it only really
+        // needs to handle fg color and chars.
         let mut created_pixel = upper_pixel.put_over(lower_pixel);
         created_pixel.bg_color = new_bg_color;
         self.display[(x, y)] = created_pixel;
