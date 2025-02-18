@@ -7,6 +7,12 @@ pub struct BidiVec<T> {
     neg: Vec<T>,
 }
 
+impl<T> Default for BidiVec<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> BidiVec<T> {
     /// Creates a new empty `BidiVec`.
     pub fn new() -> Self {

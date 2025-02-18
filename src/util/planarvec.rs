@@ -12,6 +12,12 @@ pub struct Bounds {
     pub min_y: i64,
 }
 
+impl Default for Bounds {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
 impl Bounds {
     pub fn empty() -> Self {
         Self {
@@ -112,6 +118,15 @@ pub struct PlanarVec<T> {
     // Outer index is x, inner index is y
     data: BidiVec<BidiVec<T>>,
     bounds: Bounds,
+}
+
+impl<T> Default for PlanarVec<T> {
+    fn default() -> Self {
+        Self {
+            data: BidiVec::default(),
+            bounds: Bounds::default(),
+        }
+    }
 }
 
 impl<T> PlanarVec<T> {
