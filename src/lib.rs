@@ -60,7 +60,6 @@ impl DisplayInfo {
     }
 }
 
-
 // note: the anymap is a part of SharedState because plugin libraries may want to be generic over the kind
 // of SharedState<S> they support, so moving `extensions` into a users custom data would not allow
 // those plugins to access the anymap anymore.

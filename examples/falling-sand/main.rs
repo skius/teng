@@ -1,10 +1,13 @@
 use std::io::stdout;
+use teng::components::Component;
 use teng::rendering::color::Color;
 use teng::rendering::render::{HalfBlockDisplayRender, Render};
-use teng::{install_panic_handler, terminal_cleanup, terminal_setup, DisplayInfo, Game, SetupInfo, SharedState, UpdateInfo};
-use teng::components::Component;
 use teng::rendering::renderer::Renderer;
 use teng::util::planarvec::{Bounds, PlanarVec};
+use teng::{
+    install_panic_handler, terminal_cleanup, terminal_setup, DisplayInfo, Game, SetupInfo,
+    SharedState, UpdateInfo,
+};
 
 fn main() -> std::io::Result<()> {
     terminal_setup()?;
@@ -275,18 +278,30 @@ impl FallingSimulationComponent {
 }
 
 impl Component<FallingSimulationData> for FallingSimulationComponent {
-    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<FallingSimulationData>) {
+    fn setup(
+        &mut self,
+        setup_info: &SetupInfo,
+        shared_state: &mut SharedState<FallingSimulationData>,
+    ) {
         self.on_resize(setup_info.width, setup_info.height, shared_state);
-
     }
 
-    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState<FallingSimulationData>) {
+    fn on_resize(
+        &mut self,
+        width: usize,
+        height: usize,
+        shared_state: &mut SharedState<FallingSimulationData>,
+    ) {
         self.hb_display.resize_discard(width, height * 2);
         let data = &mut shared_state.custom;
         data.resize_discard(width, height * 2);
     }
 
-    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<FallingSimulationData>) {
+    fn update(
+        &mut self,
+        update_info: UpdateInfo,
+        shared_state: &mut SharedState<FallingSimulationData>,
+    ) {
         let dt = update_info.dt;
         self.dt_budget += dt;
 
@@ -325,7 +340,12 @@ impl Component<FallingSimulationData> for FallingSimulationComponent {
         }
     }
 
-    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState<FallingSimulationData>, depth_base: i32) {
+    fn render(
+        &self,
+        renderer: &mut dyn Renderer,
+        shared_state: &SharedState<FallingSimulationData>,
+        depth_base: i32,
+    ) {
         let depth_base = i32::MAX - 99;
         let data = &shared_state.custom;
         format!("FallingSimulationComponent: {}s", data.secs_passed)
