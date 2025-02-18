@@ -34,10 +34,11 @@ use teng::rendering::pixel::Pixel;
 use teng::rendering::render::Render;
 use teng::rendering::renderer::Renderer;
 use teng::{install_panic_handler, terminal_cleanup, terminal_setup, Game, SharedState};
+use teng::components::Component;
 
 struct MyComponent;
 
-impl teng::Component for MyComponent {
+impl Component for MyComponent {
     fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let width = shared_state.display_info.width();
         let height = shared_state.display_info.height();
@@ -67,7 +68,6 @@ fn main() -> io::Result<()> {
 
     Ok(())
 }
-
 ```
 This results in the following:
 

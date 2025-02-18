@@ -106,6 +106,7 @@ impl Bounds {
 }
 
 /// A data structure capable of storing a 2D plane indexed by a pair of i64s, (x, y).
+/// Efficiently growable in the x dimension.
 #[derive(Debug, Clone)]
 pub struct PlanarVec<T> {
     // Outer index is x, inner index is y

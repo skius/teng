@@ -4,9 +4,10 @@ use std::time::Instant;
 use teng::rendering::pixel::Pixel;
 use teng::rendering::renderer::Renderer;
 use teng::{
-    install_panic_handler, terminal_cleanup, terminal_setup, Component, Game, SharedState,
+    install_panic_handler, terminal_cleanup, terminal_setup, Game, SharedState,
     UpdateInfo,
 };
+use teng::components::Component;
 
 fn main() -> io::Result<()> {
     terminal_setup()?;

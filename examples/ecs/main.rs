@@ -9,10 +9,10 @@ use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::io;
 use std::io::stdout;
-use teng::components::KeyPressRecorderComponent;
 use teng::rendering::pixel::Pixel;
 use teng::rendering::renderer::Renderer;
 use teng::{BreakingAction, Game, SetupInfo, SharedState};
+use teng::components::Component as TengComponent;
 
 /// An ECS-component that holds the position of an entity.
 struct Position {
@@ -32,7 +32,7 @@ struct Entity(usize);
 /// An ECS-system that draws entities with a `Position` and `Draw` component.
 struct DrawSystem;
 
-impl teng::Component for DrawSystem {
+impl TengComponent for DrawSystem {
     fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let ecs = shared_state.extensions.get::<Ecs>().unwrap();
         for (position, draw) in ecs.entities.iter().filter_map(|entity| {
@@ -48,7 +48,7 @@ impl teng::Component for DrawSystem {
 /// An ECS-system that applies rudimentary physics to entities with a `Position` component.
 struct PhysicsSystem;
 
-impl teng::Component for PhysicsSystem {
+impl TengComponent for PhysicsSystem {
     fn update(&mut self, _update_info: teng::UpdateInfo, shared_state: &mut SharedState) {
         let ecs = shared_state.extensions.get_mut::<Ecs>().unwrap();
         for &entity in &ecs.entities {
@@ -160,7 +160,7 @@ struct EcsComponent {
     height: usize,
 }
 
-impl teng::Component for EcsComponent {
+impl TengComponent for EcsComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState) {
         self.width = setup_info.width;
         self.height = setup_info.height;

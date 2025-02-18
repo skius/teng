@@ -1,4 +1,3 @@
-use crate::components::{KeyPressRecorderComponent, MouseTrackerComponent};
 use crate::rendering::pixel::Pixel;
 use crate::rendering::render::{Render, Sprite};
 use crate::{BreakingAction, Component, Renderer, SetupInfo, SharedState, UpdateInfo};
@@ -6,6 +5,8 @@ use crossterm::event::Event;
 use std::any::{Any, TypeId};
 use std::collections::HashSet;
 use std::time::Instant;
+use crate::components::keyboard::KeyPressRecorderComponent;
+use crate::components::mouse::MouseTrackerComponent;
 
 pub struct TitleScreenComponent {
     width: usize,
@@ -93,7 +94,7 @@ impl Component for TitleScreenComponent {
                 .retain(|(_, y)| *y < self.height as f64);
         }
 
-        if shared_state.pressed_keys.inner.len() > 0 || shared_state.mouse_pressed.any() {
+        if shared_state.pressed_keys.inner().len() > 0 || shared_state.mouse_pressed.any() {
             self.exit(shared_state);
         }
     }

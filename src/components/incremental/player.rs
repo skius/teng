@@ -2,10 +2,10 @@ use crate::components::incremental::animation::CharAnimationSequence;
 use crate::components::incremental::collisionboard::PhysicsEntity2d;
 use crate::components::incremental::world::World;
 use crate::components::incremental::{GamePhase, GameState, PlayerHistoryElement};
-use crate::components::PressedKeys;
 use crate::rendering::render::{Render, Sprite};
 use crate::{Component, Renderer, SharedState, UpdateInfo};
 use std::time::{Duration, Instant};
+use crate::components::keyboard::PressedKeys;
 
 #[derive(Debug)]
 pub struct NewPlayerState {
