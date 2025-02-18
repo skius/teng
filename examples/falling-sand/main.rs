@@ -283,7 +283,7 @@ impl Component<FallingSimulationData> for FallingSimulationComponent {
         setup_info: &SetupInfo,
         shared_state: &mut SharedState<FallingSimulationData>,
     ) {
-        self.on_resize(setup_info.width, setup_info.height, shared_state);
+        self.on_resize(setup_info.display_info.width(), setup_info.display_info.height(), shared_state);
     }
 
     fn on_resize(

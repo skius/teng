@@ -11,8 +11,10 @@ pub mod mouse;
 pub mod quitter;
 
 /// A game component that can listen to events, perform logic, and render itself.
+/// Components are the main way to extend the game's functionality.
 pub trait Component<S = ()>: Any {
     /// Called in the very beginning. Useful to initialize more components or extension states.
+    /// Called also if `is_active` returns false.
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<S>) {}
     /// Called to determine if this component is active. If not, none of the other methods will be invoked.
     fn is_active(&self, shared_state: &SharedState<S>) -> bool {

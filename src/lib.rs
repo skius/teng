@@ -25,19 +25,27 @@ use crate::components::quitter::QuitterComponent;
 use crate::components::Component;
 use crate::rendering::renderer::{DisplayRenderer, Renderer};
 
+/// Information about the time since the last frame.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UpdateInfo {
+    /// The beginning of the last frame.
     pub last_time: Instant,
+    /// The beginning of the current frame.
     pub current_time: Instant,
+    /// The time in seconds that has passed since the last frame.
     pub dt: f64,
-    // the dt that the computations took without sleeping
+    /// The time in seconds that the last frame took without the sleeping to reach target fps.
     pub actual_dt: f64,
 }
 
+/// Actions that can be taken by components.
 pub enum BreakingAction {
+    /// Quit the loop.
     Quit,
 }
 
+/// Information about the screen size.
+#[derive(Clone)]
 pub struct DisplayInfo {
     _height: usize,
     _width: usize,
@@ -51,10 +59,12 @@ impl DisplayInfo {
         }
     }
 
+    /// Returns the width of the screen.
     pub fn width(&self) -> usize {
         self._width
     }
 
+    /// Returns the height of the screen.
     pub fn height(&self) -> usize {
         self._height
     }
@@ -125,11 +135,29 @@ impl<S: Default + 'static> SharedState<S> {
     }
 }
 
+/// Information used during the setup phase of the game.
 pub struct SetupInfo {
-    pub width: usize,
-    pub height: usize,
+    /// The current screen size.
+    pub display_info: DisplayInfo,
 }
 
+/// The driving type of a game.
+///
+/// A `Game` consists of a number of components that are executed in a loop and act on some shared state.
+///
+/// # Example
+/// ```
+/// use teng::{install_panic_handler, terminal_cleanup, terminal_setup, Game};
+///
+/// terminal_setup()?;
+/// install_panic_handler();
+///
+/// let mut game = Game::new_with_custom_buf_writer();
+/// game.install_recommended_components();
+/// game.run()?;
+///
+/// terminal_cleanup()?;
+/// ```
 pub struct Game<W: Write, S: Default = ()> {
     display_renderer: DisplayRenderer<W>,
     components: Vec<Box<dyn Component<S>>>,
@@ -222,12 +250,6 @@ impl<W: Write, S: Default + 'static> Game<W, S> {
         // how long the last frame's computations took
         let mut last_actual_dt = 1.0;
 
-        // this didn't end up working nicely. Could try an adaptive approach like here:
-        // https://stackoverflow.com/a/6942771
-        // let mut last_nanos_per_frame = 1;
-        // let mut last_frame_nanos = 0;
-        // let mut last_frame_overhead = 0;
-        // let mut frame_delay = 0;
         loop {
             let nanos_per_frame = if let Some(target_fps) = self.shared_state.target_fps {
                 (1.0 / target_fps * 1_000_000_000.0) as u64
@@ -325,6 +347,9 @@ impl<W: Write, S: Default + 'static> Game<W, S> {
         self.display_renderer.resize_discard(width, height);
         self.shared_state.resize(width, height);
         for component in self.components.iter_mut() {
+            if !self.shared_state.is_component_active(component.as_ref()) {
+                continue;
+            }
             component.on_resize(width, height, &mut self.shared_state);
         }
     }
@@ -406,8 +431,7 @@ impl<W: Write, S: Default + 'static> Game<W, S> {
 
     fn setup(&mut self) -> io::Result<()> {
         let setup_info = SetupInfo {
-            width: self.width(),
-            height: self.height(),
+            display_info: self.shared_state.display_info.clone(),
         };
         let mut already_setup_components = 0;
         while already_setup_components < self.components.len() {

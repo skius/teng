@@ -174,8 +174,8 @@ struct EcsComponent {
 
 impl TengComponent<Ecs> for EcsComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<Ecs>) {
-        self.width = setup_info.width;
-        self.height = setup_info.height;
+        self.width = setup_info.display_info.width();
+        self.height = setup_info.display_info.height();
 
         let ecs = &mut shared_state.custom;
         ecs.components.register::<Position>();
