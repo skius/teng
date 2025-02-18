@@ -79,6 +79,7 @@ This results in the following:
 **teng** particularly shines when you are not aware of libraries like [ratatui](https://github.com/ratatui/ratatui/) or [yeehaw](https://github.com/bogzbonny/yeehaw/).
 
 Also, if you're looking to just get started with game development in the terminal, **teng** may be a good choice due to its simplicity and focus on traditional, frame-based game loops and pixel-based rendering.
+All you need is a single component and you can individually target every pixel on the screen.
 
 ### Is **teng** an ECS?
 Not really. **teng**'s "Components" are quite similar to "Systems" in an ECS, but there is no built-in notion of entities or components in the ECS sense.
