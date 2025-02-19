@@ -11,6 +11,7 @@ A minimal, cross-platform game engine for the terminal in Rust
 
 ## Features
 - Fast rendering by only printing changed pixels to the terminal
+- Components-based architecture around a simple game loop
 - Built-in FPS limiter
 - Batteries included: Components for common tasks (e.g. input handling, FPS display, mouse interpolation, half block rendering)
 
