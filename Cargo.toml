@@ -1,6 +1,6 @@
 [package]
 name = "teng"
-version = "0.4.3"
+version = "0.4.4"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["Niels Saurer <me@nielssaurer.com>"]
