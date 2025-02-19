@@ -5,11 +5,11 @@
 //!
 //! **Sub-modules:**
 //!
-//! *   [`color`](crate::rendering::color): Defines the [`Color`] enum for specifying colors.
-//! *   [`display`](crate::rendering::display): Defines the [`Display`] struct, a 2D pixel buffer.
-//! *   [`pixel`](crate::rendering::pixel): Defines the [`Pixel`] struct, the basic unit of rendering.
-//! *   [`render`](crate::rendering::render): Provides the [`Render`] trait for objects that can be rendered.
-//! *   [`renderer`](crate::rendering::renderer): Defines the [`Renderer`] trait and implementations for rendering to the terminal.
+//! *   [`color`]: Defines the [`Color`] enum for specifying colors.
+//! *   [`display`]: Defines the [`Display`] struct, a 2D pixel buffer.
+//! *   [`pixel`]: Defines the [`Pixel`] struct, the basic unit of rendering.
+//! *   [`render`]: Provides the [`Render`] trait for objects that can be rendered.
+//! *   [`renderer`]: Defines the [`Renderer`] trait and implementations for rendering to the terminal.
 //!
 //! **Key Concepts:**
 //!
@@ -25,6 +25,13 @@
 //! 3.  Use methods like `Renderer::render_pixel()` and `Render::render()` to draw pixels and renderable objects to the `Renderer`.
 //! 4.  The `Renderer` updates its internal `Display` buffer.
 //! 5.  Call `Renderer::flush()` to write the contents of the `Display` buffer to the terminal, efficiently updating only the changed pixels.
+//! 
+//! [`Color`]: crate::rendering::color::Color
+//! [`Display`]: crate::rendering::display::Display
+//! [`Pixel`]: crate::rendering::pixel::Pixel
+//! [`Render`]: crate::rendering::render::Render
+//! [`Renderer`]: crate::rendering::renderer::Renderer
+//! [`DisplayRenderer`]: crate::rendering::renderer::DisplayRenderer
 
 pub mod color;
 pub mod display;

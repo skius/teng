@@ -10,6 +10,8 @@
 //! *   Clearing and filling the buffer with a default pixel.
 //! *   Accessing and modifying individual pixels at specific coordinates.
 //! *   Iterating over pixels in the display.
+//! 
+//! [`Pixel`]: crate::rendering::pixel::Pixel
 
 use std::fmt;
 use std::fmt::{Debug, Formatter};
@@ -40,6 +42,8 @@ use std::ops::{Index, IndexMut};
 /// println!("Pixel at (2, 3): {:?}", display[(2, 3)]); // prints "Pixel('X')"
 /// println!("Pixel at (5, 1): {:?}", pixel_at_5_1); // prints "Pixel(' ')" (the default)
 /// ```
+/// 
+/// [`Pixel`]: crate::rendering::pixel::Pixel
 pub struct Display<T> {
     width: usize,
     height: usize,
