@@ -140,7 +140,7 @@ impl<T: Clone> Display<T> {
     }
 
     /// Resizes the display, keeping existing pixel data where possible.
-    /// 
+    ///
     /// If the new dimensions are larger than the current dimensions, the existing pixels are kept and the new pixels are filled with the default value.
     pub fn resize_keep(&mut self, width: usize, height: usize) {
         let mut new_pixels = vec![self.default.clone(); width * height];

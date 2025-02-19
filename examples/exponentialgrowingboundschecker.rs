@@ -7,8 +7,11 @@ use teng::components::Component;
 use teng::rendering::pixel::Pixel;
 use teng::rendering::renderer::Renderer;
 use teng::util::planarvec::Bounds;
-use teng::{install_panic_handler, terminal_cleanup, terminal_setup, Game, SetupInfo, SharedState, UpdateInfo};
 use teng::util::planarvec2_experimental::ExponentialGrowingBounds;
+use teng::{
+    install_panic_handler, terminal_cleanup, terminal_setup, Game, SetupInfo, SharedState,
+    UpdateInfo,
+};
 
 fn main() -> io::Result<()> {
     terminal_setup()?;
@@ -49,7 +52,7 @@ impl ExponentialBoundsCheckerComponent {
         let y = y as i64 - center_y as i64;
         (x, y)
     }
-    
+
     fn bounds_coords_to_screen_coords(&self, x: i64, y: i64) -> (usize, usize) {
         let (center_x, center_y) = self.center_screen();
         let x = (x + center_x as i64) as usize;
@@ -60,14 +63,18 @@ impl ExponentialBoundsCheckerComponent {
 
 impl Component for ExponentialBoundsCheckerComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<()>) {
-        self.on_resize(setup_info.display_info.width(), setup_info.display_info.height(), shared_state);
+        self.on_resize(
+            setup_info.display_info.width(),
+            setup_info.display_info.height(),
+            shared_state,
+        );
     }
-    
+
     fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState<()>) {
         self.screen_width = width;
         self.screen_height = height;
     }
-    
+
     fn update(&mut self, _update_info: UpdateInfo, shared_state: &mut SharedState) {
         if shared_state.mouse_info.left_mouse_down {
             let (x, y) = shared_state.mouse_info.last_mouse_pos;
@@ -75,7 +82,6 @@ impl Component for ExponentialBoundsCheckerComponent {
             self.exp_bounds.grow_to_contain((x, y));
         }
 
-        
         if shared_state.mouse_pressed.right {
             self.exp_bounds = ExponentialGrowingBounds::new();
         }
@@ -83,7 +89,7 @@ impl Component for ExponentialBoundsCheckerComponent {
 
     fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         // Draw the bounds
-        
+
         for b_x in self.exp_bounds.min_x()..=self.exp_bounds.max_x() {
             for b_y in self.exp_bounds.min_y()..=self.exp_bounds.max_y() {
                 let (x, y) = self.bounds_coords_to_screen_coords(b_x, b_y);

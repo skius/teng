@@ -28,7 +28,7 @@ impl DebugMessage {
 
 // TODO: make this extensible
 /// Static debug content that will be displayed on the screen and updated every frame.
-/// 
+///
 /// Use this instead of [`DebugMessage`] if you want to display content that is updated every frame,
 /// such as a player's position.
 #[derive(Debug, Default, Clone)]
@@ -150,7 +150,7 @@ impl<S> Component<S> for DebugInfoComponent {
     fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState<S>, depth_base: i32) {
         let depth_base = i32::MAX - 100;
         let mut y = 0;
-        format!("Help: q to quit, l to lock/unlock FPS, scroll to change FPS, b to cheat blocks, p to toggle parallax, m to toggle minimap, i to toggle debug info, r to start/stop recording").render(
+        "Help: q to quit, l to lock/unlock FPS, scroll to change FPS, b to cheat blocks, p to toggle parallax, m to toggle minimap, i to toggle debug info, r to start/stop recording".render(
             renderer,
             0,
             y,

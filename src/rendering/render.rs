@@ -39,7 +39,6 @@
 
 use crate::rendering::{color::Color, display::Display, pixel::Pixel, renderer::Renderer};
 use std::fmt::Debug;
-use std::io::Write;
 
 /// Trait for objects that can be rendered to a [`Renderer`].
 ///

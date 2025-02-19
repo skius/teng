@@ -23,7 +23,7 @@ use crate::components::keyboard::{KeyPressRecorderComponent, PressedKeys};
 use crate::components::mouse::{MouseEvents, MouseInfo, MousePressedInfo, MouseTrackerComponent};
 use crate::components::quitter::QuitterComponent;
 use crate::components::Component;
-use crate::rendering::renderer::{DisplayRenderer, Renderer};
+use crate::rendering::renderer::DisplayRenderer;
 
 /// Information about the time since the last frame.
 #[derive(Clone, Copy, Debug, PartialEq)]

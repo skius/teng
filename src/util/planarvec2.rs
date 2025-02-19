@@ -1,5 +1,5 @@
-use std::ops::{Index, IndexMut};
 pub use crate::util::planarvec::Bounds;
+use std::ops::{Index, IndexMut};
 
 /// A bounds structure with exponential growth, to amortize the cost of resizing.
 ///
@@ -79,7 +79,6 @@ impl ExponentialGrowingBounds {
         }
     }
 
-
     /// Grows the bounds to contain the given point, applying the growth rules described in
     /// [`ExponentialGrowingBounds`].
     pub fn grow_to_contain(&mut self, (x, y): (i64, i64)) {
@@ -114,7 +113,8 @@ pub struct PlanarVecInner<T> {
 
 impl<T> PlanarVecInner<T> {
     pub fn new(default: T) -> PlanarVecInner<T>
-    where T: Clone
+    where
+        T: Clone,
     {
         let bounds = ExponentialGrowingBounds::new();
         let width = bounds.width();
@@ -183,7 +183,8 @@ impl<T> PlanarVecInner<T> {
     }
 
     fn grow_to_contain_bounds(&mut self, bounds: Bounds, default: T)
-    where T: Clone
+    where
+        T: Clone,
     {
         let mut new_exp_bounds = self.bounds;
         new_exp_bounds.grow_to_contain((bounds.min_x, bounds.min_y));
@@ -281,7 +282,7 @@ impl<T> PlanarVec<T> {
 
         self.inner.get_mut(x, y)
     }
-    
+
     fn get_mut_raw(&mut self, x: i64, y: i64) -> Option<&mut T> {
         self.inner.get_mut(x, y)
     }
@@ -314,7 +315,8 @@ impl<T> PlanarVec<T> {
             return;
         }
 
-        self.inner.grow_to_contain_bounds(union_bounds, default.clone());
+        self.inner
+            .grow_to_contain_bounds(union_bounds, default.clone());
 
         self.pseudo_bounds = union_bounds;
     }
@@ -345,5 +347,3 @@ impl<T> IndexMut<(i64, i64)> for PlanarVec<T> {
         self.get_mut(x, y).expect("index mut out of bounds")
     }
 }
-
-

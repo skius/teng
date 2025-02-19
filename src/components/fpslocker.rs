@@ -2,7 +2,7 @@ use crate::{BreakingAction, Component, SetupInfo, SharedState, UpdateInfo};
 use crossterm::event::{Event, MouseEventKind};
 
 /// A component that locks the FPS to a certain value.
-/// 
+///
 /// Press 'l' to toggle the lock, and scroll up/down to change the target FPS.
 pub struct FpsLockerComponent {
     locked: bool,

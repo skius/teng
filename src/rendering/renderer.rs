@@ -25,11 +25,10 @@
 //! *   **Resizing:**  `resize_discard()` and `resize_keep()` functions allow you to resize the
 //!     rendering area, either discarding or preserving existing content.
 
-use crate::rendering::{display::Display, pixel::Pixel, render::Render};
+use crate::rendering::{display::Display, pixel::Pixel};
 use crossterm::queue;
-use rand::Rng;
 use std::io;
-use std::io::{Stdout, Write};
+use std::io::Write;
 
 /// Trait for rendering operations.
 ///

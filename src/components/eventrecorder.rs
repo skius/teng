@@ -124,15 +124,6 @@ impl<S> Component<S> for EventRecorderComponent {
         );
     }
 
-    fn on_event(
-        &mut self,
-        event: Event,
-        shared_state: &mut SharedState<S>,
-    ) -> Option<BreakingAction> {
-        self.record_event(event);
-        None
-    }
-
     fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState<S>) {
         self.current_display_size = (width, height);
     }
@@ -144,6 +135,15 @@ impl<S> Component<S> for EventRecorderComponent {
             crossterm::event::KeyModifiers::empty(),
         )));
         self.stop_and_save_recording();
+    }
+
+    fn on_event(
+        &mut self,
+        event: Event,
+        shared_state: &mut SharedState<S>,
+    ) -> Option<BreakingAction> {
+        self.record_event(event);
+        None
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {

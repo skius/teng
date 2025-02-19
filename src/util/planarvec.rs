@@ -216,7 +216,7 @@ impl<T> PlanarVec<T> {
     }
 
     /// Expands the `PlanarVec` to at least contain the given bounds.
-    /// 
+    ///
     /// If the passed bounds are outside the current bounds, the `PlanarVec` is expanded to
     /// the union of both bounds. The new cells are filled with the given default value.
     pub fn expand(&mut self, bounds: Bounds, default: T)

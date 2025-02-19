@@ -63,7 +63,7 @@ impl Pixel {
     }
 
     /// Creates a new `Pixel` with a transparent character and colors.
-    /// 
+    ///
     /// This is useful e.g. for creating a default "passthrough" pixel that doesn't overwrite existing content unless it's color is changed.
     pub fn transparent() -> Self {
         Self {
@@ -74,9 +74,9 @@ impl Pixel {
     }
 
     /// Creates a new `Pixel` with the same character and background color as `self`, but with a new foreground color.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```rust
     /// use teng::rendering::pixel::Pixel;
     ///
@@ -92,12 +92,12 @@ impl Pixel {
     }
 
     /// Creates a new `Pixel` with the same character and foreground color as `self`, but with a new background color.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```rust
     /// use teng::rendering::pixel::Pixel;
-    /// 
+    ///
     /// let pixel = Pixel::new('o');
     /// let green_bg_pixel = pixel.with_bg_color([0, 255, 0]); // 'o' with green background
     /// ```
@@ -109,9 +109,8 @@ impl Pixel {
         }
     }
 
-    
     /// Overlays `self` over `other`, taking into account transparencies, and returns the result.
-    /// 
+    ///
     /// # Example
     ///
     /// ```rust
