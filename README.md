@@ -90,7 +90,7 @@ However, you can build an ECS inside **teng** quite easily, see [`examples/ecs`]
 
 [Repo]: https://github.com/skius/teng
 [Docs]: https://docs.rs/teng
-[Examples]: https://github.com/ratatui/ratatui/tree/main/examples
+[Examples]: https://github.com/skius/teng/tree/main/examples
 [Crate]: https://crates.io/crates/teng
 [Crate Badge]: https://img.shields.io/crates/v/teng?logo=rust&style=flat-square&color=E05D44
 [Repo Badge]: https://img.shields.io/badge/repo-skius/teng-3370D3?style=flat-square&logo=github
