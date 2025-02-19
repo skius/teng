@@ -2,6 +2,7 @@
 
 pub mod bidivec;
 pub mod planarvec;
+pub mod planarvec2;
 
 /// Runs a function for each coordinate in an interpolated line.
 /// If `exclude_start` is true, the start coordinate will not be included, unless it's the same as the end coordinate.

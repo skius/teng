@@ -35,6 +35,10 @@ name = "boundschecker"
 path = "examples/boundschecker.rs"
 
 [[example]]
+name = "exponentialgrowingboundschecker"
+path = "examples/exponentialgrowingboundschecker.rs"
+
+[[example]]
 name = "falling-sand"
 path = "examples/falling-sand/main.rs"
 
