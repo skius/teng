@@ -17,8 +17,7 @@ A minimal, cross-platform game engine for the terminal in Rust
 ## Showcase
 See below for a clip of an unreleased game built in **teng**:
 
-https://github.com/user-attachments/assets/c124958a-6093-41e9-90fe-56a2eb5d4618
-
+<https://github.com/user-attachments/assets/c124958a-6093-41e9-90fe-56a2eb5d4618>
 
 
 ## Getting Started
