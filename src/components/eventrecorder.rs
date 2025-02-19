@@ -1,9 +1,16 @@
+//! This module contains components for recording and replaying events, as well as benchmarking frame counts.
+//!
+//! - `EventRecorderComponent`: Records events and saves them to a file.
+//! - `EventReplayerComponent`: Replays recorded events.
+//! - `BenchFrameCounter`: Counts the number of frames and reports it on quit.
+
 use crate::{BreakingAction, Component, DebugMessage, SetupInfo, SharedState, UpdateInfo};
 use crossterm::event::Event;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::time::SystemTime;
 
+/// A single recorded event at a specific time offset.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RecordedEvent {
     pub event: Event,
@@ -11,6 +18,7 @@ pub struct RecordedEvent {
     pub ns_offset: u128,
 }
 
+/// A recording of events.
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Recording {
     pub events: Vec<RecordedEvent>,
@@ -29,6 +37,9 @@ impl Recording {
     }
 }
 
+/// A component that records received events to a `Recording` and saves them to a file.
+///
+/// The recording can be started and stopped with the 'r' key.
 pub struct EventRecorderComponent {
     active_recording: Recording,
     recording: bool,
@@ -54,6 +65,7 @@ impl EventRecorderComponent {
         format!("recordings/recording-{}.bin", timestamp)
     }
 
+    /// Starts a new recording.
     pub fn start_recording(&mut self) {
         self.recording = true;
         self.active_recording = Recording {
@@ -64,10 +76,13 @@ impl EventRecorderComponent {
         self.current_start_time = std::time::Instant::now();
     }
 
+    /// Stops recording events.
     pub fn stop_recording(&mut self) {
         self.recording = false;
     }
 
+    /// Saves the last recording to a file.
+    /// You may want to use [`EventRecorderComponent::stop_and_save_recording`] instead.
     pub fn save_recording(&mut self, path: impl AsRef<Path>) {
         assert!(!self.is_recording());
         if let Some(parent) = path.as_ref().parent() {
@@ -77,10 +92,12 @@ impl EventRecorderComponent {
         bincode::serialize_into(file, &self.active_recording).unwrap();
     }
 
+    /// Returns whether the component is currently recording events.
     pub fn is_recording(&self) -> bool {
         self.recording
     }
 
+    /// Records an event at the current time.
     pub fn record_event(&mut self, event: Event) {
         if self.is_recording() {
             let ns_offset = self.current_start_time.elapsed().as_nanos();
@@ -90,6 +107,7 @@ impl EventRecorderComponent {
         }
     }
 
+    /// Stops recording and saves the recording to a file with an auto-generated name.
     pub fn stop_and_save_recording(&mut self) {
         if self.is_recording() {
             self.stop_recording();
@@ -149,6 +167,8 @@ impl<S> Component<S> for EventRecorderComponent {
 
 // TODO: Does not currently handle resize events properly.
 // Unsure how to even handle them, do we just cap the mouse events at the current display size?
+/// A component that replays a recording of events.
+/// Events are replayed in the next frame.
 pub struct EventReplayerComponent {
     recording: Recording,
     replaying: bool,
@@ -158,6 +178,8 @@ pub struct EventReplayerComponent {
 }
 
 impl EventReplayerComponent {
+    /// Creates a new `EventReplayerComponent` that will start replaying immediately if
+    /// `immediately_start_playing` is `true`.
     pub fn new(immediately_start_playing: bool, recording: Recording) -> Self {
         Self {
             recording,
@@ -219,12 +241,18 @@ impl<S> Component<S> for EventReplayerComponent {
     }
 }
 
+/// A component that counts the number of frames that have passed and reports it when the game is
+/// quit.
+/// Useful for basic benchmarking by counting the number of frames that have passed when e.g. a
+/// recording is played.
 pub struct BenchFrameCounter {
     frame_count: usize,
     report_fn: Box<dyn Fn(usize)>,
 }
 
 impl BenchFrameCounter {
+    /// Creates a new `BenchFrameCounter` that will report the frame count to `report_fn` when the
+    /// game is quit.
     pub fn new(report_fn: impl Fn(usize) + 'static) -> Self {
         Self {
             frame_count: 0,
@@ -234,12 +262,12 @@ impl BenchFrameCounter {
 }
 
 impl<S> Component<S> for BenchFrameCounter {
-    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {
-        self.frame_count += 1;
-    }
-
     fn on_quit(&mut self, shared_state: &mut SharedState<S>) {
         // report the count
         (self.report_fn)(self.frame_count);
+    }
+
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {
+        self.frame_count += 1;
     }
 }

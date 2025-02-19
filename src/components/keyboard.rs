@@ -3,17 +3,23 @@ use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use std::collections::HashMap;
 use std::time::Instant;
 
+// TODO: swap to `crokey` crate architecture?
+// Needing to check for "M" when we actually mean "shift-m" is a bit confusing.
+
+/// Contains the keys that have been pressed since the last update.
 pub struct PressedKeys {
     inner: micromap::Map<KeyCode, u8, 16>,
 }
 
 impl PressedKeys {
+    /// Creates a new `PressedKeys` instance.
     pub fn new() -> Self {
         Self {
             inner: micromap::Map::new(),
         }
     }
 
+    /// Returns the raw map of pressed keys.
     pub fn inner(&self) -> &micromap::Map<KeyCode, u8, 16> {
         &self.inner
     }
@@ -24,16 +30,21 @@ impl PressedKeys {
         self.inner.insert(key, 1);
     }
 
+    /// Returns true if the given key was pressed since the last update.
     pub fn did_press_char(&self, c: char) -> bool {
         self.inner.contains_key(&KeyCode::Char(c))
     }
 
+    /// Returns true if the given key was pressed since the last update, ignoring case.
     pub fn did_press_char_ignore_case(&self, c: char) -> bool {
         self.did_press_char(c) || self.did_press_char(c.to_ascii_uppercase())
     }
 }
 
-/// Must be before any other components that use key presses.
+/// A component that records key presses.
+///
+/// Manages the `SharedState::pressed_keys` field, and must be in the update order before any component
+/// that uses `SharedState::pressed_keys`.
 pub struct KeyPressRecorderComponent {
     pressed_keys: micromap::Map<KeyCode, u8, 16>,
 }
@@ -79,6 +90,17 @@ impl<S> Component<S> for KeyPressRecorderComponent {
     }
 }
 
+/// A component that tries to figure out the current "up"/"down" state of a key only from
+/// `KeyEventKind::Press` events.
+///
+/// Some terminals do not send `KeyEventKind::Release` events, only `KeyEventKind::Press` events,
+/// which makes it hard to figure out the current state of a key.
+/// Because typically those terminals will repeat a `KeyEventKind::Press` event after some delay if the key is held
+/// down, we can assume that a key is "down" if we have seen a `KeyEventKind::Press` event for it within that delay,
+/// and "up" if it's been longer than that delay since the last `KeyEventKind::Press` event.
+///
+/// It manages the `SharedState::debounced_down_keys` field, and must appear in the update order
+/// before any component that uses `SharedState::debounced_down_keys`.
 pub struct KeypressDebouncerComponent {
     max_delay_ms: u128,
     last_keypress: HashMap<KeyCode, Instant>,

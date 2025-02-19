@@ -1,6 +1,7 @@
 use crate::{BreakingAction, Component, SharedState};
 use crossterm::event::{Event, KeyCode, KeyEvent};
 
+/// A component that quits the game when the user presses 'q'.
 pub struct QuitterComponent;
 
 impl<S> Component<S> for QuitterComponent {

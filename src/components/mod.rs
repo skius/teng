@@ -1,3 +1,9 @@
+//! Components for extending game functionality
+//!
+//! This module provides various components that handle input, rendering, debugging,
+//! and other game systems. Components implement the `Component` trait and can be
+//! added to a game to modify its behavior.
+
 use crate::rendering::renderer::Renderer;
 use crate::{BreakingAction, SetupInfo, SharedState, UpdateInfo};
 use crossterm::event::Event;

@@ -35,12 +35,20 @@ impl MousePressedInfo {
     }
 }
 
+/// Aggregates mouse events since last frame.
+///
+/// Use this to get various interpolation mechanics for mouse events, for example, a component
+/// that draws a line following the mouse cursor can use this struct to interpolate a continuous
+/// line between individual mouse events.
+/// This is necessary because the terminal may skip sending mouse events for some screen coordinates
+/// if the mouse moves too quickly, resulting in discontinuous recorded mouse positions.
 pub struct MouseEvents {
     events: Vec<MouseInfo>,
     has_new_this_frame: bool,
 }
 
 impl MouseEvents {
+    /// Creates an empty `MouseEvents` struct.
     pub fn new() -> Self {
         Self {
             events: vec![],
@@ -48,10 +56,12 @@ impl MouseEvents {
         }
     }
 
+    /// Records a new mouse event during this frame.
     pub fn push(&mut self, event: MouseInfo) {
         self.events.push(event);
     }
 
+    /// Returns true if there has been a new mouse event this frame.
     pub fn has_new_this_frame(&self) -> bool {
         self.has_new_this_frame
     }
@@ -89,6 +99,9 @@ impl MouseEvents {
     }
 }
 
+/// Component that tracks mouse state and events.
+///
+/// Should be early in the update order to ensure that other components can use the mouse state.
 pub struct MouseTrackerComponent {
     last_mouse_info: MouseInfo,
     did_press_left: bool,
@@ -98,6 +111,7 @@ pub struct MouseTrackerComponent {
 }
 
 impl MouseTrackerComponent {
+    /// Creates a new `MouseTrackerComponent`.
     pub fn new() -> Self {
         Self {
             last_mouse_info: MouseInfo::default(),
@@ -108,7 +122,8 @@ impl MouseTrackerComponent {
         }
     }
 
-    pub fn fill_mouse_info(event: MouseEvent, mouse_info: &mut MouseInfo) {
+    /// Updates a [`MouseInfo`] struct with the information from a `MouseEvent`.
+    pub fn update_mouse_info(event: MouseEvent, mouse_info: &mut MouseInfo) {
         mouse_info.last_mouse_pos = (event.column as usize, event.row as usize);
         let (button, down) = match event {
             MouseEvent {
@@ -137,6 +152,12 @@ impl MouseTrackerComponent {
 
     /// Calls the passed closure with a new mouse info for every interpolated mouse info between
     /// the two passed mouse infos. Also includes the endpoints.
+    ///
+    /// If the two `MouseInfo` structs differ in button state, the first one is passed to every
+    /// closure call except the last one, where the second one is passed.
+    /// For example, if we're interpolating from "mouse at `(0,0)`, left mouse up" to "mouse at `(0,10)`, left mouse down",
+    /// then `f` will be called with "mouse at `(0,i)`, left mouse up" for `i` in `0..=9`,
+    /// and finally with "mouse at `(0,10)`, left mouse down".
     pub fn smooth_two_updates(
         exclude_start: bool,
         first: MouseInfo,
@@ -178,7 +199,7 @@ impl<S> Component<S> for MouseTrackerComponent {
         shared_state: &mut SharedState<S>,
     ) -> Option<BreakingAction> {
         if let Event::Mouse(event) = event {
-            Self::fill_mouse_info(event, &mut self.last_mouse_info);
+            Self::update_mouse_info(event, &mut self.last_mouse_info);
             self.mouse_events.push(self.last_mouse_info);
             self.mouse_events.has_new_this_frame = true;
             match event {

@@ -5,12 +5,14 @@ use crate::{BreakingAction, Component, SharedState, UpdateInfo};
 use crossterm::event::Event;
 use std::time::{Duration, Instant};
 
+/// A debug message that will be displayed on the screen for a limited time.
 pub struct DebugMessage {
     message: String,
     expiry_time: Instant,
 }
 
 impl DebugMessage {
+    /// Create a new debug message with the given message and expiry time.
     pub fn new(message: impl Into<String>, expiry_time: Instant) -> Self {
         Self {
             message: message.into(),
@@ -18,11 +20,17 @@ impl DebugMessage {
         }
     }
 
+    /// Create a new debug message with the given message that will expire in 3 seconds.
     pub fn new_3s(message: impl Into<String>) -> Self {
         Self::new(message.into(), Instant::now() + Duration::from_secs(3))
     }
 }
 
+// TODO: make this extensible
+/// Static debug content that will be displayed on the screen and updated every frame.
+/// 
+/// Use this instead of [`DebugMessage`] if you want to display content that is updated every frame,
+/// such as a player's position.
 #[derive(Debug, Default, Clone)]
 pub struct DebugInfo {
     player_y: f64,
@@ -39,6 +47,7 @@ impl DebugInfo {
     }
 }
 
+/// A component that displays debug information on the screen.
 pub struct DebugInfoComponent {
     frametime_ns: u128,
     max_frametime_time: Instant,
