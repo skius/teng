@@ -2,7 +2,13 @@
 
 pub mod bidivec;
 pub mod planarvec;
-pub mod planarvec2;
+// Experimental replacement for planarvec, uses a single vector and grows exponentially in every direction.
+// Benchmarks in prototype game resulted in ~5% increased frames, at the cost of way worse maximum frametimes (>1.5s frametimes when expanding)
+mod planarvec2;
+
+pub mod planarvec2_experimental {
+    pub use super::planarvec2::*;
+}
 
 /// Runs a function for each coordinate in an interpolated line.
 /// If `exclude_start` is true, the start coordinate will not be included, unless it's the same as the end coordinate.

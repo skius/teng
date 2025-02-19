@@ -8,7 +8,7 @@ use teng::rendering::pixel::Pixel;
 use teng::rendering::renderer::Renderer;
 use teng::util::planarvec::Bounds;
 use teng::{install_panic_handler, terminal_cleanup, terminal_setup, Game, SetupInfo, SharedState, UpdateInfo};
-use teng::util::planarvec2::ExponentialGrowingBounds;
+use teng::util::planarvec2_experimental::ExponentialGrowingBounds;
 
 fn main() -> io::Result<()> {
     terminal_setup()?;
