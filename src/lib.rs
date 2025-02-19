@@ -184,6 +184,7 @@ impl<S: Default + 'static> Game<Stdout, S> {
 }
 
 impl<W: Write, S: Default + 'static> Game<W, S> {
+    /// Creates a new game with the given sink.
     pub fn new(sink: W) -> Self {
         let (width, height) = crossterm::terminal::size().unwrap();
         let width = width as usize;
@@ -222,10 +223,16 @@ impl<W: Write, S: Default + 'static> Game<W, S> {
         self.display_renderer.height()
     }
 
+    /// Adds a component to the game.
+    ///
+    /// The component will be added to the end of the list of components, giving it a later
+    /// update order, but a higher render priority.
     pub fn add_component(&mut self, component: Box<dyn Component<S>>) {
         self.components.push(component);
     }
 
+    // TODO: remove this? or rework once we have a new() function on the Component trait
+    #[doc(hidden)]
     pub fn add_component_with(
         &mut self,
         init_fn: impl FnOnce(usize, usize) -> Box<dyn Component<S>>,
@@ -233,6 +240,10 @@ impl<W: Write, S: Default + 'static> Game<W, S> {
         self.components.push(init_fn(self.width(), self.height()));
     }
 
+    /// Runs the game loop.
+    /// 
+    /// This function will block until the game loop is finished, which happens when a component
+    /// returns [`BreakingAction::Quit`].
     pub fn run(&mut self) -> io::Result<()> {
         // TODO: think about taking ownership of self and making `event_read_thread_handle` non-optional
         // Right now it feels like you can just run `run` multiple times, but this will not spawn new event reader threads.
@@ -466,6 +477,15 @@ impl<W: Write, S: Default + 'static> Game<W, S> {
     }
 }
 
+/// Sets up the terminal for the game.
+///
+/// This function should be called before any other terminal functions.
+/// It sets up the terminal for raw mode, hides the cursor, tells the terminal to send mouse events,
+/// and enters the alternate screen.
+///
+/// It is recommended to call `install_panic_handler` after this function, and `terminal_cleanup` after the game loop.
+///
+/// Note: If you are stuck in a bad terminal state, you can try running `reset` in the terminal.
 pub fn terminal_setup() -> io::Result<()> {
     let mut stdout = stdout();
 
@@ -478,6 +498,10 @@ pub fn terminal_setup() -> io::Result<()> {
     Ok(())
 }
 
+/// Cleans up the terminal after the game.
+///
+/// This function should be called after the game loop has finished. It resets everything done
+/// by `terminal_setup`.
 pub fn terminal_cleanup() -> io::Result<()> {
     let mut stdout = stdout();
     execute!(stdout, DisableMouseCapture)?;
@@ -497,16 +521,20 @@ pub fn terminal_cleanup() -> io::Result<()> {
 }
 
 /// Installs a panic handler that cleans up the terminal before panicking.
+///
 /// Without this, the panic message would not be displayed properly because we're in a different
 /// terminal mode and in the alternate screen.
 pub fn install_panic_handler() {
-    std::panic::set_hook(Box::new(|pinfo| {
+    let old_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |pinfo| {
         terminal_cleanup().unwrap();
         eprintln!("{}", pinfo);
+        old_hook(pinfo);
     }));
 }
 
 /// Custom buffer writer that _only_ flushes explicitly
+///
 /// Surprisingly leads to a speedup from 2000 fps to 4800 fps on a full screen terminal
 /// Update: Since diff rendering, the difference between this and Stdout directly is smaller.
 pub struct CustomBufWriter {
