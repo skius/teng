@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use crate::rendering::render::Render;
 use crate::rendering::renderer::Renderer;
 use crate::seeds::get_seed_opt;
@@ -39,6 +40,7 @@ pub struct DebugInfo {
     bottom_wall: f64,
     y_vel: f64,
     target_queue: Vec<u16>,
+    pub custom: BTreeMap<String, String>,
 }
 
 impl DebugInfo {
@@ -200,6 +202,11 @@ impl<S> Component<S> for DebugInfoComponent {
         // format!("Frames since last FPS: {}", self.frames_since_last_fps).render(&mut renderer, 0, y, depth_base);
         // y += 1;
         // format!("Update calls: {}", self.num_update_calls).render(&mut renderer, 0, y, depth_base);
+        
+        let custom_debug_s = format!("Custom debug info: {:#?}", shared_state.debug_info.custom);
+        custom_debug_s.render(renderer, 0, y, depth_base);
+        y += custom_debug_s.lines().count();
+        
         for dbg_msg in shared_state.debug_messages.iter() {
             for line in dbg_msg.message.as_str().lines() {
                 line.render(renderer, 0, y, depth_base);
