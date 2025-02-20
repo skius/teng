@@ -56,6 +56,11 @@ impl FixedUpdateRunner {
     pub fn consume(&mut self) {
         self.dt_accumulator -= self.fixed_dt;
     }
+    
+    /// Available ticks to consume.
+    pub fn available_ticks(&self) -> u64 {
+        (self.dt_accumulator / self.fixed_dt).floor() as u64
+    }
 }
 
 #[cfg(test)]
@@ -86,5 +91,8 @@ mod tests {
         // and 59 frames of lag at the end (not 60 due to rounding
         expected_calls.extend(repeat_n(120, 59));
         assert_eq!(fixed_update_calls, expected_calls);
+        assert_eq!(runner.available_ticks(), 0);
+        runner.fuel(0.5);
+        assert_eq!(runner.available_ticks(), (0.5 / (1.0 / 60.0)) as u64);
     }
 }
