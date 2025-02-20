@@ -57,3 +57,34 @@ impl FixedUpdateRunner {
         self.dt_accumulator -= self.fixed_dt;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::io::{repeat, Read};
+    use std::iter::repeat_n;
+    use super::*;
+
+    #[test]
+    fn test_fixed_update_runner() {
+        let mut runner = FixedUpdateRunner::new_from_rate_per_second(60.0);
+        
+        // 120 fps of rendering, and a huge lag spike at the end (1s dt)
+        let mut real_frames = vec![1.0/120.0; 120];
+        real_frames.push(1.0);
+        // the frames at which fixed update was called
+        let mut fixed_update_calls = vec![];
+        for (i, dt) in real_frames.iter().enumerate() {
+            runner.fuel(*dt);
+            while runner.has_gas() {
+                runner.consume();
+                fixed_update_calls.push(i);
+            }
+        }
+        
+        // 60 fixed updates, every second frame
+        let mut expected_calls = (0..60).map(|x| x * 2 + 1).collect::<Vec<_>>();
+        // and 59 frames of lag at the end (not 60 due to rounding
+        expected_calls.extend(repeat_n(120, 59));
+        assert_eq!(fixed_update_calls, expected_calls);
+    }
+}
