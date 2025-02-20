@@ -8,6 +8,7 @@ use teng::{
     install_panic_handler, terminal_cleanup, terminal_setup, DisplayInfo, Game, SetupInfo,
     SharedState, UpdateInfo,
 };
+use teng::util::fixedupdate::FixedUpdateRunner;
 
 fn main() -> std::io::Result<()> {
     terminal_setup()?;
@@ -192,8 +193,8 @@ impl FallingSimulationData {
 }
 
 pub struct FallingSimulationComponent {
-    dt_budget: f64,
     hb_display: HalfBlockDisplayRender,
+    fixed_update_runner: FixedUpdateRunner,
 }
 
 impl FallingSimulationComponent {
@@ -202,8 +203,8 @@ impl FallingSimulationComponent {
 
     pub fn new() -> Self {
         Self {
-            dt_budget: 0.0,
             hb_display: HalfBlockDisplayRender::new(10, 10),
+            fixed_update_runner: FixedUpdateRunner::new_from_rate_per_second(Self::UPDATES_PER_SECOND),
         }
     }
 
@@ -306,8 +307,7 @@ impl Component<FallingSimulationData> for FallingSimulationComponent {
         update_info: UpdateInfo,
         shared_state: &mut SharedState<FallingSimulationData>,
     ) {
-        let dt = update_info.dt;
-        self.dt_budget += dt;
+        self.fixed_update_runner.fuel(update_info.dt);
 
         // add sand from mouse events
         let data = &mut shared_state.custom;
@@ -338,9 +338,9 @@ impl Component<FallingSimulationData> for FallingSimulationComponent {
             }
         }
 
-        while self.dt_budget >= Self::UPDATE_INTERVAL {
+        while self.fixed_update_runner.has_gas() {
+            self.fixed_update_runner.consume();
             self.update_simulation(shared_state);
-            self.dt_budget -= Self::UPDATE_INTERVAL;
         }
     }
 

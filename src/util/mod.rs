@@ -5,6 +5,7 @@ pub mod planarvec;
 // Experimental replacement for planarvec, uses a single vector and grows exponentially in every direction.
 // Benchmarks in prototype game resulted in ~5% increased frames, at the cost of way worse maximum frametimes (>1.5s frametimes when expanding)
 mod planarvec2;
+pub mod fixedupdate;
 
 pub mod planarvec2_experimental {
     pub use super::planarvec2::*;
