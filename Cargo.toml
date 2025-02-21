@@ -46,6 +46,10 @@ path = "examples/falling-sand/main.rs"
 name = "circle-rasterizer"
 path = "examples/circlerasterizer.rs"
 
+[[example]]
+name = "circle-rasterizer2"
+path = "examples/circlerasterizer2.rs"
+
 
 
 [dependencies]

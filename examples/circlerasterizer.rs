@@ -428,8 +428,14 @@ fn update_balls(dt: f64, balls: &mut [Ball], bottom_wall_height: f64, static_col
             // let overlap_x = ball.radius - distance;
             // let overlap_y = ball.radius/2.0 - distance;
             // // assert!(overlap >= 0.0);
-            // ball.x += normal_x * overlap_x;
-            // ball.y += normal_y * overlap_y;
+            // let move_by_x = (normal_x * overlap_x).round();
+            // let move_by_y = (normal_y * overlap_y).round();
+            // if move_by_x.abs() > 0.5 {
+            //     ball.x += move_by_x;
+            // }
+            // if move_by_y.abs() > 0.5 {
+            //     ball.y += move_by_y;
+            // }
 
             // continue;
 
