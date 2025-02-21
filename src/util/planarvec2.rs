@@ -248,12 +248,12 @@ impl<T> PlanarVec<T> {
     }
 
     /// Returns the x range
-    pub fn x_range(&self) -> impl DoubleEndedIterator<Item = i64> {
+    pub fn x_range(&self) -> impl DoubleEndedIterator<Item = i64> + use<T> {
         self.pseudo_bounds.min_x..=self.pseudo_bounds.max_x
     }
 
     /// Returns the y range
-    pub fn y_range(&self) -> impl DoubleEndedIterator<Item = i64> {
+    pub fn y_range(&self) -> impl DoubleEndedIterator<Item = i64> + use<T> {
         self.pseudo_bounds.min_y..=self.pseudo_bounds.max_y
     }
 
