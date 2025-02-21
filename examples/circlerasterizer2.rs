@@ -10,6 +10,7 @@ use teng::util::fixedupdate::FixedUpdateRunner;
 use crate::ball::Ball;
 
 mod ball {
+    use teng::rendering::display::Display;
     use teng::rendering::pixel::Pixel;
     use teng::rendering::renderer::Renderer;
 
@@ -25,6 +26,8 @@ mod ball {
         pub y_vel: f64,
         pub radius: f64,
         pub mass: f64,
+        old_x: f64,
+        old_y: f64,
     }
 
     impl Ball {
@@ -37,6 +40,8 @@ mod ball {
                 y_vel: 0.0,
                 radius,
                 mass: radius * radius,
+                old_x: local_x,
+                old_y: local_y,
             }
         }
 
@@ -71,8 +76,10 @@ mod ball {
             (x, y / 2.0)
         }
 
-        pub fn update(&mut self, dt: f64, bottom_height_world: f64) {
-            let bottom_height_local = bottom_height_world * 2.0;
+        fn update_local(&mut self, dt: f64, bottom_height_local: f64) -> (f64, f64) {
+            let (old_x, old_y) = (self.x, self.y);
+            self.old_x = old_x;
+            self.old_y = old_y;
 
             self.x += self.x_vel * dt;
             self.y += self.y_vel * dt;
@@ -81,6 +88,8 @@ mod ball {
                 self.y = (bottom_height_local - self.radius).floor();
                 self.y_vel = -self.y_vel * 0.8;
             }
+
+            (old_x, old_y)
         }
 
         // calls f with local space
@@ -203,8 +212,123 @@ mod ball {
             });
         }
     }
-}
+    
+    pub fn update_balls(dt: f64, balls: &mut [Ball], bottom_wall_height_world: f64, is_solid_world: impl Fn(f64, f64) -> bool) {
+        let bottom_wall_height_local = bottom_wall_height_world * 2.0;
+        let is_solid_local = |x: f64, y: f64| is_solid_world(x, y / 2.0);
+        
+        for ball in balls.iter_mut() {
+            // first handle floor collisions
+            ball.update_local(dt, bottom_wall_height_local);
 
+        }
+
+
+        // then handle ball-ball collisions
+        for i in 0..balls.len() {
+            for j in i+1..balls.len() {
+                let (balls1, balls2) = balls.split_at_mut(j);
+                let ball1 = &mut balls1[i];
+                let ball2 = &mut balls2[0];
+                let dx = ball1.x - ball2.x;
+                let dy = ball1.y - ball2.y;
+                let distance = (dx*dx + dy*dy).sqrt();
+                let overlap = ball1.radius + ball2.radius - distance;
+                if overlap > 0.0 {
+                    let overlap = overlap / 2.0;
+                    let dx = dx / distance * overlap;
+                    let dy = dy / distance * overlap;
+                    ball1.x += dx;
+                    ball1.y += dy;
+                    ball2.x -= dx;
+                    ball2.y -= dy;
+                    // also update velocities, but take into account the mass of each ball
+                    let ball1_mass = ball1.mass;
+                    let ball2_mass = ball2.mass;
+                    let normal_x = dx / overlap;
+                    let normal_y = dy / overlap;
+                    let relative_velocity_x = ball1.x_vel - ball2.x_vel;
+                    let relative_velocity_y = ball1.y_vel - ball2.y_vel;
+                    let dot_product = relative_velocity_x * normal_x + relative_velocity_y * normal_y;
+                    if dot_product < 0.0 {
+                        let impulse = 2.0 * dot_product / (ball1_mass + ball2_mass);
+                        ball1.x_vel -= impulse * normal_x * ball2_mass;
+                        ball1.y_vel -= impulse * normal_y * ball2_mass;
+                        ball2.x_vel += impulse * normal_x * ball1_mass;
+                        ball2.y_vel += impulse * normal_y * ball1_mass;
+                    }
+
+                }
+            }
+        }
+
+        // then handle ball-solid collisions
+        for ball in balls.iter_mut() {
+
+            // then handle collisions with solid objects
+            let mut closest_hit = None;
+            let mut closest_distance_2 = f64::INFINITY;
+
+            ball.for_each_coord_in_filled(|x, y| {
+                if is_solid_local(x, y) {
+                    let dx = x - ball.x;
+                    let dy = y - ball.y;
+                    let distance = dx*dx + dy*dy;
+                    if distance < closest_distance_2 {
+                        closest_distance_2 = distance;
+                        closest_hit = Some((x, y));
+                    }
+
+                }
+
+                false
+            }, 1.0);
+
+            if let Some((x, y)) = closest_hit {
+                // find the closest point on the outline
+                let dx = x - ball.x;
+                let dy = y - ball.y;
+                let distance = (dx*dx + dy*dy).sqrt();
+
+                // undo the move that we did
+                // NOTE: important to do this after ball-ball, because another ball could've moved us into the solid. and we want to undo that.
+                ball.x = ball.old_x;
+                ball.y = ball.old_y;
+
+                // points from solid surface to ball
+                let normal_x = -dx / distance;
+                let normal_y = -dy / distance;
+
+                // first, just move the ball out of the collision by translating it by the overlap along the normal
+                // let overlap = ball.radius - distance;
+                // ball.x += normal_x * overlap;
+                // ball.y += normal_y * overlap;
+
+                // bounce off against normal, reduce velocities to 80%
+
+                let x_vel = ball.x_vel;
+                let y_vel = ball.y_vel;
+                let dot = x_vel * normal_x + y_vel * normal_y;
+                // only if velocities are going towards collision
+                if dot > 0.0 {
+                    // this is to avoid immediate collision again and vanishing velocities due to stacking reductions.
+                    // however, when a ball is 'stuck' on a solid object and due to gravity it thinks it's moving away,
+                    // we're not actually moving away, but still skipping the velocity reduction, so our y velocity builds up infinitely due to gravity.
+                    // to fix this, we need to check if we're actually moving away from the object.
+                    continue;
+                }
+
+                // reflect velocities against normal
+                let r_x = x_vel - 2.0 * dot * normal_x;
+                let r_y = y_vel - 2.0 * dot * normal_y;
+
+                ball.x_vel = r_x * 0.8;
+                ball.y_vel = r_y * 0.8;
+
+            }
+        }
+    }
+}
 
 
 struct CircleRasterizerComponent {
@@ -265,6 +389,10 @@ impl Component for CircleRasterizerComponent {
             self.free_balls.clear();
         }
 
+        if shared_state.pressed_keys.did_press_char_ignore_case('r') {
+            self.static_collision.fill(false);
+        }
+
         if shared_state.mouse_info.left_mouse_down {
             let world_x = shared_state.mouse_info.last_mouse_pos.0 as f64;
             let world_y = shared_state.mouse_info.last_mouse_pos.1 as f64;
@@ -311,6 +439,13 @@ impl Component for CircleRasterizerComponent {
             shared_state.debug_info.custom.insert("Circle Center (world)".to_string(), format!("({}, {})", current_ball.world_x(), current_ball.world_y()));
         }
 
+        if let Some(first_ball) = self.free_balls.first() {
+            shared_state.debug_info.custom.insert("First Ball Center (local)".to_string(), format!("({:.2}, {:.2})", first_ball.local_x(), first_ball.local_y()));
+            shared_state.debug_info.custom.insert("First Ball Center (world)".to_string(), format!("({:.2}, {:.2})", first_ball.world_x(), first_ball.world_y()));
+            shared_state.debug_info.custom.insert("First Ball velocity".to_string(), format!("({:.2}, {:.2})", first_ball.x_vel, first_ball.y_vel));
+
+        }
+
         update_balls(update_info.dt, &mut self.free_balls, shared_state.display_info.height() as f64, &self.static_collision);
 
         self.fixed_update_runner.fuel(update_info.dt);
@@ -352,15 +487,25 @@ impl Component for CircleRasterizerComponent {
 }
 
 fn update_balls(dt: f64, balls: &mut [Ball], bottom_wall_height: f64, static_collision: &Display<bool>) {
-    // first, check if it hits bottom
     for i in 0..balls.len() {
+        // update velocities (TODO: move to ball module)
         let ball = &mut balls[i];
         ball.y_vel = ball.y_vel + 80.0 * dt;
         // x drag
         ball.x_vel = ball.x_vel  + ball.x_vel.signum() * -10.0 * dt;
 
-        ball.update(dt, bottom_wall_height);
+        // ball.update(dt, bottom_wall_height);
     }
+
+    let is_solid_world = |x: f64, y: f64| {
+        if x < 0.0 || y < 0.0 {
+            return false;
+        }
+        *static_collision.get(x as usize, y as usize).unwrap_or(&false)
+    };
+
+    ball::update_balls(dt, balls, bottom_wall_height, is_solid_world);
+
     //
     // // check if it hits static collision
     // // TODO: this does not work well yet. balls slowly drift through the wall
