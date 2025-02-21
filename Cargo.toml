@@ -42,6 +42,11 @@ path = "examples/exponentialgrowingboundschecker.rs"
 name = "falling-sand"
 path = "examples/falling-sand/main.rs"
 
+[[example]]
+name = "circle-rasterizer"
+path = "examples/circlerasterizer.rs"
+
+
 
 [dependencies]
 crossterm = { version = "0.28.1", features = ["serde"] }
