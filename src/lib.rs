@@ -241,7 +241,7 @@ impl<W: Write, S: Default + 'static> Game<W, S> {
     }
 
     /// Runs the game loop.
-    /// 
+    ///
     /// This function will block until the game loop is finished, which happens when a component
     /// returns [`BreakingAction::Quit`].
     pub fn run(&mut self) -> io::Result<()> {
