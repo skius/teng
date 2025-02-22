@@ -61,6 +61,16 @@ impl FixedUpdateRunner {
     pub fn available_ticks(&self) -> u64 {
         (self.dt_accumulator / self.fixed_dt).floor() as u64
     }
+    
+    /// Fixed delta time.
+    pub fn fixed_dt(&self) -> f64 {
+        self.fixed_dt
+    }
+    
+    /// Change the fixed delta time.
+    pub fn set_fixed_dt(&mut self, fixed_dt: f64) {
+        self.fixed_dt = fixed_dt;
+    }
 }
 
 #[cfg(test)]
