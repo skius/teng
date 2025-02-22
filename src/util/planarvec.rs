@@ -60,6 +60,14 @@ impl Bounds {
         }
         self.contains(other.min_x, other.min_y) && self.contains(other.max_x, other.max_y)
     }
+    
+    /// Checks if `self` intersects with another `Bounds`.
+    pub fn intersects(&self, other: Bounds) -> bool {
+        self.min_x <= other.max_x
+            && self.max_x >= other.min_x
+            && self.min_y <= other.max_y
+            && self.max_y >= other.min_y
+    }
 
     /// Returns the (at most) four bounds that can happen when the smaller `other` bounds is subtracted
     /// from the larger `self` bounds.
