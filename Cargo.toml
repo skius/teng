@@ -50,6 +50,9 @@ path = "examples/circlerasterizer.rs"
 name = "circle-rasterizer2"
 path = "examples/circlerasterizer2.rs"
 
+[[example]]
+name = "fabrik"
+path = "examples/fabrik/main.rs"
 
 
 [dependencies]
