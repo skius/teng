@@ -13,6 +13,8 @@ use teng::{
     install_panic_handler, terminal_cleanup, terminal_setup, Game, SetupInfo, SharedState,
     UpdateInfo,
 };
+use teng::rendering::color::Color;
+use teng::rendering::render::{HalfBlockDisplayRender, Render};
 use teng::util::for_coord_in_line;
 
 fn main() -> io::Result<()> {
@@ -52,6 +54,7 @@ pub struct FabrikComponent {
     segments: Vec<Segment>,
     last_point: Point<f64>,
     currently_creating_segment: Option<Point<f64>>,
+    half_block_display_render: HalfBlockDisplayRender,
 }
 
 impl FabrikComponent {
@@ -62,11 +65,14 @@ impl FabrikComponent {
             segments: vec![],
             last_point: Point { x: 0.0, y: 0.0 },
             currently_creating_segment: None,
+            half_block_display_render: HalfBlockDisplayRender::new(0, 0),
         }
     }
 
     fn forward_reach(&mut self) {
-        let target = self.target.unwrap();
+        let Some(target) = self.target else {
+            return;
+        };
         let mut last_point = target;
         self.last_point = target;
         for segment in self.segments.iter_mut().rev() {
@@ -92,14 +98,19 @@ impl FabrikComponent {
     }
 
     fn backward_reach(&mut self) {
-        let base_anchor = self.base_anchor.unwrap();
+        let Some(base_anchor) = self.base_anchor else {
+            return;
+        };
+        let Some(target) = self.target else {
+            return;
+        };
         let mut last_point = base_anchor;
         for i in 0..self.segments.len() {
             let start = last_point;
             let end = if i < self.segments.len() - 1 {
                 self.segments[i + 1].start
             } else {
-                self.target.unwrap()
+                target
             };
             let segment = &mut self.segments[i];
             let length = segment.length;
@@ -118,24 +129,82 @@ impl FabrikComponent {
 
             last_point = new_end;
         }
-        
+
         self.last_point = last_point;
+    }
+
+    fn render_to_half_block_display(&mut self, mouse_point: Point<f64>) {
+        self.half_block_display_render.clear();
+        
+        let segment_line_color = Color::Rgb([255, 255, 255]);
+        let target_color = Color::Rgb([0, 255, 0]);
+        let creating_segment_color = Color::Rgb([255, 0, 0]);
+        let segment_start_color = Color::Rgb([255, 255, 0]);
+        
+        let base_anchor_color = Color::Rgb([0, 0, 255]);
+
+        let mut last_point = self.last_point;
+        for segment in self.segments.iter().rev() {
+            let start = last_point;
+            let end = segment.start;
+
+            let x_u_start = start.x.floor() as usize;
+            let y_u_start = start.y.floor() as usize;
+            let x_u_end = end.x.floor() as usize;
+            let y_u_end = end.y.floor() as usize;
+
+            for_coord_in_line(true, (x_u_start as i64, y_u_start as i64), (x_u_end as i64, y_u_end as i64), |x, y| {
+                self.half_block_display_render.set_color(x as usize, y as usize, segment_line_color);
+            });
+
+            self.half_block_display_render.set_color(x_u_end, y_u_end, segment_start_color);
+
+            last_point = segment.start;
+        }
+
+        if let Some(start_point) = self.currently_creating_segment {
+            let x_u_start = start_point.x.floor() as usize;
+            let y_u_start = start_point.y.floor() as usize;
+            let x_u_end = mouse_point.x.floor() as usize;
+            let y_u_end = mouse_point.y.floor() as usize;
+
+            for_coord_in_line(false, (x_u_start as i64, y_u_start as i64), (x_u_end as i64, y_u_end as i64), |x, y| {
+                self.half_block_display_render.set_color(x as usize, y as usize, creating_segment_color);
+            });
+        }
+
+        if let Some(target) = self.target {
+            let x_u = target.x.floor() as usize;
+            let y_u = target.y.floor() as usize;
+            self.half_block_display_render.set_color(x_u, y_u, target_color);
+        }
+        
+        if let Some(base_anchor) = self.base_anchor {
+            let x_u = base_anchor.x.floor() as usize;
+            let y_u = base_anchor.y.floor() as usize;
+            self.half_block_display_render.set_color(x_u, y_u, base_anchor_color);
+        }
     }
 }
 
 impl Component for FabrikComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<()>) {
-        self.last_point = Point {
-            x: setup_info.display_info.width() as f64 / 2.0,
-            y: setup_info.display_info.height() as f64 / 2.0,
-        };
+        // self.last_point = Point {
+        //     x: setup_info.display_info.width() as f64 / 2.0,
+        //     y: setup_info.display_info.height() as f64 / 2.0,
+        // };
+        self.on_resize(setup_info.display_info.width(), setup_info.display_info.height(), shared_state);
+    }
+
+    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState<()>) {
+        self.half_block_display_render = HalfBlockDisplayRender::new(width, 2 * height);
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<()>) {
         let (x, y) = shared_state.mouse_info.last_mouse_pos;
         let mouse_point = Point {
             x: x as f64,
-            y: y as f64,
+            y: y as f64 * 2.0,
         };
 
         if shared_state.mouse_pressed.right {
@@ -162,7 +231,8 @@ impl Component for FabrikComponent {
         if shared_state.mouse_info.left_mouse_down {
             // set target
             self.target = Some(mouse_point);
-            
+            self.currently_creating_segment = None;
+
             self.forward_reach();
             self.backward_reach();
         }
@@ -175,54 +245,21 @@ impl Component for FabrikComponent {
         // }
 
         if shared_state.pressed_keys.did_press_char_ignore_case('c') {
-            *self = Self::new();
+            self.segments.clear();
+            self.base_anchor = None;
+            self.target = None;
+            self.currently_creating_segment = None;
+            self.last_point = Point { x: 0.0, y: 0.0 };
         }
+
+
+        // render into half block display
+        self.render_to_half_block_display(mouse_point);
+
+
     }
 
     fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState<()>, depth_base: i32) {
-        let depth_segment_start = depth_base + 1;
-        let depth_target = depth_base + 2;
-
-        let mouse_point = Point {
-            x: shared_state.mouse_info.last_mouse_pos.0 as f64,
-            y: shared_state.mouse_info.last_mouse_pos.1 as f64,
-        };
-
-        let mut last_point = self.last_point;
-        for segment in self.segments.iter().rev() {
-            let start = last_point;
-            let end = segment.start;
-
-            let x_u_start = start.x.floor() as usize;
-            let y_u_start = start.y.floor() as usize;
-            let x_u_end = end.x.floor() as usize;
-            let y_u_end = end.y.floor() as usize;
-
-            for_coord_in_line(false, (x_u_start as i64, y_u_start as i64), (x_u_end as i64, y_u_end as i64), |x, y| {
-                renderer.render_pixel(x as usize, y as usize, Pixel::new('X'), depth_base);
-            });
-
-            renderer.render_pixel(x_u_end, y_u_end, Pixel::new('S'), depth_segment_start);
-
-
-            last_point = segment.start;
-        }
-
-        if let Some(start_point) = self.currently_creating_segment {
-            let x_u_start = start_point.x.floor() as usize;
-            let y_u_start = start_point.y.floor() as usize;
-            let x_u_end = mouse_point.x.floor() as usize;
-            let y_u_end = mouse_point.y.floor() as usize;
-
-            for_coord_in_line(false, (x_u_start as i64, y_u_start as i64), (x_u_end as i64, y_u_end as i64), |x, y| {
-                renderer.render_pixel(x as usize, y as usize, Pixel::new('X').with_color([255, 0, 0]), depth_base);
-            });
-        }
-
-        if let Some(target) = self.target {
-            let x_u = target.x.floor() as usize;
-            let y_u = target.y.floor() as usize;
-            renderer.render_pixel(x_u, y_u, Pixel::new('O').with_color([0, 255, 0]), depth_target);
-        }
+        self.half_block_display_render.render(renderer, 0, 0, depth_base);
     }
 }
