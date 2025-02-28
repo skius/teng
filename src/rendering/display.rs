@@ -48,6 +48,7 @@ pub struct Display<T> {
     width: usize,
     height: usize,
     default: T,
+    // Inv: pixels.len() == width * height
     pixels: Vec<T>,
 }
 
@@ -163,10 +164,16 @@ impl<T: Clone> Display<T> {
 }
 
 impl<T> Display<T> {
+    // Note: Returning Option here instead of in getters is important to avoid an out-of-bounds
+    // pixel wrapping the next line just because the computed index exists.
     /// Calculates the linear index for a given (x, y) coordinate.
     #[inline]
-    fn get_index(&self, x: usize, y: usize) -> usize {
-        y * self.width + x
+    fn get_index(&self, x: usize, y: usize) -> Option<usize> {
+        if x >= self.width || y >= self.height {
+            return None;
+        }
+        // SAFETY: if y < self.height and x < self.width, then y * self.width + x < (y+1) * self.width <= self.height * self.width == self.pixels.len()
+        Some(y * self.width + x)
     }
 
     /// Gets the height of the display (number of rows).
@@ -183,15 +190,18 @@ impl<T> Display<T> {
     ///
     /// Returns `None` if the coordinates are out of bounds.
     pub fn get(&self, x: usize, y: usize) -> Option<&T> {
-        self.pixels.get(self.get_index(x, y))
+        let idx = self.get_index(x, y)?;
+        // SAFETY: get_index ensures idx is in bounds
+        Some(unsafe { self.pixels.get_unchecked(idx) })
     }
 
     /// Gets a mutable reference to the pixel at the given (x, y) coordinates.
     ///
     /// Returns `None` if the coordinates are out of bounds.
     pub fn get_mut(&mut self, x: usize, y: usize) -> Option<&mut T> {
-        let idx = self.get_index(x, y);
-        self.pixels.get_mut(idx)
+        let idx = self.get_index(x, y)?;
+        // SAFETY: get_index ensures idx is in bounds
+        Some(unsafe { self.pixels.get_unchecked_mut(idx) })
     }
 
     /// Sets the pixel at the given (x, y) coordinates to the specified value if the coordinates are in bounds.
@@ -224,13 +234,16 @@ impl<T> Index<(usize, usize)> for Display<T> {
     type Output = T;
 
     fn index(&self, (x, y): (usize, usize)) -> &Self::Output {
-        &self.pixels[self.get_index(x, y)]
+        let idx = self.get_index(x, y).unwrap();
+        // SAFETY: get_index ensures idx is in bounds
+        unsafe { self.pixels.get_unchecked(idx) }
     }
 }
 
 impl<T> IndexMut<(usize, usize)> for Display<T> {
     fn index_mut(&mut self, (x, y): (usize, usize)) -> &mut Self::Output {
-        let idx = self.get_index(x, y);
-        &mut self.pixels[idx]
+        let idx = self.get_index(x, y).unwrap();
+        // SAFETY: get_index ensures idx is in bounds
+        unsafe { self.pixels.get_unchecked_mut(idx) }
     }
 }
