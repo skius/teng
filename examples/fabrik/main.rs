@@ -135,12 +135,12 @@ impl FabrikComponent {
 
     fn render_to_half_block_display(&mut self, mouse_point: Point<f64>) {
         self.half_block_display_render.clear();
-        
+
         let segment_line_color = Color::Rgb([255, 255, 255]);
         let target_color = Color::Rgb([0, 255, 0]);
         let creating_segment_color = Color::Rgb([255, 0, 0]);
         let segment_start_color = Color::Rgb([255, 255, 0]);
-        
+
         let base_anchor_color = Color::Rgb([0, 0, 255]);
 
         let mut last_point = self.last_point;
@@ -148,16 +148,21 @@ impl FabrikComponent {
             let start = last_point;
             let end = segment.start;
 
-            let x_u_start = start.x.floor() as usize;
-            let y_u_start = start.y.floor() as usize;
-            let x_u_end = end.x.floor() as usize;
-            let y_u_end = end.y.floor() as usize;
+            let x_start = start.x.floor() as i64;
+            let y_start = start.y.floor() as i64;
+            let x_end = end.x.floor() as i64;
+            let y_end = end.y.floor() as i64;
 
-            for_coord_in_line(true, (x_u_start as i64, y_u_start as i64), (x_u_end as i64, y_u_end as i64), |x, y| {
+            for_coord_in_line(true, (x_start, y_start), (x_end, y_end), |x, y| {
+                if x < 0 || y < 0 {
+                    return;
+                }
                 self.half_block_display_render.set_color(x as usize, y as usize, segment_line_color);
             });
 
-            self.half_block_display_render.set_color(x_u_end, y_u_end, segment_start_color);
+            if x_start >= 0 && y_start >= 0 {
+                self.half_block_display_render.set_color(x_start as usize, y_start as usize, segment_start_color);
+            }
 
             last_point = segment.start;
         }
@@ -178,7 +183,7 @@ impl FabrikComponent {
             let y_u = target.y.floor() as usize;
             self.half_block_display_render.set_color(x_u, y_u, target_color);
         }
-        
+
         if let Some(base_anchor) = self.base_anchor {
             let x_u = base_anchor.x.floor() as usize;
             let y_u = base_anchor.y.floor() as usize;
