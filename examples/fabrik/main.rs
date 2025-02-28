@@ -21,7 +21,7 @@ fn main() -> io::Result<()> {
     terminal_setup()?;
     install_panic_handler();
 
-    let mut game = Game::new(stdout());
+    let mut game = Game::new_with_custom_buf_writer();
     game.install_recommended_components();
     game.add_component(Box::new(FabrikComponent::new()));
     game.run()?;
