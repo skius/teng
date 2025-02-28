@@ -52,7 +52,7 @@ pub struct FabrikComponent {
     base_anchor: Option<Point<f64>>,
     target: Option<Point<f64>>,
     segments: Vec<Segment>,
-    last_point: Point<f64>,
+    last_point: Option<Point<f64>>,
     currently_creating_segment: Option<Point<f64>>,
     half_block_display_render: HalfBlockDisplayRender,
 }
@@ -63,7 +63,7 @@ impl FabrikComponent {
             base_anchor: None,
             target: None,
             segments: vec![],
-            last_point: Point { x: 0.0, y: 0.0 },
+            last_point: None,
             currently_creating_segment: None,
             half_block_display_render: HalfBlockDisplayRender::new(0, 0),
         }
@@ -74,7 +74,7 @@ impl FabrikComponent {
             return;
         };
         let mut last_point = target;
-        self.last_point = target;
+        self.last_point = Some(target);
         for segment in self.segments.iter_mut().rev() {
             let start = last_point;
             let end = segment.start;
@@ -130,7 +130,7 @@ impl FabrikComponent {
             last_point = new_end;
         }
 
-        self.last_point = last_point;
+        self.last_point = Some(last_point);
     }
 
     fn render_to_half_block_display(&mut self, mouse_point: Point<f64>) {
@@ -143,29 +143,32 @@ impl FabrikComponent {
 
         let base_anchor_color = Color::Rgb([0, 0, 255]);
 
-        let mut last_point = self.last_point;
-        for segment in self.segments.iter().rev() {
-            let start = last_point;
-            let end = segment.start;
+        if self.segments.len() > 0 {
+            let mut last_point = self.last_point.unwrap(); // must have last point
+            for segment in self.segments.iter().rev() {
+                let start = last_point;
+                let end = segment.start;
 
-            let x_start = start.x.floor() as i64;
-            let y_start = start.y.floor() as i64;
-            let x_end = end.x.floor() as i64;
-            let y_end = end.y.floor() as i64;
+                let x_start = start.x.floor() as i64;
+                let y_start = start.y.floor() as i64;
+                let x_end = end.x.floor() as i64;
+                let y_end = end.y.floor() as i64;
 
-            for_coord_in_line(true, (x_start, y_start), (x_end, y_end), |x, y| {
-                if x < 0 || y < 0 {
-                    return;
+                for_coord_in_line(true, (x_start, y_start), (x_end, y_end), |x, y| {
+                    if x < 0 || y < 0 {
+                        return;
+                    }
+                    self.half_block_display_render.set_color(x as usize, y as usize, segment_line_color);
+                });
+
+                if x_start >= 0 && y_start >= 0 {
+                    self.half_block_display_render.set_color(x_start as usize, y_start as usize, segment_start_color);
                 }
-                self.half_block_display_render.set_color(x as usize, y as usize, segment_line_color);
-            });
 
-            if x_start >= 0 && y_start >= 0 {
-                self.half_block_display_render.set_color(x_start as usize, y_start as usize, segment_start_color);
+                last_point = segment.start;
             }
-
-            last_point = segment.start;
         }
+
 
         if let Some(start_point) = self.currently_creating_segment {
             let x_u_start = start_point.x.floor() as usize;
@@ -213,9 +216,24 @@ impl Component for FabrikComponent {
         };
 
         if shared_state.mouse_pressed.right {
+            // if we are not creating a segment but we do already have a last point, connect it immediately
+            if let Some(last_point) = self.last_point {
+                if self.currently_creating_segment.is_none() {
+                    let new_segment = Segment {
+                        start: last_point,
+                        length: last_point.distance(&mouse_point),
+                    };
+                    self.segments.push(new_segment);
+                    if self.base_anchor.is_none() {
+                        self.base_anchor = Some(last_point);
+                    }
+                    self.last_point = Some(mouse_point);
+                }
+            }
+
             if let Some(start_point) = self.currently_creating_segment.take() {
                 let length = start_point.distance(&mouse_point);
-                self.last_point = mouse_point;
+                self.last_point = Some(mouse_point);
                 let new_segment = Segment {
                     start: start_point,
                     length,
@@ -242,6 +260,31 @@ impl Component for FabrikComponent {
             self.backward_reach();
         }
 
+        shared_state.mouse_events.for_each_linerp_only_fresh(|mi| {
+            if mi.middle_mouse_down {
+                self.currently_creating_segment = None;
+                let mouse_point = Point {
+                    x: mi.last_mouse_pos.0 as f64,
+                    y: mi.last_mouse_pos.1 as f64 * 2.0,
+                };
+
+                if self.base_anchor.is_none() {
+                    self.base_anchor = Some(mouse_point);
+                }
+                let Some(last_point) = self.last_point else {
+                    self.last_point = Some(mouse_point);
+                    return;
+                };
+
+                let new_segment = Segment {
+                    start: last_point,
+                    length: last_point.distance(&mouse_point),
+                };
+                self.segments.push(new_segment);
+                self.last_point = Some(mouse_point);
+            }
+        });
+
         // if shared_state.pressed_keys.did_press_char_ignore_case('f') {
         //     self.forward_reach();
         // }
@@ -254,14 +297,12 @@ impl Component for FabrikComponent {
             self.base_anchor = None;
             self.target = None;
             self.currently_creating_segment = None;
-            self.last_point = Point { x: 0.0, y: 0.0 };
+            self.last_point = None;
         }
 
 
         // render into half block display
         self.render_to_half_block_display(mouse_point);
-
-
     }
 
     fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState<()>, depth_base: i32) {
