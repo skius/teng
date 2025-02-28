@@ -54,6 +54,10 @@ path = "examples/circlerasterizer2.rs"
 name = "fabrik"
 path = "examples/fabrik/main.rs"
 
+[[example]]
+name = "pathfinding"
+path = "examples/pathfinding/main.rs"
+
 
 [dependencies]
 crossterm = { version = "0.28.1", features = ["serde"] }
