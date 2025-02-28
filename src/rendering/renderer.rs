@@ -278,30 +278,34 @@ impl<W: Write> DisplayRenderer<W> {
                         queue!(self.sink, crossterm::cursor::MoveTo(x as u16, y as u16))?;
                     }
                 }
+                let mut new_color_change = None;
+                let mut new_bg_color_change = None;
                 let new_color = pixel.color.unwrap_or(self.default_fg_color);
                 if new_color != self.last_fg_color {
-                    queue!(
-                        self.sink,
-                        crossterm::style::SetForegroundColor(crossterm::style::Color::Rgb {
-                            r: new_color[0],
-                            g: new_color[1],
-                            b: new_color[2],
-                        })
-                    )?;
+                    new_color_change = Some(crossterm::style::Color::Rgb {
+                        r: new_color[0],
+                        g: new_color[1],
+                        b: new_color[2],
+                    });
                     self.last_fg_color = new_color;
                 }
                 let new_bg_color = pixel.bg_color.unwrap_or(self.default_bg_color);
                 if new_bg_color != self.last_bg_color {
-                    queue!(
-                        self.sink,
-                        crossterm::style::SetBackgroundColor(crossterm::style::Color::Rgb {
-                            r: new_bg_color[0],
-                            g: new_bg_color[1],
-                            b: new_bg_color[2],
-                        })
-                    )?;
+                    new_bg_color_change = Some(crossterm::style::Color::Rgb {
+                        r: new_bg_color[0],
+                        g: new_bg_color[1],
+                        b: new_bg_color[2],
+                    });
                     self.last_bg_color = new_bg_color;
                 }
+                // optimize color changes by combining into a single SetColors. If both are None, this is a noop.
+                queue!(
+                    self.sink,
+                    crossterm::style::SetColors(crossterm::style::Colors {
+                        foreground: new_color_change,
+                        background: new_bg_color_change,
+                    })
+                )?;
                 queue!(self.sink, crossterm::style::Print(pixel.c))?;
                 curr_pos = (x, y);
             }

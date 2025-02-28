@@ -363,6 +363,12 @@ impl HalfBlockDisplayRender {
     pub fn set_color(&mut self, x: usize, y: usize, color: Color) {
         self.display.set(x, y, color);
     }
+    
+    /// Returns the color of a specific pixel in the display. Uses the half-block coordinate space.
+    /// Returns `None` if the coordinates are out of bounds.
+    pub fn get_color(&self, x: usize, y: usize) -> Option<Color> {
+        self.display.get(x, y).copied()
+    }
 
     /// Resizes the display to the specified width and height, discarding the current content.
     pub fn resize_discard(&mut self, width: usize, height: usize) {
