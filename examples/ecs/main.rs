@@ -14,16 +14,21 @@ use teng::rendering::pixel::Pixel;
 use teng::rendering::renderer::Renderer;
 use teng::{BreakingAction, Game, SetupInfo, SharedState};
 
+/// A marker trait to flag ECS components.
+trait Component {}
+
 /// An ECS-component that holds the position of an entity.
 struct Position {
     x: usize,
     y: usize,
 }
+impl Component for Position {}
 
 /// An ECS-component that holds the display character of an entity.
 struct Draw {
     ch: char,
 }
+impl Component for Draw {}
 
 /// An ECS-entity.
 #[derive(Hash, Eq, PartialEq, Clone, Copy)]
@@ -65,6 +70,18 @@ impl TengComponent<Ecs> for PhysicsSystem {
                 position.y = 0;
             }
         }
+    }
+}
+
+/// An ECS-system that changes a Draw to uppercase given some Position.
+struct UppercaseSystem;
+
+impl TengComponent<Ecs> for UppercaseSystem {
+    fn update(&mut self, _update_info: teng::UpdateInfo, shared_state: &mut SharedState<Ecs>) {
+        let ecs = &mut shared_state.custom;
+        ecs.for_each::<(Position, Draw)>(|entity: Entity, (pos, draw)| {
+
+        });
     }
 }
 
@@ -163,7 +180,38 @@ impl Ecs {
     fn get_mut_component<T: 'static>(&mut self, entity: Entity) -> Option<&mut T> {
         self.components.get_mut_from_entity(entity)
     }
+
+    fn for_each<CG>(&mut self, mut f: impl FnMut(Entity, CG::ComponentsMut<'_>))
+    where
+        CG: ComponentGroup,
+    {
+        for idx in 0..self.entities.len() {
+            let entity = self.entities[idx];
+            let Some(components) = CG::get_mut(self, entity) else {
+                continue;
+            };
+            f(entity, components);
+        }
+    }
 }
+
+trait ComponentGroup {
+    type ComponentsMut<'a>;
+
+    fn get_mut(ecs: &mut Ecs, entity: Entity) -> Option<Self::ComponentsMut<'_>>;
+}
+
+impl ComponentGroup for (Position, Draw) {
+    type ComponentsMut<'a> = (&'a mut Position, &'a mut Draw);
+
+    fn get_mut(ecs: &mut Ecs, entity: Entity) -> Option<Self::ComponentsMut<'_>> {
+        let position = ecs.get_mut_component::<Position>(entity)?;
+        // let draw = ecs.get_mut_component::<Draw>(entity)?;
+        let draw = todo!();
+        Some((position, draw))
+    }
+}
+
 
 /// A wrapper component that sets up the ECS and creates new entities.
 #[derive(Default)]
