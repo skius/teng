@@ -6,6 +6,7 @@ use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use crossterm::{cursor, execute};
 use smallvec::SmallVec;
 use std::any::Any;
+use std::cell::RefCell;
 use std::collections::HashSet;
 use std::io;
 use std::io::{stdout, Stdout, Write};
@@ -23,6 +24,7 @@ use crate::components::keyboard::{KeyPressRecorderComponent, PressedKeys};
 use crate::components::mouse::{MouseEvents, MouseInfo, MousePressedInfo, MouseTrackerComponent};
 use crate::components::quitter::QuitterComponent;
 use crate::components::Component;
+use crate::components::ui::UiProxy;
 use crate::rendering::renderer::DisplayRenderer;
 
 /// Information about the time since the last frame.
@@ -97,6 +99,7 @@ pub struct SharedState<S = ()> {
     pub fake_events_for_next_frame: Vec<Event>,
     pub remove_components: HashSet<std::any::TypeId>,
     pub whitelisted_components: Option<HashSet<std::any::TypeId>>,
+    pub ui: UiProxy<S>,
     pub custom: S,
 }
 
@@ -117,6 +120,7 @@ impl<S: Default + 'static> SharedState<S> {
             fake_events_for_next_frame: Vec::new(),
             remove_components: HashSet::new(),
             whitelisted_components: None,
+            ui: UiProxy::new(),
             custom: S::default(),
         }
     }

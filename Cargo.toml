@@ -58,6 +58,10 @@ path = "examples/fabrik/main.rs"
 name = "pathfinding"
 path = "examples/pathfinding/main.rs"
 
+[[example]]
+name = "ui"
+path = "examples/ui.rs"
+
 
 [dependencies]
 crossterm = { version = "0.28.1", features = ["serde"] }

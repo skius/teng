@@ -15,6 +15,7 @@ pub mod fpslocker;
 pub mod keyboard;
 pub mod mouse;
 pub mod quitter;
+pub mod ui;
 
 /// A game component that can listen to events, perform logic, and render itself.
 /// Components are the main way to extend the game's functionality.

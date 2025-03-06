@@ -41,13 +41,14 @@ pub trait Renderer {
     /// are rendered at the same depth, the first one rendered will take precedence.
     ///
     /// Coordinates are 0-indexed, starting from the top-left corner of the display.
+    // TODO: Switch API from usize to i64 to allow easier partial out of bounds handling?
     fn render_pixel(&mut self, x: usize, y: usize, pixel: Pixel, depth: i32);
 
     /// Flushes the rendered output to the target.
     ///
     /// This function should be called after rendering all pixels for a frame to
     /// actually display the changes on the terminal (or other rendering target).
-    fn flush(&mut self) -> io::Result<()>;
+    fn flush(&mut self) -> io::Result<()> { Ok(()) }
 
     /// Sets the default background color for subsequent rendering operations.
     ///
