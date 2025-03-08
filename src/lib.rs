@@ -534,6 +534,7 @@ pub fn install_panic_handler() {
         terminal_cleanup().unwrap();
         eprintln!("{}", pinfo);
         old_hook(pinfo);
+        // TODO: exit process here? maybe signal a channel that tells the game to stop running?
     }));
 }
 
