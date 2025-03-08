@@ -3,6 +3,7 @@ mod spatial_hash_grid;
 
 use crate::math::Vec2;
 use std::{io, thread};
+use rayon::prelude::*;
 use teng::components::Component;
 use teng::rendering::color::Color;
 use teng::rendering::pixel::Pixel;
@@ -152,10 +153,11 @@ struct PhysicsComponent {
 
 impl PhysicsComponent {
     const COEFFICIENT_OF_RESTITUTION: f64 = 1.0;
+    const PHYSICS_TICK_RATE: f64 = 60.0;
 
     fn new() -> Self {
         Self {
-            fur: FixedUpdateRunner::new_from_rate_per_second(60.0),
+            fur: FixedUpdateRunner::new_from_rate_per_second(Self::PHYSICS_TICK_RATE),
         }
     }
 
@@ -201,6 +203,11 @@ impl PhysicsComponent {
     }
 
     fn entent_shg_multithreaded(&self, dt: f64, state: &mut GameState) {
+        // Performance:
+        // at 60tps worse than shg. like <25k.
+        // but at 20tps it reaches closer to 120k entities before the death spiral
+        // whereas singlethreaded shg reaches 97k at 20tps.
+
         // fn get_matching(num_threads: usize, matching_idx: usize) -> Vec<(usize, usize)> {
         //     let total_num_matchings = 2 * num_threads - 1;
         //     let mut matching = Vec::new();
@@ -433,6 +440,14 @@ impl PhysicsComponent {
             // handle world bounds and collisions
             entity.handle_world_collisions(state.world_width, state.world_height);
         }
+        // state.entities.par_iter_mut().for_each(|entity| {
+        //     // Verlet
+        //     entity.update(dt);
+        //     // handle world bounds and collisions
+        //     entity.handle_world_collisions(state.world_width, state.world_height);
+        // });
+
+
         // Step 2: Handle entity-entity collisions
         // self.entent_basic(dt, state);
         // self.entent_shg(dt, state);
