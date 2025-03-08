@@ -1,4 +1,5 @@
 mod math;
+mod spatial_hash_grid;
 
 use crate::math::Vec2;
 use std::io;
@@ -12,6 +13,7 @@ use teng::{
     Game, SetupInfo, SharedState, UpdateInfo, install_panic_handler, terminal_cleanup,
     terminal_setup,
 };
+use crate::spatial_hash_grid::{Aabb, SpatialHashGrid};
 
 /// Ball-shaped collision entity
 #[derive(Debug)]
@@ -34,6 +36,16 @@ impl Entity {
             radius: 0.5,
             mass: 0.5 * 0.5 * std::f64::consts::PI,
         }
+    }
+
+    fn set_radius(&mut self, radius: f64) {
+        self.radius = radius;
+        self.mass = radius * radius * std::f64::consts::PI;
+    }
+
+    fn with_radius(mut self, radius: f64) -> Self {
+        self.set_radius(radius);
+        self
     }
 
     fn with_velocity(self, vel: Vec2) -> Self {
@@ -76,6 +88,55 @@ impl Entity {
             self.vel.y = -self.vel.y * collision_loss;
         }
     }
+
+    fn get_aabb(&self) -> Aabb {
+        let min = self.pos - Vec2::new(self.radius, self.radius);
+        let max = self.pos + Vec2::new(self.radius, self.radius);
+        let (min_x, min_y) = min.floor_to_i64();
+        let (max_x, max_y) = max.floor_to_i64();
+        Aabb {
+            min_x,
+            min_y,
+            max_x,
+            max_y,
+        }
+    }
+
+    // returns distance if collides, None otherwise
+    fn collides_with(&self, other: &Entity) -> Option<f64> {
+        let dist = (self.pos - other.pos).length();
+        if dist < self.radius + other.radius {
+            Some(dist)
+        } else {
+            None
+        }
+    }
+
+    fn handle_collision(&mut self, other: &mut Entity, dist: f64) {
+        let entity1 = self;
+        let entity2 = other;
+        // collision response, taking into account mass and coefficient of restitution
+        let normal = (entity2.pos - entity1.pos).normalized();
+        let relative_velocity = entity2.vel - entity1.vel;
+        let impulse = 2.0
+            * entity1.mass
+            * entity2.mass
+            * normal.dot(relative_velocity)
+            / (entity1.mass + entity2.mass);
+        entity1.vel += impulse * normal / entity1.mass;
+        entity2.vel -= impulse * normal / entity2.mass;
+
+        // move entities apart
+        let overlap = entity1.radius + entity2.radius - dist;
+        let move1 = -overlap * entity1.mass / (entity1.mass + entity2.mass);
+        let move2 = overlap * entity2.mass / (entity1.mass + entity2.mass);
+        entity1.pos += move1 * normal;
+        entity2.pos += move2 * normal;
+
+        // apply coefficient of restitution
+        entity1.vel *= PhysicsComponent::COEFFICIENT_OF_RESTITUTION;
+        entity2.vel *= PhysicsComponent::COEFFICIENT_OF_RESTITUTION;
+    }
 }
 
 #[derive(Debug, Default)]
@@ -98,6 +159,47 @@ impl PhysicsComponent {
         }
     }
 
+    fn entent_basic(&self, dt: f64, state: &mut GameState) {
+        // Max: 5'400 entities at 60tps
+        for idx1 in 0..state.entities.len() {
+            for idx2 in idx1 + 1..state.entities.len() {
+                let (entities1, entities2) = state.entities.split_at_mut(idx2);
+                let entity1 = &mut entities1[idx1];
+                let entity2 = &mut entities2[0];
+                // check collision
+                if let Some(dist) = entity1.collides_with(entity2) {
+                    entity1.handle_collision(entity2, dist);
+                }
+            }
+        }
+    }
+
+    fn entent_shg(&self, dt: f64, state: &mut GameState) {
+        // cell size 1: Max: between 25'000 and 35'000 entities at 60tps
+        // cell size 5: Max: between 35'000 and 40'000 at 60tps
+        // cell size 10: less
+
+        let mut shg = SpatialHashGrid::new(5);
+        for (idx, entity) in state.entities.iter().enumerate() {
+            shg.insert_with_aabb(idx, entity.get_aabb());
+        }
+        for idx1 in 0..state.entities.len() {
+            for &idx2 in shg.get_for_aabb(state.entities[idx1].get_aabb()) {
+                if idx1 == idx2 {
+                    continue;
+                }
+                let (idx1, idx2) = (idx1.min(idx2), idx1.max(idx2));
+                let (entities1, entities2) = state.entities.split_at_mut(idx2);
+                let entity1 = &mut entities1[idx1];
+                let entity2 = &mut entities2[0];
+                // check collision
+                if let Some(dist) = entity1.collides_with(entity2) {
+                    entity1.handle_collision(entity2, dist);
+                }
+            }
+        }
+    }
+
     fn update_physics(&self, dt: f64, state: &mut GameState) {
         // Step 1: Update all entities individually, handle world collisions
         for entity in &mut state.entities {
@@ -107,38 +209,8 @@ impl PhysicsComponent {
             entity.handle_world_collisions(state.world_width, state.world_height);
         }
         // Step 2: Handle entity-entity collisions
-        for idx1 in 0..state.entities.len() {
-            for idx2 in idx1 + 1..state.entities.len() {
-                let (entities1, entities2) = state.entities.split_at_mut(idx2);
-                let entity1 = &mut entities1[idx1];
-                let entity2 = &mut entities2[0];
-                // check collision
-                let dist = (entity1.pos - entity2.pos).length();
-                if dist < entity1.radius + entity2.radius {
-                    // collision response, taking into account mass and coefficient of restitution
-                    let normal = (entity2.pos - entity1.pos).normalized();
-                    let relative_velocity = entity2.vel - entity1.vel;
-                    let impulse = 2.0
-                        * entity1.mass
-                        * entity2.mass
-                        * normal.dot(relative_velocity)
-                        / (entity1.mass + entity2.mass);
-                    entity1.vel += impulse * normal / entity1.mass;
-                    entity2.vel -= impulse * normal / entity2.mass;
-
-                    // move entities apart
-                    let overlap = entity1.radius + entity2.radius - dist;
-                    let move1 = -overlap * entity1.mass / (entity1.mass + entity2.mass);
-                    let move2 = overlap * entity2.mass / (entity1.mass + entity2.mass);
-                    entity1.pos += move1 * normal;
-                    entity2.pos += move2 * normal;
-
-                    // apply coefficient of restitution
-                    entity1.vel *= Self::COEFFICIENT_OF_RESTITUTION;
-                    entity2.vel *= Self::COEFFICIENT_OF_RESTITUTION;
-                }
-            }
-        }
+        // self.entent_basic(dt, state);
+        self.entent_shg(dt, state);
     }
 }
 
@@ -172,6 +244,8 @@ impl Component<GameState> for PhysicsComponent {
                 if !shared_state.debug_info.custom.contains_key(key) {
                     shared_state.debug_info.custom.insert(key.to_string(), shared_state.custom.entities.len().to_string());
                 }
+                // Log:
+                // first impl, no shg: at 5400 entities.
             }
         }
     }
@@ -227,7 +301,8 @@ impl Component<GameState> for GameComponent {
                 shared_state
                     .custom
                     .entities
-                    .push(Entity::new_at(x as f64, y as f64).with_velocity((60.0, 0.0).into()));
+                    // .push(Entity::new_at(x as f64, y as f64).with_velocity((60.0, 0.0).into()).with_radius(2.0));
+                .push(Entity::new_at(x as f64, y as f64).with_velocity((60.0, 0.0).into()));
             }
             shared_state.debug_info.custom.insert(
                 "total entities".to_string(),
