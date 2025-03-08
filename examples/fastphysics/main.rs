@@ -200,6 +200,86 @@ impl PhysicsComponent {
         }
     }
 
+    fn entent_shg_multithreaded(&self, dt: f64, state: &mut GameState) {
+        fn get_matching(num_threads: usize, matching_idx: usize) -> Vec<(usize, usize)> {
+            let total_num_matchings = 2 * num_threads - 1;
+            let mut matching = Vec::new();
+            for j in 0..num_threads {
+                let first = matching_idx;
+                let second = if (j + matching_idx + 1) % total_num_matchings != 0 {
+                    (j + matching_idx + 1) % total_num_matchings
+                } else {
+                    total_num_matchings
+                };
+                matching.push((first, second));
+            }
+            matching
+        }
+
+
+        let num_threads = 16;
+        let num_pairs = 2 * num_threads;
+        let num_matchings = num_pairs - 1;
+
+        // partition the balls into num_pairs partitions. each has its own spatial hashgrid
+        let mut shgs = Vec::new();
+        let mut indices_of_partitions = Vec::new();
+        // let mut partitions = Vec::new();
+        for _ in 0..num_pairs {
+            shgs.push(SpatialHashGrid::new(5));
+            indices_of_partitions.push(Vec::new());
+            // partitions.push(Vec::new());
+        }
+        for (idx, entity) in state.entities.iter().enumerate() {
+            let partition = idx % num_pairs;
+            shgs[partition].insert_with_aabb(idx, entity.get_aabb());
+            indices_of_partitions[partition].push(idx);
+        }
+
+        // first pass: handle collisions within each partition
+        for partition in 0..num_pairs {
+            let shg = &shgs[partition];
+            for &idx1 in &indices_of_partitions[partition] {
+                for &idx2 in shg.get_for_aabb(state.entities[idx1].get_aabb()) {
+                    if idx1 == idx2 {
+                        continue;
+                    }
+                    let (idx1, idx2) = (idx1.min(idx2), idx1.max(idx2));
+                    let (entities1, entities2) = state.entities.split_at_mut(idx2);
+                    let entity1 = &mut entities1[idx1];
+                    let entity2 = &mut entities2[0];
+                    // check collision
+                    if let Some(dist) = entity1.collides_with(entity2) {
+                        entity1.handle_collision(entity2, dist);
+                    }
+                }
+            }
+        }
+
+        // iterate over all pairs of partitions, and handle collisions between them
+        for matching_idx in 0..num_matchings {
+            let matching = get_matching(num_threads, matching_idx);
+            for (first, second) in matching {
+                // let shg1 = &shgs[first];
+                let shg2 = &shgs[second];
+                for &idx1 in &indices_of_partitions[first] {
+                    for &idx2 in shg2.get_for_aabb(state.entities[idx1].get_aabb()) {
+                        assert_ne!(idx1, idx2, "indices in different partitions should not be the same");
+                        let (idx1, idx2) = (idx1.min(idx2), idx1.max(idx2));
+                        let (entities1, entities2) = state.entities.split_at_mut(idx2);
+                        let entity1 = &mut entities1[idx1];
+                        let entity2 = &mut entities2[0];
+                        // check collision
+                        if let Some(dist) = entity1.collides_with(entity2) {
+                            entity1.handle_collision(entity2, dist);
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+
     fn update_physics(&self, dt: f64, state: &mut GameState) {
         // Step 1: Update all entities individually, handle world collisions
         for entity in &mut state.entities {
@@ -210,7 +290,8 @@ impl PhysicsComponent {
         }
         // Step 2: Handle entity-entity collisions
         // self.entent_basic(dt, state);
-        self.entent_shg(dt, state);
+        // self.entent_shg(dt, state);
+        self.entent_shg_multithreaded(dt, state);
     }
 }
 
