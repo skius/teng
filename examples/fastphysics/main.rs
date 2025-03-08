@@ -23,7 +23,7 @@ struct Entity {
 }
 
 impl Entity {
-    const DEFAULT_ACCEL: Vec2 = Vec2 { x: 0.0, y: -10.0 };
+    const DEFAULT_ACCEL: Vec2 = Vec2 { x: 0.0, y: -30.0 };
 
     fn new_at(x: f64, y: f64) -> Self {
         Self {
@@ -155,8 +155,12 @@ impl Component<GameState> for GameComponent {
                 shared_state
                     .custom
                     .entities
-                    .push(Entity::new_at(x as f64, y as f64).with_velocity((2.0, 0.0).into()));
+                    .push(Entity::new_at(x as f64, y as f64).with_velocity((70.0, 0.0).into()));
             }
+            shared_state.debug_info.custom.insert(
+                "total entities".to_string(),
+                format!("{}", shared_state.custom.entities.len()),
+            );
         }
 
         // render entities
