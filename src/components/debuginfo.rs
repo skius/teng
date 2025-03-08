@@ -1,9 +1,9 @@
-use std::collections::BTreeMap;
 use crate::rendering::render::Render;
 use crate::rendering::renderer::Renderer;
 use crate::seeds::get_seed_opt;
 use crate::{BreakingAction, Component, SharedState, UpdateInfo};
 use crossterm::event::Event;
+use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
 /// A debug message that will be displayed on the screen for a limited time.
@@ -205,7 +205,8 @@ impl<S> Component<S> for DebugInfoComponent {
         // format!("Update calls: {}", self.num_update_calls).render(&mut renderer, 0, y, depth_base);
 
         if !shared_state.debug_info.custom.is_empty() {
-            let custom_debug_s = format!("Custom debug info: {:#?}", shared_state.debug_info.custom);
+            let custom_debug_s =
+                format!("Custom debug info: {:#?}", shared_state.debug_info.custom);
             custom_debug_s.render(renderer, 0, y, depth_base);
             y += custom_debug_s.lines().count();
         }

@@ -3,7 +3,7 @@ use teng::components::Component;
 use teng::rendering::pixel::Pixel;
 use teng::rendering::render::Render;
 use teng::rendering::renderer::Renderer;
-use teng::{install_panic_handler, terminal_cleanup, terminal_setup, Game, SharedState};
+use teng::{Game, SharedState, install_panic_handler, terminal_cleanup, terminal_setup};
 
 struct MyComponent;
 

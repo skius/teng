@@ -1,11 +1,14 @@
-use std::io;
 use crossterm::event::{Event, KeyCode};
+use std::io;
 use teng::components::Component;
+use teng::components::ui::{UiComponent, UiElement};
 use teng::rendering::pixel::Pixel;
 use teng::rendering::render::Render;
 use teng::rendering::renderer::Renderer;
-use teng::{install_panic_handler, terminal_cleanup, terminal_setup, BreakingAction, Game, SetupInfo, SharedState, UpdateInfo};
-use teng::components::ui::{UiComponent, UiElement};
+use teng::{
+    BreakingAction, Game, SetupInfo, SharedState, UpdateInfo, install_panic_handler,
+    terminal_cleanup, terminal_setup,
+};
 
 struct MyWindow {
     title_bar_height: usize,
@@ -17,7 +20,11 @@ struct MyWindow {
 
 impl MyWindow {
     fn new() -> Self {
-        let background_color = [rand::random::<u8>(), rand::random::<u8>(), rand::random::<u8>()];
+        let background_color = [
+            rand::random::<u8>(),
+            rand::random::<u8>(),
+            rand::random::<u8>(),
+        ];
         Self {
             title_bar_height: 1,
             width: 20,
@@ -46,7 +53,11 @@ impl UiElement for MyWindow {
         (self.width, self.height)
     }
 
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState<()>) -> Option<BreakingAction> {
+    fn on_event(
+        &mut self,
+        event: Event,
+        shared_state: &mut SharedState<()>,
+    ) -> Option<BreakingAction> {
         if let Event::Key(key_event) = event {
             if let KeyCode::Char(c) = key_event.code {
                 self.text_box.push(c);
@@ -78,13 +89,23 @@ impl UiElement for MyWindow {
 
         // title bar
         for x in 0..self.width {
-            renderer.render_pixel(x, 0, Pixel::new(' ').with_bg_color([150, 150, 150]), depth_base);
+            renderer.render_pixel(
+                x,
+                0,
+                Pixel::new(' ').with_bg_color([150, 150, 150]),
+                depth_base,
+            );
         }
         "My Window".render(renderer, 0, 0, depth_title_bar);
-        
+
         // the resize corner symbol
         let corner_expand_pixel = Pixel::new('⤡').with_bg_color([150, 150, 150]);
-        renderer.render_pixel(self.width - 1, self.height - 1, corner_expand_pixel, depth_text_box);
+        renderer.render_pixel(
+            self.width - 1,
+            self.height - 1,
+            corner_expand_pixel,
+            depth_text_box,
+        );
     }
 }
 
@@ -96,19 +117,22 @@ impl Component for Setup {
         let width = shared_state.display_info.width();
         let height = shared_state.display_info.height();
 
-        shared_state.ui.add_window(30, 15, Box::new(MyWindow::new()));
-
+        shared_state
+            .ui
+            .add_window(30, 15, Box::new(MyWindow::new()));
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<()>) {
         if shared_state.pressed_keys.did_press_char_ignore_case(' ') {
             let width = shared_state.display_info.width();
             let height = shared_state.display_info.height();
-            
+
             let anchor_x = rand::random::<usize>() % width;
             let anchor_y = rand::random::<usize>() % height;
-            
-            shared_state.ui.add_window(anchor_x, anchor_y, Box::new(MyWindow::new()));
+
+            shared_state
+                .ui
+                .add_window(anchor_x, anchor_y, Box::new(MyWindow::new()));
         }
     }
 }

@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-use crossterm::event::{Event, MouseButton, MouseEventKind};
 use crate::components::Component;
+use crate::rendering::pixel::Pixel;
 use crate::rendering::renderer::Renderer;
 use crate::{BreakingAction, SharedState, UpdateInfo};
-use crate::rendering::pixel::Pixel;
+use crossterm::event::{Event, MouseButton, MouseEventKind};
+use std::collections::HashMap;
 
 // TODO: it's also problematic that the SharedState contains mouse positions which are in the global frame and not the local one
 
@@ -20,17 +20,17 @@ pub trait UiElement<S = ()> {
         (0, 0)
     }
 
-    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState<S>) {
+    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState<S>) {}
 
-    }
-
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState<S>) -> Option<BreakingAction> {
+    fn on_event(
+        &mut self,
+        event: Event,
+        shared_state: &mut SharedState<S>,
+    ) -> Option<BreakingAction> {
         None
     }
 
-    fn update(&mut self, shared_state: &mut SharedState<S>) {
-
-    }
+    fn update(&mut self, shared_state: &mut SharedState<S>) {}
 
     fn render(&self, renderer: &mut dyn Renderer, depth_base: i32);
 }
@@ -63,7 +63,12 @@ impl<S> Window<S> {
                 }
                 let xi = x as i64;
                 let yi = y as i64;
-                self.renderer.render_pixel((xi + self.anchor_x) as usize, (yi + self.anchor_y) as usize, pixel, depth);
+                self.renderer.render_pixel(
+                    (xi + self.anchor_x) as usize,
+                    (yi + self.anchor_y) as usize,
+                    pixel,
+                    depth,
+                );
             }
         }
 
@@ -85,7 +90,10 @@ impl<S> Window<S> {
         if x as i64 >= max_x || y as i64 >= max_y {
             return false;
         }
-        self.element.is_hover_drag((x as i64 - self.anchor_x) as usize, (y as i64 - self.anchor_y) as usize)
+        self.element.is_hover_drag(
+            (x as i64 - self.anchor_x) as usize,
+            (y as i64 - self.anchor_y) as usize,
+        )
     }
 
     fn is_resizing_drag(&self, x: usize, y: usize) -> bool {
@@ -95,7 +103,10 @@ impl<S> Window<S> {
         if x as i64 >= max_x || y as i64 >= max_y {
             return false;
         }
-        self.element.is_resizing_drag((x as i64 - self.anchor_x) as usize, (y as i64 - self.anchor_y) as usize)
+        self.element.is_resizing_drag(
+            (x as i64 - self.anchor_x) as usize,
+            (y as i64 - self.anchor_y) as usize,
+        )
     }
 
     fn is_hover(&self, x: usize, y: usize) -> bool {
@@ -119,7 +130,8 @@ impl<S> Window<S> {
         if new_width < 1 || new_height < 1 {
             return;
         }
-        self.element.on_resize(new_width as usize, new_height as usize, shared_state);
+        self.element
+            .on_resize(new_width as usize, new_height as usize, shared_state);
     }
 }
 
@@ -173,12 +185,15 @@ impl<S> Ui<S> {
     fn add_window(&mut self, anchor_x: usize, anchor_y: usize, element: Box<dyn UiElement<S>>) {
         self.highest_index += 1;
         let index = self.highest_index;
-        self.elements.insert(index, Window {
+        self.elements.insert(
             index,
-            anchor_x: anchor_x as i64,
-            anchor_y: anchor_y as i64,
-            element,
-        });
+            Window {
+                index,
+                anchor_x: anchor_x as i64,
+                anchor_y: anchor_y as i64,
+                element,
+            },
+        );
         self.render_order.push(index);
     }
 
@@ -192,11 +207,20 @@ impl<S> Ui<S> {
     }
 
     // TODO: 'rescale' mouse events to use the window's coordinate system
-    fn on_event_focused(&mut self, event: Event, shared_state: &mut SharedState<S>) -> Option<BreakingAction> {
-        self.get_mut_focused().and_then(|window| window.element.on_event(event, shared_state))
+    fn on_event_focused(
+        &mut self,
+        event: Event,
+        shared_state: &mut SharedState<S>,
+    ) -> Option<BreakingAction> {
+        self.get_mut_focused()
+            .and_then(|window| window.element.on_event(event, shared_state))
     }
 
-    fn on_event_all(&mut self, event: Event, shared_state: &mut SharedState<S>) -> Option<BreakingAction> {
+    fn on_event_all(
+        &mut self,
+        event: Event,
+        shared_state: &mut SharedState<S>,
+    ) -> Option<BreakingAction> {
         for window in self.elements.values_mut() {
             if let Some(action) = window.element.on_event(event.clone(), shared_state) {
                 return Some(action);
@@ -236,16 +260,18 @@ pub struct UiComponent<S = ()> {
 
 impl UiComponent {
     pub fn new() -> Self {
-        Self {
-            ui: Ui::new(),
-        }
+        Self { ui: Ui::new() }
     }
 }
 
 impl<S: 'static> Component<S> for UiComponent<S> {
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState<S>) -> Option<BreakingAction> {
+    fn on_event(
+        &mut self,
+        event: Event,
+        shared_state: &mut SharedState<S>,
+    ) -> Option<BreakingAction> {
         match event {
-            ref e@Event::Mouse(me) => {
+            ref e @ Event::Mouse(me) => {
                 let x = me.column as usize;
                 let y = me.row as usize;
                 if me.kind == MouseEventKind::Down(MouseButton::Left) {
@@ -305,7 +331,7 @@ impl<S: 'static> Component<S> for UiComponent<S> {
                     return Some(action);
                 }
             }
-            e@Event::Key(_) => {
+            e @ Event::Key(_) => {
                 if let Some(action) = self.ui.on_event_focused(e, shared_state) {
                     return Some(action);
                 }

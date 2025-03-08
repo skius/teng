@@ -48,7 +48,9 @@ pub trait Renderer {
     ///
     /// This function should be called after rendering all pixels for a frame to
     /// actually display the changes on the terminal (or other rendering target).
-    fn flush(&mut self) -> io::Result<()> { Ok(()) }
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
 
     /// Sets the default background color for subsequent rendering operations.
     ///

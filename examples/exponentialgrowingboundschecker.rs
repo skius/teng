@@ -9,8 +9,8 @@ use teng::rendering::renderer::Renderer;
 use teng::util::planarvec::Bounds;
 use teng::util::planarvec2_experimental::ExponentialGrowingBounds;
 use teng::{
-    install_panic_handler, terminal_cleanup, terminal_setup, Game, SetupInfo, SharedState,
-    UpdateInfo,
+    Game, SetupInfo, SharedState, UpdateInfo, install_panic_handler, terminal_cleanup,
+    terminal_setup,
 };
 
 fn main() -> io::Result<()> {

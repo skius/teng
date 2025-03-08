@@ -25,7 +25,7 @@
 //! 3.  Use methods like `Renderer::render_pixel()` and `Render::render()` to draw pixels and renderable objects to the `Renderer`.
 //! 4.  The `Renderer` updates its internal `Display` buffer.
 //! 5.  Call `Renderer::flush()` to write the contents of the `Display` buffer to the terminal, efficiently updating only the changed pixels.
-//! 
+//!
 //! [`Color`]: crate::rendering::color::Color
 //! [`Display`]: crate::rendering::display::Display
 //! [`Pixel`]: crate::rendering::pixel::Pixel

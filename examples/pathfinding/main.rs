@@ -5,13 +5,16 @@ use std::io;
 use std::io::stdout;
 use std::time::Instant;
 use teng::components::Component;
+use teng::rendering::display::Display;
 use teng::rendering::pixel::Pixel;
+use teng::rendering::render::Render;
 use teng::rendering::renderer::Renderer;
 use teng::util::planarvec::Bounds;
-use teng::{install_panic_handler, terminal_cleanup, terminal_setup, Game, SetupInfo, SharedState, UpdateInfo};
-use teng::rendering::display::Display;
-use teng::rendering::render::Render;
 use teng::util::{get_lerp_t_u16, lerp_color};
+use teng::{
+    Game, SetupInfo, SharedState, UpdateInfo, install_panic_handler, terminal_cleanup,
+    terminal_setup,
+};
 
 fn main() -> io::Result<()> {
     terminal_setup()?;
@@ -31,7 +34,7 @@ pub struct PathFindingComponent {
     obstacle_field: Display<bool>,
     dist_field: Display<u16>,
     direction_field: Display<(i8, i8)>,
-    target : (usize, usize),
+    target: (usize, usize),
 }
 
 impl PathFindingComponent {
@@ -61,7 +64,11 @@ impl PathFindingComponent {
 
 impl Component for PathFindingComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<()>) {
-        self.on_resize(setup_info.display_info.width(), setup_info.display_info.height(), shared_state);
+        self.on_resize(
+            setup_info.display_info.width(),
+            setup_info.display_info.height(),
+            shared_state,
+        );
     }
     fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState<()>) {
         self.dist_field = Display::new(width, height, 9999);
@@ -93,11 +100,10 @@ impl Component for PathFindingComponent {
                 self.obstacle_field[(x, y)] = false;
             }
         });
-        
 
         if compute_fields {
             self.dist_field.clear();
-            
+
             // run bfs starting from target and fill dist_field
             let mut queue = VecDeque::new();
             queue.push_back((self.target, 0));
@@ -111,22 +117,39 @@ impl Component for PathFindingComponent {
                 self.dist_field[pos] = dist;
                 for (dx, dy) in &[(0, 1), (0, -1), (1, 0), (-1, 0)] {
                     let new_pos = (pos.0 as isize + dx, pos.1 as isize + dy);
-                    if new_pos.0 < 0 || new_pos.0 >= self.dist_field.width() as isize || new_pos.1 < 0 || new_pos.1 >= self.dist_field.height() as isize {
+                    if new_pos.0 < 0
+                        || new_pos.0 >= self.dist_field.width() as isize
+                        || new_pos.1 < 0
+                        || new_pos.1 >= self.dist_field.height() as isize
+                    {
                         continue;
                     }
                     queue.push_back(((new_pos.0 as usize, new_pos.1 as usize), dist + 1));
                 }
             }
-    
+
             // compute direction to go to reach target
             for y in 0..self.direction_field.height() {
                 for x in 0..self.direction_field.width() {
                     let mut min_dist = 9999;
                     let mut best_dir = (0, 0);
                     // take into account diagonals
-                    for (dx, dy) in &[(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)] {
+                    for (dx, dy) in &[
+                        (0, 1),
+                        (0, -1),
+                        (1, 0),
+                        (-1, 0),
+                        (1, 1),
+                        (1, -1),
+                        (-1, 1),
+                        (-1, -1),
+                    ] {
                         let new_pos = (x as isize + dx, y as isize + dy);
-                        if new_pos.0 < 0 || new_pos.0 >= self.direction_field.width() as isize || new_pos.1 < 0 || new_pos.1 >= self.direction_field.height() as isize {
+                        if new_pos.0 < 0
+                            || new_pos.0 >= self.direction_field.width() as isize
+                            || new_pos.1 < 0
+                            || new_pos.1 >= self.direction_field.height() as isize
+                        {
                             continue;
                         }
                         let dist = self.dist_field[(new_pos.0 as usize, new_pos.1 as usize)];
@@ -139,7 +162,6 @@ impl Component for PathFindingComponent {
                 }
             }
         }
-            
     }
 
     fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState<()>, depth_base: i32) {
@@ -155,14 +177,13 @@ impl Component for PathFindingComponent {
                 let red = [255, 0, 0];
                 let t = get_lerp_t_u16(0, 300, dist);
                 let color = lerp_color(yellow, red, t);
-                
-                
+
                 let dir = self.direction_field[(x, y)];
                 let c = Self::direction_to_char(dir);
                 c.with_color(color).render(renderer, x, y, depth_base);
             }
         }
-        
+
         for y in 0..self.obstacle_field.height() {
             for x in 0..self.obstacle_field.width() {
                 if self.obstacle_field[(x, y)] {

@@ -3,12 +3,12 @@ use teng::components::Component;
 use teng::rendering::color::Color;
 use teng::rendering::render::{HalfBlockDisplayRender, Render};
 use teng::rendering::renderer::Renderer;
+use teng::util::fixedupdate::FixedUpdateRunner;
 use teng::util::planarvec::{Bounds, PlanarVec};
 use teng::{
-    install_panic_handler, terminal_cleanup, terminal_setup, DisplayInfo, Game, SetupInfo,
-    SharedState, UpdateInfo,
+    DisplayInfo, Game, SetupInfo, SharedState, UpdateInfo, install_panic_handler, terminal_cleanup,
+    terminal_setup,
 };
-use teng::util::fixedupdate::FixedUpdateRunner;
 
 fn main() -> std::io::Result<()> {
     terminal_setup()?;
@@ -204,7 +204,9 @@ impl FallingSimulationComponent {
     pub fn new() -> Self {
         Self {
             hb_display: HalfBlockDisplayRender::new(10, 10),
-            fixed_update_runner: FixedUpdateRunner::new_from_rate_per_second(Self::UPDATES_PER_SECOND),
+            fixed_update_runner: FixedUpdateRunner::new_from_rate_per_second(
+                Self::UPDATES_PER_SECOND,
+            ),
         }
     }
 

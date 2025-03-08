@@ -5,7 +5,7 @@ use teng::components::Component;
 use teng::rendering::pixel::Pixel;
 use teng::rendering::renderer::Renderer;
 use teng::{
-    install_panic_handler, terminal_cleanup, terminal_setup, Game, SharedState, UpdateInfo,
+    Game, SharedState, UpdateInfo, install_panic_handler, terminal_cleanup, terminal_setup,
 };
 
 fn main() -> io::Result<()> {

@@ -1,21 +1,21 @@
 //! FABRIK (Forward And Backward Reaching Inverse Kinematics) example.
 
+use crossterm::event::KeyCode;
 use std::io;
 use std::io::stdout;
 use std::time::Instant;
-use crossterm::event::KeyCode;
 use teng::components::Component;
+use teng::rendering::color::Color;
 use teng::rendering::pixel::Pixel;
+use teng::rendering::render::{HalfBlockDisplayRender, Render};
 use teng::rendering::renderer::Renderer;
+use teng::util::for_coord_in_line;
 use teng::util::planarvec::Bounds;
 use teng::util::planarvec2_experimental::ExponentialGrowingBounds;
 use teng::{
-    install_panic_handler, terminal_cleanup, terminal_setup, Game, SetupInfo, SharedState,
-    UpdateInfo,
+    Game, SetupInfo, SharedState, UpdateInfo, install_panic_handler, terminal_cleanup,
+    terminal_setup,
 };
-use teng::rendering::color::Color;
-use teng::rendering::render::{HalfBlockDisplayRender, Render};
-use teng::util::for_coord_in_line;
 
 fn main() -> io::Result<()> {
     terminal_setup()?;
@@ -158,17 +158,24 @@ impl FabrikComponent {
                     if x < 0 || y < 0 {
                         return;
                     }
-                    self.half_block_display_render.set_color(x as usize, y as usize, segment_line_color);
+                    self.half_block_display_render.set_color(
+                        x as usize,
+                        y as usize,
+                        segment_line_color,
+                    );
                 });
 
                 if x_start >= 0 && y_start >= 0 {
-                    self.half_block_display_render.set_color(x_start as usize, y_start as usize, segment_start_color);
+                    self.half_block_display_render.set_color(
+                        x_start as usize,
+                        y_start as usize,
+                        segment_start_color,
+                    );
                 }
 
                 last_point = segment.start;
             }
         }
-
 
         if let Some(start_point) = self.currently_creating_segment {
             let x_u_start = start_point.x.floor() as usize;
@@ -176,21 +183,32 @@ impl FabrikComponent {
             let x_u_end = mouse_point.x.floor() as usize;
             let y_u_end = mouse_point.y.floor() as usize;
 
-            for_coord_in_line(false, (x_u_start as i64, y_u_start as i64), (x_u_end as i64, y_u_end as i64), |x, y| {
-                self.half_block_display_render.set_color(x as usize, y as usize, creating_segment_color);
-            });
+            for_coord_in_line(
+                false,
+                (x_u_start as i64, y_u_start as i64),
+                (x_u_end as i64, y_u_end as i64),
+                |x, y| {
+                    self.half_block_display_render.set_color(
+                        x as usize,
+                        y as usize,
+                        creating_segment_color,
+                    );
+                },
+            );
         }
 
         if let Some(target) = self.target {
             let x_u = target.x.floor() as usize;
             let y_u = target.y.floor() as usize;
-            self.half_block_display_render.set_color(x_u, y_u, target_color);
+            self.half_block_display_render
+                .set_color(x_u, y_u, target_color);
         }
 
         if let Some(base_anchor) = self.base_anchor {
             let x_u = base_anchor.x.floor() as usize;
             let y_u = base_anchor.y.floor() as usize;
-            self.half_block_display_render.set_color(x_u, y_u, base_anchor_color);
+            self.half_block_display_render
+                .set_color(x_u, y_u, base_anchor_color);
         }
     }
 }
@@ -201,7 +219,11 @@ impl Component for FabrikComponent {
         //     x: setup_info.display_info.width() as f64 / 2.0,
         //     y: setup_info.display_info.height() as f64 / 2.0,
         // };
-        self.on_resize(setup_info.display_info.width(), setup_info.display_info.height(), shared_state);
+        self.on_resize(
+            setup_info.display_info.width(),
+            setup_info.display_info.height(),
+            shared_state,
+        );
     }
 
     fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState<()>) {
@@ -247,7 +269,11 @@ impl Component for FabrikComponent {
             self.currently_creating_segment = Some(mouse_point);
         }
 
-        if shared_state.pressed_keys.inner().contains_key(&KeyCode::Esc) {
+        if shared_state
+            .pressed_keys
+            .inner()
+            .contains_key(&KeyCode::Esc)
+        {
             self.currently_creating_segment = None;
         }
 
@@ -300,12 +326,12 @@ impl Component for FabrikComponent {
             self.last_point = None;
         }
 
-
         // render into half block display
         self.render_to_half_block_display(mouse_point);
     }
 
     fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState<()>, depth_base: i32) {
-        self.half_block_display_render.render(renderer, 0, 0, depth_base);
+        self.half_block_display_render
+            .render(renderer, 0, 0, depth_base);
     }
 }

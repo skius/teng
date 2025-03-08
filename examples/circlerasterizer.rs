@@ -1,12 +1,15 @@
-use std::io;
 use crossterm::event::{Event, MouseEvent, MouseEventKind};
+use std::io;
 use teng::components::Component;
+use teng::rendering::display::Display;
 use teng::rendering::pixel::Pixel;
 use teng::rendering::render::Render;
 use teng::rendering::renderer::Renderer;
-use teng::{install_panic_handler, terminal_cleanup, terminal_setup, BreakingAction, Game, SetupInfo, SharedState, UpdateInfo};
-use teng::rendering::display::Display;
 use teng::util::fixedupdate::FixedUpdateRunner;
+use teng::{
+    BreakingAction, Game, SetupInfo, SharedState, UpdateInfo, install_panic_handler,
+    terminal_cleanup, terminal_setup,
+};
 
 #[derive(Clone)]
 struct Ball {
@@ -28,28 +31,28 @@ impl Ball {
         let center_y = self.y as i64;
 
         while x >= y {
-            if f((center_x + x) as f64, (center_y + y/2) as f64) {
+            if f((center_x + x) as f64, (center_y + y / 2) as f64) {
                 return;
             }
-            if f((center_x + y) as f64, (center_y + x/2) as f64) {
+            if f((center_x + y) as f64, (center_y + x / 2) as f64) {
                 return;
             }
-            if f((center_x - y) as f64, (center_y + x/2) as f64) {
+            if f((center_x - y) as f64, (center_y + x / 2) as f64) {
                 return;
             }
-            if f((center_x - x) as f64, (center_y + y/2) as f64) {
+            if f((center_x - x) as f64, (center_y + y / 2) as f64) {
                 return;
             }
-            if f((center_x - x) as f64, (center_y - y/2) as f64) {
+            if f((center_x - x) as f64, (center_y - y / 2) as f64) {
                 return;
             }
-            if f((center_x - y) as f64, (center_y - x/2) as f64) {
+            if f((center_x - y) as f64, (center_y - x / 2) as f64) {
                 return;
             }
-            if f((center_x + y) as f64, (center_y - x/2) as f64) {
+            if f((center_x + y) as f64, (center_y - x / 2) as f64) {
                 return;
             }
-            if f((center_x + x) as f64, (center_y - y/2) as f64) {
+            if f((center_x + x) as f64, (center_y - y / 2) as f64) {
                 return;
             }
 
@@ -64,7 +67,11 @@ impl Ball {
         }
     }
 
-    fn for_each_coord_in_filled(&self, mut f: impl FnMut(f64, f64) -> bool, radius_adjustment: f64) {
+    fn for_each_coord_in_filled(
+        &self,
+        mut f: impl FnMut(f64, f64) -> bool,
+        radius_adjustment: f64,
+    ) {
         let center_x = self.x as i64;
         let center_y = self.y as i64;
 
@@ -76,20 +83,20 @@ impl Ball {
             // quick fix to only call every second horizontal line, since we're squashing by a factor of two
             if y % 2 == 0 {
                 for i in center_x - x..=center_x + x {
-                    if f(i as f64, (center_y + y/2) as f64) {
+                    if f(i as f64, (center_y + y / 2) as f64) {
                         return;
                     }
-                    if f(i as f64, (center_y - y/2) as f64) {
+                    if f(i as f64, (center_y - y / 2) as f64) {
                         return;
                     }
                 }
             }
             if x % 2 == 0 {
                 for i in center_x - y..=center_x + y {
-                    if f(i as f64, (center_y + x/2) as f64) {
+                    if f(i as f64, (center_y + x / 2) as f64) {
                         return;
                     }
-                    if f(i as f64, (center_y - x/2) as f64) {
+                    if f(i as f64, (center_y - x / 2) as f64) {
                         return;
                     }
                 }
@@ -138,17 +145,36 @@ impl Ball {
             // quick fix to only draw every second horizontal line, since we're squashing by a factor of two
             if y % 2 == 0 {
                 for i in center_x - x..=center_x + x {
-                    renderer.render_pixel(i as usize, (center_y + y/2) as usize, Pixel::new('X'), depth);
-                    renderer.render_pixel(i as usize, (center_y - y/2) as usize, Pixel::new('X'), depth);
+                    renderer.render_pixel(
+                        i as usize,
+                        (center_y + y / 2) as usize,
+                        Pixel::new('X'),
+                        depth,
+                    );
+                    renderer.render_pixel(
+                        i as usize,
+                        (center_y - y / 2) as usize,
+                        Pixel::new('X'),
+                        depth,
+                    );
                 }
             }
             if x % 2 == 0 {
                 for i in center_x - y..=center_x + y {
-                    renderer.render_pixel(i as usize, (center_y + x/2) as usize, Pixel::new('X'), depth);
-                    renderer.render_pixel(i as usize, (center_y - x/2) as usize, Pixel::new('X'), depth);
+                    renderer.render_pixel(
+                        i as usize,
+                        (center_y + x / 2) as usize,
+                        Pixel::new('X'),
+                        depth,
+                    );
+                    renderer.render_pixel(
+                        i as usize,
+                        (center_y - x / 2) as usize,
+                        Pixel::new('X'),
+                        depth,
+                    );
                 }
             }
-
 
             y += 1;
             if err <= 0.0 {
@@ -168,7 +194,6 @@ impl Ball {
 
         let depth_radius = depth + 1;
 
-
         // todo: think about inlining for_each_coord here?
         let pixel = Pixel::new('X').with_color([255, 0, 0]);
         self.for_each_coord_in_outline(|x, y| {
@@ -176,7 +201,6 @@ impl Ball {
             false
         });
         return;
-
 
         let mut x = self.radius as i64 + 1;
         let mut y = 0;
@@ -188,15 +212,54 @@ impl Ball {
         while x >= y {
             let pixel = Pixel::new('X').with_color([255, 0, 0]);
 
-            renderer.render_pixel((center_x + x) as usize, (center_y + y/2) as usize, pixel, depth_radius);
-            renderer.render_pixel((center_x + y) as usize, (center_y + x/2) as usize, pixel, depth_radius);
-            renderer.render_pixel((center_x - y) as usize, (center_y + x/2) as usize, pixel, depth_radius);
-            renderer.render_pixel((center_x - x) as usize, (center_y + y/2) as usize, pixel, depth_radius);
-            renderer.render_pixel((center_x - x) as usize, (center_y - y/2) as usize, pixel, depth_radius);
-            renderer.render_pixel((center_x - y) as usize, (center_y - x/2) as usize, pixel, depth_radius);
-            renderer.render_pixel((center_x + y) as usize, (center_y - x/2) as usize, pixel, depth_radius);
-            renderer.render_pixel((center_x + x) as usize, (center_y - y/2) as usize, pixel, depth_radius);
-
+            renderer.render_pixel(
+                (center_x + x) as usize,
+                (center_y + y / 2) as usize,
+                pixel,
+                depth_radius,
+            );
+            renderer.render_pixel(
+                (center_x + y) as usize,
+                (center_y + x / 2) as usize,
+                pixel,
+                depth_radius,
+            );
+            renderer.render_pixel(
+                (center_x - y) as usize,
+                (center_y + x / 2) as usize,
+                pixel,
+                depth_radius,
+            );
+            renderer.render_pixel(
+                (center_x - x) as usize,
+                (center_y + y / 2) as usize,
+                pixel,
+                depth_radius,
+            );
+            renderer.render_pixel(
+                (center_x - x) as usize,
+                (center_y - y / 2) as usize,
+                pixel,
+                depth_radius,
+            );
+            renderer.render_pixel(
+                (center_x - y) as usize,
+                (center_y - x / 2) as usize,
+                pixel,
+                depth_radius,
+            );
+            renderer.render_pixel(
+                (center_x + y) as usize,
+                (center_y - x / 2) as usize,
+                pixel,
+                depth_radius,
+            );
+            renderer.render_pixel(
+                (center_x + x) as usize,
+                (center_y - y / 2) as usize,
+                pixel,
+                depth_radius,
+            );
 
             y += 1;
             if err <= 0 {
@@ -239,26 +302,38 @@ const MAX_SAMPLES: usize = 5;
 
 impl Component for CircleRasterizerComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<()>) {
-        self.on_resize(setup_info.display_info.width(), setup_info.display_info.height(), shared_state);
+        self.on_resize(
+            setup_info.display_info.width(),
+            setup_info.display_info.height(),
+            shared_state,
+        );
     }
 
     fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState<()>) {
         self.static_collision.resize_keep(width, height);
     }
 
-    fn on_event(&mut self, event: Event, shared_state: &mut SharedState<()>) -> Option<BreakingAction> {
-            if let Event::Mouse(MouseEvent { kind: kind @ (MouseEventKind::ScrollDown | MouseEventKind::ScrollUp), .. }) = event {
-                let delta = match kind {
-                    MouseEventKind::ScrollDown => -1.0,
-                    MouseEventKind::ScrollUp => 1.0,
-                    _ => 0.0,
-                };
-                if let Some(current_ball) = &mut self.current_ball {
-                    current_ball.radius += delta;
-                    current_ball.mass = current_ball.radius * current_ball.radius;
-                }
-                self.default_radius += delta;
+    fn on_event(
+        &mut self,
+        event: Event,
+        shared_state: &mut SharedState<()>,
+    ) -> Option<BreakingAction> {
+        if let Event::Mouse(MouseEvent {
+            kind: kind @ (MouseEventKind::ScrollDown | MouseEventKind::ScrollUp),
+            ..
+        }) = event
+        {
+            let delta = match kind {
+                MouseEventKind::ScrollDown => -1.0,
+                MouseEventKind::ScrollUp => 1.0,
+                _ => 0.0,
+            };
+            if let Some(current_ball) = &mut self.current_ball {
+                current_ball.radius += delta;
+                current_ball.mass = current_ball.radius * current_ball.radius;
             }
+            self.default_radius += delta;
+        }
 
         None
     }
@@ -313,21 +388,34 @@ impl Component for CircleRasterizerComponent {
         }
 
         if let Some(current_ball) = &mut self.current_ball {
-            shared_state.debug_info.custom.insert("Circle Radius".to_string(), format!("{:.2}", current_ball.radius));
-            shared_state.debug_info.custom.insert("Circle Center".to_string(), format!("({}, {})", current_ball.x, current_ball.y));
+            shared_state.debug_info.custom.insert(
+                "Circle Radius".to_string(),
+                format!("{:.2}", current_ball.radius),
+            );
+            shared_state.debug_info.custom.insert(
+                "Circle Center".to_string(),
+                format!("({}, {})", current_ball.x, current_ball.y),
+            );
         }
 
         // simple physics
         // but don't update if we're holding LMB
         if !shared_state.mouse_info.left_mouse_down {
-            self.current_ball.as_mut().map(|ball| ball.update(update_info.dt, shared_state.display_info.height() as f64));
+            self.current_ball
+                .as_mut()
+                .map(|ball| ball.update(update_info.dt, shared_state.display_info.height() as f64));
         }
         // update all other balls
         // for ball in &mut self.free_balls {
         //     ball.update(update_info.dt, shared_state.display_info.height() as f64);
         // }
 
-        update_balls(update_info.dt, &mut self.free_balls, shared_state.display_info.height() as f64, &self.static_collision);
+        update_balls(
+            update_info.dt,
+            &mut self.free_balls,
+            shared_state.display_info.height() as f64,
+            &self.static_collision,
+        );
 
         self.fixed_update_runner.fuel(update_info.dt);
         while self.fixed_update_runner.has_gas() {
@@ -343,7 +431,8 @@ impl Component for CircleRasterizerComponent {
         // update static collision board
         shared_state.mouse_events.for_each_linerp_only_fresh(|mi| {
             if mi.right_mouse_down {
-                self.static_collision.set(mi.last_mouse_pos.0, mi.last_mouse_pos.1, true);
+                self.static_collision
+                    .set(mi.last_mouse_pos.0, mi.last_mouse_pos.1, true);
             }
         })
     }
@@ -353,27 +442,37 @@ impl Component for CircleRasterizerComponent {
             ball.render(renderer, false, depth_base);
         }
         if let Some(current_ball) = &self.current_ball {
-            current_ball.render(renderer, true, depth_base+10);
+            current_ball.render(renderer, true, depth_base + 10);
         }
 
         // render static collision board
         for x in 0..self.static_collision.width() {
             for y in 0..self.static_collision.height() {
                 if self.static_collision[(x, y)] {
-                    renderer.render_pixel(x, y, Pixel::new('O').with_color([0, 255, 0]), depth_base);
+                    renderer.render_pixel(
+                        x,
+                        y,
+                        Pixel::new('O').with_color([0, 255, 0]),
+                        depth_base,
+                    );
                 }
             }
         }
     }
 }
 
-fn update_balls(dt: f64, balls: &mut [Ball], bottom_wall_height: f64, static_collision: &Display<bool>) {
+fn update_balls(
+    dt: f64,
+    balls: &mut [Ball],
+    bottom_wall_height: f64,
+    static_collision: &Display<bool>,
+) {
     // first, check if it hits bottom
     for i in 0..balls.len() {
         let ball = &mut balls[i];
         ball.y_vel = ball.y_vel + 40.0 * dt;
         // x drag
-        ball.x_vel = ball.x_vel  + ball.x_vel.signum() * -10.0 * dt;
+        ball.x_vel = ball.x_vel + ball.x_vel.signum() * -10.0 * dt;
 
         ball.y += ball.y_vel * dt;
         ball.x += ball.x_vel * dt;
@@ -392,31 +491,31 @@ fn update_balls(dt: f64, balls: &mut [Ball], bottom_wall_height: f64, static_col
         let mut closest_hit = None;
         let mut closest_distance_2 = f64::INFINITY;
 
-        ball.for_each_coord_in_filled(|x, y| {
-            let x_u = x as usize;
-            let y_u = y as usize;
+        ball.for_each_coord_in_filled(
+            |x, y| {
+                let x_u = x as usize;
+                let y_u = y as usize;
 
-            if let Some(true) = static_collision.get(x_u, y_u) {
-                let dx = x - ball.x;
-                let dy = y - ball.y;
-                let distance = dx*dx + dy*dy;
-                if distance < closest_distance_2 {
-                    closest_distance_2 = distance;
-                    closest_hit = Some((x, y));
+                if let Some(true) = static_collision.get(x_u, y_u) {
+                    let dx = x - ball.x;
+                    let dy = y - ball.y;
+                    let distance = dx * dx + dy * dy;
+                    if distance < closest_distance_2 {
+                        closest_distance_2 = distance;
+                        closest_hit = Some((x, y));
+                    }
                 }
 
-            }
-
-            false
-        }, 1.0);
+                false
+            },
+            1.0,
+        );
 
         if let Some((x, y)) = closest_hit {
             // find the closest point on the outline
             let dx = x - ball.x;
             let dy = y - ball.y;
-            let distance = (dx*dx + dy*dy).sqrt();
-
-
+            let distance = (dx * dx + dy * dy).sqrt();
 
             // points from solid surface to ball
             let normal_x = -dx / distance;
@@ -474,7 +573,7 @@ fn update_balls(dt: f64, balls: &mut [Ball], bottom_wall_height: f64, static_col
 
     // then check each ball against each other
     for i in 0..balls.len() {
-        for j in i+1..balls.len() {
+        for j in i + 1..balls.len() {
             let (balls1, balls2) = balls.split_at_mut(j);
             let ball1 = &mut balls1[i];
             let ball2 = &mut balls2[0];
@@ -482,7 +581,7 @@ fn update_balls(dt: f64, balls: &mut [Ball], bottom_wall_height: f64, static_col
             let dy = ball1.y - ball2.y;
             // account for skewed y-scale
             let dy = dy * 2.0;
-            let distance = (dx*dx + dy*dy).sqrt();
+            let distance = (dx * dx + dy * dy).sqrt();
             let overlap = ball1.radius + ball2.radius - distance;
             if overlap > 0.0 {
                 let overlap = overlap / 2.0;
@@ -512,7 +611,6 @@ fn update_balls(dt: f64, balls: &mut [Ball], bottom_wall_height: f64, static_col
                     // ball2.x_vel += impulse * normal_x;
                     // ball2.y_vel += impulse * normal_y;
                 }
-
             }
         }
     }

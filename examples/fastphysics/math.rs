@@ -39,7 +39,6 @@ impl Vec2 {
     pub fn with_length(&self, length: f64) -> Self {
         self.normalized() * length
     }
-
 }
 
 impl Into<(f64, f64)> for Vec2 {

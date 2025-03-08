@@ -1,10 +1,10 @@
 //! Fixed update utilities.
-//! 
+//!
 //! A [`Component`]'s `update` is called once every frame. If you need logic that
 //! runs at a fixed rate, you can use a [`FixedUpdateRunner`] in your component.
 //! See its documentation for more information.
 //!
-//! [`Component`]: crate::components::Component 
+//! [`Component`]: crate::components::Component
 
 /// A simple fixed update runner that accumulates time and runs fixed update at a fixed rate.
 ///
@@ -43,7 +43,7 @@ impl FixedUpdateRunner {
     }
 
     /// Add time to the accumulator. Call this with the delta time from the game loop.
-    pub fn fuel(&mut self, dt: f64)  {
+    pub fn fuel(&mut self, dt: f64) {
         self.dt_accumulator += dt;
     }
 
@@ -56,17 +56,17 @@ impl FixedUpdateRunner {
     pub fn consume(&mut self) {
         self.dt_accumulator -= self.fixed_dt;
     }
-    
+
     /// Available ticks to consume.
     pub fn available_ticks(&self) -> u64 {
         (self.dt_accumulator / self.fixed_dt).floor() as u64
     }
-    
+
     /// Fixed delta time.
     pub fn fixed_dt(&self) -> f64 {
         self.fixed_dt
     }
-    
+
     /// Change the fixed delta time.
     pub fn set_fixed_dt(&mut self, fixed_dt: f64) {
         self.fixed_dt = fixed_dt;
@@ -75,16 +75,16 @@ impl FixedUpdateRunner {
 
 #[cfg(test)]
 mod tests {
-    use std::io::{repeat, Read};
-    use std::iter::repeat_n;
     use super::*;
+    use std::io::{Read, repeat};
+    use std::iter::repeat_n;
 
     #[test]
     fn test_fixed_update_runner() {
         let mut runner = FixedUpdateRunner::new_from_rate_per_second(60.0);
-        
+
         // 120 fps of rendering, and a huge lag spike at the end (1s dt)
-        let mut real_frames = vec![1.0/120.0; 120];
+        let mut real_frames = vec![1.0 / 120.0; 120];
         real_frames.push(1.0);
         // the frames at which fixed update was called
         let mut fixed_update_calls = vec![];
@@ -95,7 +95,7 @@ mod tests {
                 fixed_update_calls.push(i);
             }
         }
-        
+
         // 60 fixed updates, every second frame
         let mut expected_calls = (0..60).map(|x| x * 2 + 1).collect::<Vec<_>>();
         // and 59 frames of lag at the end (not 60 due to rounding

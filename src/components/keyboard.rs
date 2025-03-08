@@ -39,7 +39,7 @@ impl PressedKeys {
     pub fn did_press_char_ignore_case(&self, c: char) -> bool {
         self.did_press_char(c) || self.did_press_char(c.to_ascii_uppercase())
     }
-    
+
     /// Returns true if the given key was pressed since the last update.
     pub fn did_press(&self, key: KeyCode) -> bool {
         self.inner.contains_key(&key)

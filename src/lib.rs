@@ -9,7 +9,7 @@ use std::any::Any;
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::io;
-use std::io::{stdout, Stdout, Write};
+use std::io::{Stdout, Write, stdout};
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 
@@ -18,12 +18,12 @@ pub mod rendering;
 pub mod seeds;
 pub mod util;
 
+use crate::components::Component;
 use crate::components::debuginfo::{DebugInfo, DebugInfoComponent, DebugMessage};
 use crate::components::fpslocker::FpsLockerComponent;
 use crate::components::keyboard::{KeyPressRecorderComponent, PressedKeys};
 use crate::components::mouse::{MouseEvents, MouseInfo, MousePressedInfo, MouseTrackerComponent};
 use crate::components::quitter::QuitterComponent;
-use crate::components::Component;
 use crate::components::ui::UiProxy;
 use crate::rendering::renderer::DisplayRenderer;
 
@@ -198,14 +198,16 @@ impl<W: Write, S: Default + 'static> Game<W, S> {
         let (event_writer, event_reader) = std::sync::mpsc::channel();
         let (event_read_stop_signal, event_read_stop_receiver) = std::sync::mpsc::channel();
 
-        let event_read_thread_handle = std::thread::spawn(move || loop {
-            if crossterm::event::poll(Duration::from_millis(10)).unwrap() {
-                if let Ok(event) = crossterm::event::read() {
-                    event_writer.send(event).unwrap();
+        let event_read_thread_handle = std::thread::spawn(move || {
+            loop {
+                if crossterm::event::poll(Duration::from_millis(10)).unwrap() {
+                    if let Ok(event) = crossterm::event::read() {
+                        event_writer.send(event).unwrap();
+                    }
                 }
-            }
-            if let Ok(_) = event_read_stop_receiver.try_recv() {
-                break;
+                if let Ok(_) = event_read_stop_receiver.try_recv() {
+                    break;
+                }
             }
         });
 

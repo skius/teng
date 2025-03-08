@@ -1,14 +1,17 @@
 mod math;
 
+use crate::math::Vec2;
 use std::io;
 use teng::components::Component;
+use teng::rendering::color::Color;
 use teng::rendering::pixel::Pixel;
 use teng::rendering::render::{HalfBlockDisplayRender, Render};
 use teng::rendering::renderer::Renderer;
-use teng::{install_panic_handler, terminal_cleanup, terminal_setup, Game, SetupInfo, SharedState, UpdateInfo};
-use teng::rendering::color::Color;
 use teng::util::fixedupdate::FixedUpdateRunner;
-use crate::math::Vec2;
+use teng::{
+    Game, SetupInfo, SharedState, UpdateInfo, install_panic_handler, terminal_cleanup,
+    terminal_setup,
+};
 
 /// Ball-shaped collision entity
 #[derive(Debug)]
@@ -30,21 +33,18 @@ impl Entity {
             radius: 0.5,
         }
     }
-    
+
     fn with_velocity(self, vel: Vec2) -> Self {
-        Self {
-            vel,
-            ..self
-        }
+        Self { vel, ..self }
     }
-    
+
     #[inline]
     fn new_accel(&self) -> Vec2 {
         // Derive new acceleration from current position. Avoid using anything except the current
         // position to get error bounds from Verlet.
         Self::DEFAULT_ACCEL
     }
-    
+
     #[inline]
     fn update(&mut self, dt: f64) {
         // velocity Verlet integration: https://en.wikipedia.org/wiki/Verlet_integration#Velocity_Verlet
@@ -96,7 +96,13 @@ impl Component<GameState> for PhysicsComponent {
             total_duration_secs += duration.as_secs_f64();
         }
         if total_iterations > 0 {
-            shared_state.debug_info.custom.insert("average_physics_tick_ms_cost".to_string(), format!("{:.5}", total_duration_secs / (total_iterations as f64) * 1000.0));
+            shared_state.debug_info.custom.insert(
+                "average_physics_tick_ms_cost".to_string(),
+                format!(
+                    "{:.5}",
+                    total_duration_secs / (total_iterations as f64) * 1000.0
+                ),
+            );
         }
     }
 }
@@ -115,10 +121,19 @@ impl GameComponent {
 
 impl Component<GameState> for GameComponent {
     fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<GameState>) {
-        self.on_resize(setup_info.display_info.width(), setup_info.display_info.height(), shared_state);
+        self.on_resize(
+            setup_info.display_info.width(),
+            setup_info.display_info.height(),
+            shared_state,
+        );
     }
 
-    fn on_resize(&mut self, width: usize, height: usize, shared_state: &mut SharedState<GameState>) {
+    fn on_resize(
+        &mut self,
+        width: usize,
+        height: usize,
+        shared_state: &mut SharedState<GameState>,
+    ) {
         self.hbd.resize_discard(width, 2 * height);
     }
 
@@ -133,12 +148,14 @@ impl Component<GameState> for GameComponent {
 
         // add entity on mouse click
         if shared_state.mouse_info.left_mouse_down {
-
             // spawn 100 in a radius of 3 around the mouse
             for _ in 0..100 {
                 let x = mouse_x + (rand::random::<i64>() % 3);
                 let y = mouse_y + (rand::random::<i64>() % 3);
-                shared_state.custom.entities.push(Entity::new_at(x as f64, y as f64).with_velocity((2.0, 0.0).into()));
+                shared_state
+                    .custom
+                    .entities
+                    .push(Entity::new_at(x as f64, y as f64).with_velocity((2.0, 0.0).into()));
             }
         }
 
@@ -152,11 +169,17 @@ impl Component<GameState> for GameComponent {
             if x < 0 || x >= width || y < 0 || y >= height {
                 continue;
             }
-            self.hbd.set_color(x as usize, y as usize, Color::Rgb([255, 0, 0]));
+            self.hbd
+                .set_color(x as usize, y as usize, Color::Rgb([255, 0, 0]));
         }
     }
 
-    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState<GameState>, depth_base: i32) {
+    fn render(
+        &self,
+        renderer: &mut dyn Renderer,
+        shared_state: &SharedState<GameState>,
+        depth_base: i32,
+    ) {
         self.hbd.render(renderer, 0, 0, depth_base);
     }
 }
@@ -170,7 +193,6 @@ fn main() -> io::Result<()> {
         old_hook(panic_info);
         std::process::exit(1);
     }));
-
 
     let mut game = Game::new_with_custom_buf_writer();
     game.install_recommended_components();
