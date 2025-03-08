@@ -16,7 +16,7 @@ use teng::{
 use crate::spatial_hash_grid::{Aabb, SpatialHashGrid};
 
 /// Ball-shaped collision entity
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Entity {
     pos: Vec2,
     vel: Vec2,
@@ -223,29 +223,37 @@ impl PhysicsComponent {
 
         // partition the balls into num_pairs partitions. each has its own spatial hashgrid
         let mut shgs = Vec::new();
-        let mut indices_of_partitions = Vec::new();
-        // let mut partitions = Vec::new();
+        // let mut indices_of_partitions = Vec::new();
+        let mut partitions = Vec::new();
+        
+        // let mut original_indicies_per_partition = Vec::new();
         for _ in 0..num_pairs {
             shgs.push(SpatialHashGrid::new(5));
-            indices_of_partitions.push(Vec::new());
-            // partitions.push(Vec::new());
+            // indices_of_partitions.push(Vec::new());
+            partitions.push(Vec::new());
+            // original_indicies_per_partition.push(Vec::new());
         }
         for (idx, entity) in state.entities.iter().enumerate() {
             let partition = idx % num_pairs;
-            shgs[partition].insert_with_aabb(idx, entity.get_aabb());
-            indices_of_partitions[partition].push(idx);
+
+            let idx_in_partition = partitions[partition].len();
+            partitions[partition].push(entity.clone());
+            // original_indicies_per_partition[partition].push(idx);
+
+            shgs[partition].insert_with_aabb(idx_in_partition, entity.get_aabb());
+            // indices_of_partitions[partition].push(idx);
         }
 
         // first pass: handle collisions within each partition
         for partition in 0..num_pairs {
             let shg = &shgs[partition];
-            for &idx1 in &indices_of_partitions[partition] {
-                for &idx2 in shg.get_for_aabb(state.entities[idx1].get_aabb()) {
+            for idx1 in 0..partitions[partition].len() {
+                for &idx2 in shg.get_for_aabb(partitions[partition][idx1].get_aabb()) {
                     if idx1 == idx2 {
                         continue;
                     }
                     let (idx1, idx2) = (idx1.min(idx2), idx1.max(idx2));
-                    let (entities1, entities2) = state.entities.split_at_mut(idx2);
+                    let (entities1, entities2) = partitions[partition].split_at_mut(idx2);
                     let entity1 = &mut entities1[idx1];
                     let entity2 = &mut entities2[0];
                     // check collision
@@ -260,15 +268,17 @@ impl PhysicsComponent {
         for matching_idx in 0..num_matchings {
             let matching = get_matching(num_threads, matching_idx);
             for (first, second) in matching {
+                let (first, second) = (first.min(second), first.max(second));
+                let (partitions1, partitions2) = partitions.split_at_mut(second);
+                let first_partition = &mut partitions1[first];
+                let second_partition = &mut partitions2[0];
+
                 // let shg1 = &shgs[first];
                 let shg2 = &shgs[second];
-                for &idx1 in &indices_of_partitions[first] {
-                    for &idx2 in shg2.get_for_aabb(state.entities[idx1].get_aabb()) {
-                        assert_ne!(idx1, idx2, "indices in different partitions should not be the same");
-                        let (idx1, idx2) = (idx1.min(idx2), idx1.max(idx2));
-                        let (entities1, entities2) = state.entities.split_at_mut(idx2);
-                        let entity1 = &mut entities1[idx1];
-                        let entity2 = &mut entities2[0];
+                for idx1 in 0..first_partition.len() {
+                    for &idx2 in shg2.get_for_aabb(first_partition[idx1].get_aabb()) {
+                        let entity1 = &mut first_partition[idx1];
+                        let entity2 = &mut second_partition[idx2];
                         // check collision
                         if let Some(dist) = entity1.collides_with(entity2) {
                             entity1.handle_collision(entity2, dist);
@@ -278,6 +288,13 @@ impl PhysicsComponent {
             }
 
         }
+        
+        // move them back into the state
+        state.entities.clear();
+        for partition in partitions {
+            state.entities.extend(partition);
+        }
+        
     }
 
     fn update_physics(&self, dt: f64, state: &mut GameState) {
