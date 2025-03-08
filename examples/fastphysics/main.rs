@@ -201,21 +201,36 @@ impl PhysicsComponent {
     }
 
     fn entent_shg_multithreaded(&self, dt: f64, state: &mut GameState) {
-        fn get_matching(num_threads: usize, matching_idx: usize) -> Vec<(usize, usize)> {
-            let total_num_matchings = 2 * num_threads - 1;
-            let mut matching = Vec::new();
-            for j in 0..num_threads {
-                let first = matching_idx;
-                let second = if (j + matching_idx + 1) % total_num_matchings != 0 {
-                    (j + matching_idx + 1) % total_num_matchings
-                } else {
-                    total_num_matchings
-                };
-                matching.push((first, second));
-            }
-            matching
-        }
+        // fn get_matching(num_threads: usize, matching_idx: usize) -> Vec<(usize, usize)> {
+        //     let total_num_matchings = 2 * num_threads - 1;
+        //     let mut matching = Vec::new();
+        //     for j in 0..num_threads {
+        //         let first = matching_idx;
+        //         let second = if (j + matching_idx + 1) % total_num_matchings != 0 {
+        //             (j + matching_idx + 1) % total_num_matchings
+        //         } else {
+        //             total_num_matchings
+        //         };
+        //         matching.push((first, second));
+        //     }
+        //     matching
+        // }
 
+        // TODO: this function is entirely wrong.
+        // I *think* I want something like this: https://mathematica.stackexchange.com/questions/88085/find-all-the-possible-ways-of-partitioning-a-list-into-a-set-of-pairs-of-element
+        fn generate_matching(n: usize, index: usize) -> Vec<(usize, usize)> {
+            let total = 2 * n;
+
+            let mut pairs = Vec::new();
+            for j in 0..n {
+                let a = j;
+                let b = (j + index + 1) % (total - 1);
+                let b = if b == 0 { total - 1 } else { b };
+                pairs.push((a, b));
+            }
+
+            pairs
+        }
 
         let num_threads = 16;
         let num_pairs = 2 * num_threads;
@@ -230,14 +245,14 @@ impl PhysicsComponent {
         for _ in 0..num_pairs {
             shgs.push(SpatialHashGrid::new(5));
             // indices_of_partitions.push(Vec::new());
-            partitions.push(Vec::new());
+            partitions.push(Some(Vec::new()));
             // original_indicies_per_partition.push(Vec::new());
         }
         for (idx, entity) in state.entities.iter().enumerate() {
             let partition = idx % num_pairs;
 
-            let idx_in_partition = partitions[partition].len();
-            partitions[partition].push(entity.clone());
+            let idx_in_partition = partitions[partition].as_ref().unwrap().len();
+            partitions[partition].as_mut().unwrap().push(entity.clone());
             // original_indicies_per_partition[partition].push(idx);
 
             shgs[partition].insert_with_aabb(idx_in_partition, entity.get_aabb());
@@ -247,6 +262,7 @@ impl PhysicsComponent {
         // first pass: handle collisions within each partition
         thread::scope(|s| {
             for (idx, partition) in partitions.iter_mut().enumerate() {
+                let partition = partition.as_mut().unwrap();
                 let shg = &shgs[idx];
                 s.spawn(|| {
                     for idx1 in 0..partition.len() {
@@ -285,22 +301,45 @@ impl PhysicsComponent {
         //         }
         //     }
         // }
+        
+        // panic!("partition 0 is: {:?}", partitions[0]);
 
         // iterate over all pairs of partitions, and handle collisions between them
-        thread::scope(|s| {
-            for matching_idx in 0..num_matchings {
-                let matching = get_matching(num_threads, matching_idx);
-                for (first, second) in matching {
-                    let (first, second) = (first.min(second), first.max(second));
-                    let (partitions1, partitions2) = partitions.split_at_mut(second);
-                    let first_partition = &mut partitions1[first];
-                    let second_partition = &mut partitions2[0];
-                    // let first_partition = &partitions1[first];
-                    // let second_partition = &partitions2[0];
+        for matching_idx in 0..num_matchings {
+            // let matching = get_matching(num_threads, matching_idx);
+            let matching = generate_matching(num_threads, matching_idx);
+            // panic!("matching: {:?}", matching);
 
-                    
+            // create a new Vec here of (first, second) partitions, then iter_mut should work and we can spawn.
+            let mut paired_partitions = Vec::new();
+            for (first, second) in matching {
+                // if first == 0 {
+                //     panic!("first is 0, midx: {matching_idx}, first_partition: {fp:?}", fp = partitions[first]);
+                // }
+                // if partitions[first].is_none() {
+                //     panic!("partition {} is None, midx: {matching_idx}", first);
+                // }
+                // if partitions[second].is_none() {
+                //     panic!("partition {} is None, midx: {matching_idx}", second);
+                // }
+                let first_partition = partitions[first].take().unwrap();
+                let second_partition = partitions[second].take().unwrap();
+                paired_partitions.push(((first_partition, first), (second_partition, second)));
+            }
+
+            thread::scope(|s| {
+                for ((first_partition, first), (second_partition, second_idx)) in paired_partitions.iter_mut() {
+                    // let (first, second) = (first.min(second), first.max(second));
+                    // let (partitions1, partitions2) = partitions.split_at_mut(second);
+                    // let first_partition = &mut partitions1[first];
+                    // let second_partition = &mut partitions2[0];
+
+                    // let first_partition = first_partition.as_mut().unwrap();
+                    // let second_partition = second_partition.as_mut().unwrap();
+
+
                     // let shg1 = &shgs[first];
-                    let shg2 = &shgs[second];
+                    let shg2 = &shgs[*second_idx];
                     s.spawn(|| {
                         // let first_partition = first_partition as *const Vec<Entity>;
                         // let second_partition = second_partition as *const Vec<Entity>;
@@ -319,8 +358,16 @@ impl PhysicsComponent {
                     });
                 }
 
+            });
+
+            // reinsert
+            for ((first_partition, first), (second_partition, second)) in paired_partitions {
+                partitions[first] = Some(first_partition);
+                partitions[second] = Some(second_partition);
             }
-        });
+
+
+        }
         // for matching_idx in 0..num_matchings {
         //     let matching = get_matching(num_threads, matching_idx);
         //     for (first, second) in matching {
@@ -328,7 +375,7 @@ impl PhysicsComponent {
         //         let (partitions1, partitions2) = partitions.split_at_mut(second);
         //         let first_partition = &mut partitions1[first];
         //         let second_partition = &mut partitions2[0];
-        // 
+        //
         //         // let shg1 = &shgs[first];
         //         let shg2 = &shgs[second];
         //         for idx1 in 0..first_partition.len() {
@@ -342,13 +389,13 @@ impl PhysicsComponent {
         //             }
         //         }
         //     }
-        // 
+        //
         // }
 
         // move them back into the state
         state.entities.clear();
         for partition in partitions {
-            state.entities.extend(partition);
+            state.entities.extend(partition.unwrap());
         }
 
     }
