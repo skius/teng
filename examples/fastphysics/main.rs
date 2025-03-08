@@ -218,19 +218,43 @@ impl PhysicsComponent {
 
         // TODO: this function is entirely wrong.
         // I *think* I want something like this: https://mathematica.stackexchange.com/questions/88085/find-all-the-possible-ways-of-partitioning-a-list-into-a-set-of-pairs-of-element
-        fn generate_matching(n: usize, index: usize) -> Vec<(usize, usize)> {
-            let total = 2 * n;
+        // fn generate_matching(n: usize, index: usize) -> Vec<(usize, usize)> {
+        //     let total = 2 * n;
+        //
+        //     let mut pairs = Vec::new();
+        //     for j in 0..n {
+        //         let a = j;
+        //         let b = (j + index + 1) % (total - 1);
+        //         let b = if b == 0 { total - 1 } else { b };
+        //         pairs.push((a, b));
+        //     }
+        //
+        //     pairs
+        // }
 
-            let mut pairs = Vec::new();
-            for j in 0..n {
-                let a = j;
-                let b = (j + index + 1) % (total - 1);
-                let b = if b == 0 { total - 1 } else { b };
-                pairs.push((a, b));
+        // it's just a 1-factorization of the complete graph K_{2k}.
+        fn one_factorization(k: usize) -> Vec<Vec<(usize, usize)>> {
+            let n = 2 * k;
+            // Initialize the list of teams
+            let mut teams: Vec<usize> = (0..n).collect();
+            let mut rounds = Vec::with_capacity(n - 1);
+
+            // There will be n-1 rounds (matchings)
+            for _ in 0..(n - 1) {
+                let mut round = Vec::with_capacity(k);
+                // Pair the teams: first with last, second with second-last, etc.
+                for i in 0..(n / 2) {
+                    round.push((teams[i], teams[n - 1 - i]));
+                }
+                rounds.push(round);
+
+                // Rotate the teams, keeping the first team fixed.
+                let last = teams.pop().unwrap();
+                teams.insert(1, last);
             }
-
-            pairs
+            rounds
         }
+
 
         let num_threads = 16;
         let num_pairs = 2 * num_threads;
@@ -301,13 +325,14 @@ impl PhysicsComponent {
         //         }
         //     }
         // }
-        
+
         // panic!("partition 0 is: {:?}", partitions[0]);
 
         // iterate over all pairs of partitions, and handle collisions between them
-        for matching_idx in 0..num_matchings {
+        let all_matchings = one_factorization(num_threads);
+        for matching in all_matchings {
             // let matching = get_matching(num_threads, matching_idx);
-            let matching = generate_matching(num_threads, matching_idx);
+            // let matching = generate_matching(num_threads, matching_idx);
             // panic!("matching: {:?}", matching);
 
             // create a new Vec here of (first, second) partitions, then iter_mut should work and we can spawn.
