@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Mul, MulAssign};
+use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Sub, SubAssign};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Vec2 {
@@ -39,6 +39,10 @@ impl Vec2 {
     pub fn with_length(&self, length: f64) -> Self {
         self.normalized() * length
     }
+    
+    pub fn dot(&self, other: Vec2) -> f64 {
+        *self * other
+    }
 }
 
 impl Into<(f64, f64)> for Vec2 {
@@ -64,6 +68,20 @@ impl Add<Vec2> for Vec2 {
 
     fn add(self, other: Vec2) -> Self::Output {
         Self::new(self.x + other.x, self.y + other.y)
+    }
+}
+
+impl Sub<Vec2> for Vec2 {
+    type Output = Self;
+
+    fn sub(self, other: Vec2) -> Self::Output {
+        Self::new(self.x - other.x, self.y - other.y)
+    }
+}
+
+impl SubAssign<Vec2> for Vec2 {
+    fn sub_assign(&mut self, other: Vec2) {
+        *self = *self - other;
     }
 }
 
@@ -94,5 +112,21 @@ impl Mul<Vec2> for f64 {
 impl MulAssign<f64> for Vec2 {
     fn mul_assign(&mut self, scalar: f64) {
         *self = *self * scalar;
+    }
+}
+
+impl Div<f64> for Vec2 {
+    type Output = Self;
+
+    fn div(self, scalar: f64) -> Self::Output {
+        Self::new(self.x / scalar, self.y / scalar)
+    }
+}
+
+impl Div<Vec2> for f64 {
+    type Output = Vec2;
+
+    fn div(self, vec: Vec2) -> Self::Output {
+        vec / self
     }
 }

@@ -20,6 +20,7 @@ struct Entity {
     vel: Vec2,
     accel: Vec2,
     radius: f64,
+    mass: f64,
 }
 
 impl Entity {
@@ -31,6 +32,7 @@ impl Entity {
             vel: Vec2::new(0.0, 0.0),
             accel: Self::DEFAULT_ACCEL,
             radius: 0.5,
+            mass: 0.5 * 0.5 * std::f64::consts::PI,
         }
     }
 
@@ -53,11 +55,34 @@ impl Entity {
         self.vel += 0.5 * (self.accel + new_accel) * dt;
         self.accel = new_accel;
     }
+
+    #[inline]
+    fn handle_world_collisions(&mut self, world_width: f64, world_height: f64) {
+        let collision_loss = 0.9;
+        if self.pos.x - self.radius < 0.0 {
+            self.pos.x = self.radius;
+            self.vel.x = -self.vel.x * collision_loss;
+        }
+        if self.pos.x + self.radius > world_width {
+            self.pos.x = world_width - self.radius;
+            self.vel.x = -self.vel.x * collision_loss;
+        }
+        if self.pos.y - self.radius < 0.0 {
+            self.pos.y = self.radius;
+            self.vel.y = -self.vel.y * collision_loss;
+        }
+        if self.pos.y + self.radius > world_height {
+            self.pos.y = world_height - self.radius;
+            self.vel.y = -self.vel.y * collision_loss;
+        }
+    }
 }
 
 #[derive(Debug, Default)]
 struct GameState {
     entities: Vec<Entity>,
+    world_height: f64,
+    world_width: f64,
 }
 
 struct PhysicsComponent {
@@ -65,6 +90,8 @@ struct PhysicsComponent {
 }
 
 impl PhysicsComponent {
+    const COEFFICIENT_OF_RESTITUTION: f64 = 1.0;
+
     fn new() -> Self {
         Self {
             fur: FixedUpdateRunner::new_from_rate_per_second(60.0),
@@ -72,9 +99,45 @@ impl PhysicsComponent {
     }
 
     fn update_physics(&self, dt: f64, state: &mut GameState) {
+        // Step 1: Update all entities individually, handle world collisions
         for entity in &mut state.entities {
             // Verlet
             entity.update(dt);
+            // handle world bounds and collisions
+            entity.handle_world_collisions(state.world_width, state.world_height);
+        }
+        // Step 2: Handle entity-entity collisions
+        for idx1 in 0..state.entities.len() {
+            for idx2 in idx1 + 1..state.entities.len() {
+                let (entities1, entities2) = state.entities.split_at_mut(idx2);
+                let entity1 = &mut entities1[idx1];
+                let entity2 = &mut entities2[0];
+                // check collision
+                let dist = (entity1.pos - entity2.pos).length();
+                if dist < entity1.radius + entity2.radius {
+                    // collision response, taking into account mass and coefficient of restitution
+                    let normal = (entity2.pos - entity1.pos).normalized();
+                    let relative_velocity = entity2.vel - entity1.vel;
+                    let impulse = 2.0
+                        * entity1.mass
+                        * entity2.mass
+                        * normal.dot(relative_velocity)
+                        / (entity1.mass + entity2.mass);
+                    entity1.vel += impulse * normal / entity1.mass;
+                    entity2.vel -= impulse * normal / entity2.mass;
+
+                    // move entities apart
+                    let overlap = entity1.radius + entity2.radius - dist;
+                    let move1 = -overlap * entity1.mass / (entity1.mass + entity2.mass);
+                    let move2 = overlap * entity2.mass / (entity1.mass + entity2.mass);
+                    entity1.pos += move1 * normal;
+                    entity2.pos += move2 * normal;
+
+                    // apply coefficient of restitution
+                    entity1.vel *= Self::COEFFICIENT_OF_RESTITUTION;
+                    entity2.vel *= Self::COEFFICIENT_OF_RESTITUTION;
+                }
+            }
         }
     }
 }
@@ -135,6 +198,8 @@ impl Component<GameState> for GameComponent {
         shared_state: &mut SharedState<GameState>,
     ) {
         self.hbd.resize_discard(width, 2 * height);
+        shared_state.custom.world_width = width as f64;
+        shared_state.custom.world_height = 2.0 * height as f64;
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<GameState>) {
@@ -155,12 +220,17 @@ impl Component<GameState> for GameComponent {
                 shared_state
                     .custom
                     .entities
-                    .push(Entity::new_at(x as f64, y as f64).with_velocity((70.0, 0.0).into()));
+                    .push(Entity::new_at(x as f64, y as f64).with_velocity((60.0, 0.0).into()));
             }
             shared_state.debug_info.custom.insert(
                 "total entities".to_string(),
                 format!("{}", shared_state.custom.entities.len()),
             );
+        }
+
+        // handle keyboard
+        if shared_state.pressed_keys.did_press_char_ignore_case('c') {
+            shared_state.custom.entities.clear();
         }
 
         // render entities
