@@ -2,7 +2,7 @@ mod math;
 mod spatial_hash_grid;
 
 use crate::math::Vec2;
-use std::io;
+use std::{io, thread};
 use teng::components::Component;
 use teng::rendering::color::Color;
 use teng::rendering::pixel::Pixel;
@@ -225,7 +225,7 @@ impl PhysicsComponent {
         let mut shgs = Vec::new();
         // let mut indices_of_partitions = Vec::new();
         let mut partitions = Vec::new();
-        
+
         // let mut original_indicies_per_partition = Vec::new();
         for _ in 0..num_pairs {
             shgs.push(SpatialHashGrid::new(5));
@@ -245,56 +245,112 @@ impl PhysicsComponent {
         }
 
         // first pass: handle collisions within each partition
-        for partition in 0..num_pairs {
-            let shg = &shgs[partition];
-            for idx1 in 0..partitions[partition].len() {
-                for &idx2 in shg.get_for_aabb(partitions[partition][idx1].get_aabb()) {
-                    if idx1 == idx2 {
-                        continue;
-                    }
-                    let (idx1, idx2) = (idx1.min(idx2), idx1.max(idx2));
-                    let (entities1, entities2) = partitions[partition].split_at_mut(idx2);
-                    let entity1 = &mut entities1[idx1];
-                    let entity2 = &mut entities2[0];
-                    // check collision
-                    if let Some(dist) = entity1.collides_with(entity2) {
-                        entity1.handle_collision(entity2, dist);
-                    }
-                }
-            }
-        }
-
-        // iterate over all pairs of partitions, and handle collisions between them
-        for matching_idx in 0..num_matchings {
-            let matching = get_matching(num_threads, matching_idx);
-            for (first, second) in matching {
-                let (first, second) = (first.min(second), first.max(second));
-                let (partitions1, partitions2) = partitions.split_at_mut(second);
-                let first_partition = &mut partitions1[first];
-                let second_partition = &mut partitions2[0];
-
-                // let shg1 = &shgs[first];
-                let shg2 = &shgs[second];
-                for idx1 in 0..first_partition.len() {
-                    for &idx2 in shg2.get_for_aabb(first_partition[idx1].get_aabb()) {
-                        let entity1 = &mut first_partition[idx1];
-                        let entity2 = &mut second_partition[idx2];
-                        // check collision
-                        if let Some(dist) = entity1.collides_with(entity2) {
-                            entity1.handle_collision(entity2, dist);
+        thread::scope(|s| {
+            for (idx, partition) in partitions.iter_mut().enumerate() {
+                let shg = &shgs[idx];
+                s.spawn(|| {
+                    for idx1 in 0..partition.len() {
+                        for &idx2 in shg.get_for_aabb(partition[idx1].get_aabb()) {
+                            if idx1 == idx2 {
+                                continue;
+                            }
+                            let (idx1, idx2) = (idx1.min(idx2), idx1.max(idx2));
+                            let (entities1, entities2) = partition.split_at_mut(idx2);
+                            let entity1 = &mut entities1[idx1];
+                            let entity2 = &mut entities2[0];
+                            // check collision
+                            if let Some(dist) = entity1.collides_with(entity2) {
+                                entity1.handle_collision(entity2, dist);
+                            }
                         }
                     }
-                }
+                });
             }
+        });
+        // for partition in 0..num_pairs {
+        //     let shg = &shgs[partition];
+        //     for idx1 in 0..partitions[partition].len() {
+        //         for &idx2 in shg.get_for_aabb(partitions[partition][idx1].get_aabb()) {
+        //             if idx1 == idx2 {
+        //                 continue;
+        //             }
+        //             let (idx1, idx2) = (idx1.min(idx2), idx1.max(idx2));
+        //             let (entities1, entities2) = partitions[partition].split_at_mut(idx2);
+        //             let entity1 = &mut entities1[idx1];
+        //             let entity2 = &mut entities2[0];
+        //             // check collision
+        //             if let Some(dist) = entity1.collides_with(entity2) {
+        //                 entity1.handle_collision(entity2, dist);
+        //             }
+        //         }
+        //     }
+        // }
 
-        }
-        
+        // iterate over all pairs of partitions, and handle collisions between them
+        thread::scope(|s| {
+            for matching_idx in 0..num_matchings {
+                let matching = get_matching(num_threads, matching_idx);
+                for (first, second) in matching {
+                    let (first, second) = (first.min(second), first.max(second));
+                    let (partitions1, partitions2) = partitions.split_at_mut(second);
+                    let first_partition = &mut partitions1[first];
+                    let second_partition = &mut partitions2[0];
+                    // let first_partition = &partitions1[first];
+                    // let second_partition = &partitions2[0];
+
+                    
+                    // let shg1 = &shgs[first];
+                    let shg2 = &shgs[second];
+                    s.spawn(|| {
+                        // let first_partition = first_partition as *const Vec<Entity>;
+                        // let second_partition = second_partition as *const Vec<Entity>;
+                        // let first_partition: &mut Vec<Entity> = unsafe { &mut *(first_partition as *mut _) };
+                        // let second_partition: &mut Vec<Entity> = unsafe { &mut *(second_partition as *mut _) };
+                        for idx1 in 0..first_partition.len() {
+                            for &idx2 in shg2.get_for_aabb(first_partition[idx1].get_aabb()) {
+                                let entity1 = &mut first_partition[idx1];
+                                let entity2 = &mut second_partition[idx2];
+                                // check collision
+                                if let Some(dist) = entity1.collides_with(entity2) {
+                                    entity1.handle_collision(entity2, dist);
+                                }
+                            }
+                        }
+                    });
+                }
+
+            }
+        });
+        // for matching_idx in 0..num_matchings {
+        //     let matching = get_matching(num_threads, matching_idx);
+        //     for (first, second) in matching {
+        //         let (first, second) = (first.min(second), first.max(second));
+        //         let (partitions1, partitions2) = partitions.split_at_mut(second);
+        //         let first_partition = &mut partitions1[first];
+        //         let second_partition = &mut partitions2[0];
+        // 
+        //         // let shg1 = &shgs[first];
+        //         let shg2 = &shgs[second];
+        //         for idx1 in 0..first_partition.len() {
+        //             for &idx2 in shg2.get_for_aabb(first_partition[idx1].get_aabb()) {
+        //                 let entity1 = &mut first_partition[idx1];
+        //                 let entity2 = &mut second_partition[idx2];
+        //                 // check collision
+        //                 if let Some(dist) = entity1.collides_with(entity2) {
+        //                     entity1.handle_collision(entity2, dist);
+        //                 }
+        //             }
+        //         }
+        //     }
+        // 
+        // }
+
         // move them back into the state
         state.entities.clear();
         for partition in partitions {
             state.entities.extend(partition);
         }
-        
+
     }
 
     fn update_physics(&self, dt: f64, state: &mut GameState) {
