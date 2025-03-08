@@ -3,6 +3,7 @@ mod spatial_hash_grid;
 
 use crate::math::Vec2;
 use std::{io, thread};
+use std::ops::{Index, IndexMut};
 use rayon::prelude::*;
 use teng::components::Component;
 use teng::rendering::color::Color;
@@ -140,9 +141,107 @@ impl Entity {
     }
 }
 
+#[derive(Debug)]
+struct PartitionedEntities {
+    total_entities: usize,
+    num_partitions: usize,
+    // invariant: partitions.len() == num_partitions
+    partitions: Vec<Vec<Entity>>,
+}
+
+impl PartitionedEntities {
+    fn new(num_partitions: usize) -> Self {
+        Self {
+            total_entities: 0,
+            num_partitions,
+            partitions: vec![vec![]; num_partitions],
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.total_entities
+    }
+
+    fn clear(&mut self) {
+        self.total_entities = 0;
+        self.partitions.clear();
+    }
+
+    fn iter(&self) -> impl Iterator<Item = &Entity> {
+        self.partitions.iter().flat_map(|partition| partition.iter())
+    }
+
+    fn iter_mut(&mut self) -> impl Iterator<Item = &mut Entity> {
+        self.partitions.iter_mut().flat_map(|partition| partition.iter_mut())
+    }
+
+    fn push(&mut self, entity: Entity) {
+        let partition = self.total_entities % self.num_partitions;
+        if partition >= self.partitions.len() {
+            self.partitions.push(Vec::new());
+        }
+        self.partitions[partition].push(entity);
+        self.total_entities += 1;
+    }
+
+    fn total_index_to_partition_and_partition_idx(&self, idx: usize) -> (usize, usize) {
+        let partition = idx % self.num_partitions;
+        let partition_idx = idx / self.num_partitions;
+        (partition, partition_idx)
+    }
+
+    fn get_two_mut(&mut self, idx1: usize, idx2: usize) -> (&mut Entity, &mut Entity) {
+        let (partition1, partition_idx1) = self.total_index_to_partition_and_partition_idx(idx1);
+        let (partition2, partition_idx2) = self.total_index_to_partition_and_partition_idx(idx2);
+        if partition1 == partition2 {
+            let partition = &mut self.partitions[partition1];
+            if partition_idx1 < partition_idx2 {
+                let (p1s, p2s) = partition.split_at_mut(partition_idx2);
+                (&mut p1s[partition_idx1], &mut p2s[0])
+            } else {
+                let (p1s, p2s) = partition.split_at_mut(partition_idx1);
+                (&mut p2s[0], &mut p1s[partition_idx2])
+            }
+        } else {
+            if partition1 < partition2 {
+                let (p1s, p2s) = self.partitions.split_at_mut(partition2);
+                let (p1, p2) = (&mut p1s[partition1], &mut p2s[0]);
+                (&mut p1[partition_idx1], &mut p2[partition_idx2])
+            } else {
+                let (p1s, p2s) = self.partitions.split_at_mut(partition1);
+                let (p1, p2) = (&mut p2s[0], &mut p1s[partition2]);
+                (&mut p1[partition_idx1], &mut p2[partition_idx2])
+            }
+        }
+    }
+}
+
+impl Index<usize> for PartitionedEntities {
+    type Output = Entity;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        let (partition, partition_idx) = self.total_index_to_partition_and_partition_idx(index);
+        &self.partitions[partition][partition_idx]
+    }
+}
+
+impl IndexMut<usize> for PartitionedEntities {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        let (partition, partition_idx) = self.total_index_to_partition_and_partition_idx(index);
+        &mut self.partitions[partition][partition_idx]
+    }
+}
+
+impl Default for PartitionedEntities {
+    fn default() -> Self {
+        Self::new(2 * 16)
+    }
+}
+
 #[derive(Debug, Default)]
 struct GameState {
-    entities: Vec<Entity>,
+    // entities: Vec<Entity>,
+    entities: PartitionedEntities,
     world_height: f64,
     world_width: f64,
 }
@@ -165,9 +264,10 @@ impl PhysicsComponent {
         // Max: 5'400 entities at 60tps
         for idx1 in 0..state.entities.len() {
             for idx2 in idx1 + 1..state.entities.len() {
-                let (entities1, entities2) = state.entities.split_at_mut(idx2);
-                let entity1 = &mut entities1[idx1];
-                let entity2 = &mut entities2[0];
+                // let (entities1, entities2) = state.entities.split_at_mut(idx2);
+                // let entity1 = &mut entities1[idx1];
+                // let entity2 = &mut entities2[0];
+                let (entity1, entity2) = state.entities.get_two_mut(idx1, idx2);
                 // check collision
                 if let Some(dist) = entity1.collides_with(entity2) {
                     entity1.handle_collision(entity2, dist);
@@ -190,10 +290,12 @@ impl PhysicsComponent {
                 if idx1 == idx2 {
                     continue;
                 }
-                let (idx1, idx2) = (idx1.min(idx2), idx1.max(idx2));
-                let (entities1, entities2) = state.entities.split_at_mut(idx2);
-                let entity1 = &mut entities1[idx1];
-                let entity2 = &mut entities2[0];
+                // let (idx1, idx2) = (idx1.min(idx2), idx1.max(idx2));
+                // let (entities1, entities2) = state.entities.split_at_mut(idx2);
+                // let entity1 = &mut entities1[idx1];
+                // let entity2 = &mut entities2[0];
+                let (entity1, entity2) = state.entities.get_two_mut(idx1, idx2);
+                
                 // check collision
                 if let Some(dist) = entity1.collides_with(entity2) {
                     entity1.handle_collision(entity2, dist);
@@ -425,16 +527,16 @@ impl PhysicsComponent {
         // }
 
         // move them back into the state
-        state.entities.clear();
-        for partition in partitions {
-            state.entities.extend(partition.unwrap());
-        }
+        // state.entities.clear();
+        // for partition in partitions {
+        //     state.entities.extend(partition.unwrap());
+        // }
 
     }
 
     fn update_physics(&self, dt: f64, state: &mut GameState) {
         // Step 1: Update all entities individually, handle world collisions
-        for entity in &mut state.entities {
+        for entity in state.entities.iter_mut() {
             // Verlet
             entity.update(dt);
             // handle world bounds and collisions
@@ -558,7 +660,7 @@ impl Component<GameState> for GameComponent {
 
         // render entities
         self.hbd.clear();
-        for entity in &shared_state.custom.entities {
+        for entity in shared_state.custom.entities.iter() {
             let (x, y) = entity.pos.floor_to_i64();
             // swap y axis, entity y grows upwards
             let y = height - y;
