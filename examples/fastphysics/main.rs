@@ -159,13 +159,20 @@ impl Component<GameState> for PhysicsComponent {
             total_duration_secs += duration.as_secs_f64();
         }
         if total_iterations > 0 {
+            let avg = total_duration_secs / (total_iterations as f64);
             shared_state.debug_info.custom.insert(
                 "average_physics_tick_ms_cost".to_string(),
                 format!(
                     "{:.5}",
-                    total_duration_secs / (total_iterations as f64) * 1000.0
+                    avg * 1000.0
                 ),
             );
+            if avg > self.fur.fixed_dt() {
+                let key = "entity_len_at_first_slow_physics_tick";
+                if !shared_state.debug_info.custom.contains_key(key) {
+                    shared_state.debug_info.custom.insert(key.to_string(), shared_state.custom.entities.len().to_string());
+                }
+            }
         }
     }
 }
