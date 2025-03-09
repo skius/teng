@@ -331,6 +331,8 @@ impl<'a> Renderer for TransparentRendererAdapter<'a> {
 pub struct HalfBlockDisplayRender {
     width: usize,
     height: usize,
+    // min x, min y, max x, max y
+    dirty_rect: Option<(usize, usize, usize, usize)>,
     display: Display<Color>,
 }
 
@@ -345,6 +347,7 @@ impl HalfBlockDisplayRender {
         Self {
             width,
             height,
+            dirty_rect: None,
             display: Display::new(width, height, Color::Transparent),
         }
     }
@@ -361,7 +364,15 @@ impl HalfBlockDisplayRender {
 
     /// Sets the color of a specific pixel in the display. Uses the half-block coordinate space.
     pub fn set_color(&mut self, x: usize, y: usize, color: Color) {
+        if x >= self.width || y >= self.height {
+            return;
+        }
         self.display.set(x, y, color);
+        let dirty_rect = self.dirty_rect.get_or_insert((x, y, x, y));
+        dirty_rect.0 = dirty_rect.0.min(x);
+        dirty_rect.1 = dirty_rect.1.min(y);
+        dirty_rect.2 = dirty_rect.2.max(x);
+        dirty_rect.3 = dirty_rect.3.max(y);
     }
 
     /// Returns the color of a specific pixel in the display. Uses the half-block coordinate space.
@@ -380,13 +391,24 @@ impl HalfBlockDisplayRender {
     /// Clears the display, setting all pixels to the transparent color.
     pub fn clear(&mut self) {
         self.display.clear();
+        self.dirty_rect = None;
     }
 }
 
 impl Render for HalfBlockDisplayRender {
     fn render(&self, renderer: &mut dyn Renderer, base_x: usize, base_y: usize, depth: i32) {
-        for y_offset in 0..(self.height / 2) {
-            for x_offset in 0..self.width {
+        let Some((min_x, min_y, max_x, max_y)) = self.dirty_rect else {
+            return;
+        };
+        
+        // adjust y's to terminal space
+        let min_y = min_y / 2;
+        let max_y = max_y / 2;
+        
+        // for y_offset in 0..(self.height / 2) {
+            // for x_offset in 0..self.width {
+        for y_offset in min_y..=max_y {
+            for x_offset in min_x..=max_x {
                 let x = base_x + x_offset;
                 let y = base_y + y_offset;
                 let color_top = *self.display.get(x_offset, 2 * y_offset).unwrap();
