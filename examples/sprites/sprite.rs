@@ -7,6 +7,7 @@ use teng::rendering::render::HalfBlockDisplayRender;
 /// A pixel sprite.
 ///
 /// Indexing starts at the top-left corner of the sprite.
+#[derive(Debug, Clone)]
 pub struct Sprite {
     pub height: u16,
     pub width: u16,
@@ -48,10 +49,32 @@ impl Sprite {
     pub fn set_flipped_x(&mut self, flipped_x: bool) {
         self.flipped_x = flipped_x;
     }
+
+    pub fn get_rotated(&self, angle_deg: f64) -> Self {
+        let (new_width, new_height, res_buffer) = rotsprite::rotsprite(&self.pixels, &Color::Transparent, self.width as usize, angle_deg).unwrap();
+
+        // keep attach offset the same by computing the new offset
+        let new_attach_offset = {
+            let (old_attach_x, old_attach_y) = self.attach_offset;
+            let (old_width, old_height) = (self.width as i16, self.height as i16);
+            let (new_width, new_height) = (new_width as i16, new_height as i16);
+            let new_attach_x = (old_attach_x as f64 / old_width as f64 * new_width as f64).round() as i16;
+            let new_attach_y = (old_attach_y as f64 / old_height as f64 * new_height as f64).round() as i16;
+            (new_attach_x, new_attach_y)
+        };
+
+        Self {
+            attach_offset: new_attach_offset,
+            width: new_width as u16,
+            height: new_height as u16,
+            pixels: res_buffer,
+            flipped_x: self.flipped_x,
+        }
+    }
 }
 
 pub struct Animation {
-    frames: Vec<Sprite>,
+    pub frames: Vec<Sprite>,
     frame_duration_secs: f32,
     start_time: Instant,
 }
@@ -122,7 +145,7 @@ impl Animation {
 }
 
 pub struct CombinedAnimations {
-    animations: Vec<Animation>,
+    pub animations: Vec<Animation>,
 }
 
 impl CombinedAnimations {

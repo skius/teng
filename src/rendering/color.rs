@@ -1,7 +1,7 @@
 //! Color representation for terminal rendering.
 
 /// Represents colors for terminal rendering.
-#[derive(Clone, Copy, Debug, PartialEq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Color {
     /// Use the renderer's default color.
     #[default]

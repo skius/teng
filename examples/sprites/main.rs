@@ -34,20 +34,21 @@ struct PlayerAnimations {
 impl PlayerAnimations {
     fn new() -> Self {
         let mut map = HashMap::new();
+        let speed = 0.1;
 
         let idle_anims;
         {
-            let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/base_idle_strip9.png", 0.1);
-            let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/bowlhair_idle_strip9.png", 0.1);
-            let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/tools_idle_strip9.png", 0.1);
+            let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/base_idle_strip9.png", speed);
+            let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/bowlhair_idle_strip9.png", speed);
+            let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/tools_idle_strip9.png", speed);
             idle_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools]);
         }
 
         let walk_anims;
         {
-            let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/base_walk_strip8.png", 0.1);
-            let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/bowlhair_walk_strip8.png", 0.1);
-            let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/tools_walk_strip8.png", 0.1);
+            let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/base_walk_strip8.png", speed);
+            let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/bowlhair_walk_strip8.png", speed);
+            let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/tools_walk_strip8.png", speed);
             walk_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools]);
         }
 
@@ -96,7 +97,7 @@ impl GameComponent {
         assert!(distance >= 10.0);
         let normalized = distance - 10.0 + 1.0;
         // speed grows based on distance
-        let speed = normalized.clamp(10.0, 60.0);
+        let speed = normalized.clamp(30.0, 80.0);
         speed
     }
 }
@@ -187,6 +188,21 @@ impl Component<GameState> for GameComponent {
 
         let anim = self.animations.map.get(&self.player_state).unwrap();
         anim.render_to_hbd(draw_x, draw_y, &mut self.hbd, update_info.current_time);
+        // rot test
+        // let first_sprite = self.animations.map.get(&self.player_state).unwrap().animations[0].frames[0].clone();
+        // let mut angle = {
+        //     // compute diff from mosue to char
+        //     let dx = mouse_x as f64 - char_x;
+        //     let dy = mouse_y as f64 - char_y;
+        //     let angle = dy.atan2(dx);
+        //     angle.to_degrees()
+        // };
+        // if self.is_flipped_x {
+        //     // flip angle
+        //     angle = -angle + 180.0;
+        // }
+        // let rotated = first_sprite.get_rotated(angle);
+        // rotated.render_to_hbd(draw_x, draw_y, &mut self.hbd);
 
 
         // draw entire red-green color space
@@ -213,7 +229,7 @@ impl Component<GameState> for GameComponent {
         // renderer.set_default_bg_color([0x6a, 0xc8, 0x4f]);
         // #65bd4f
         renderer.set_default_bg_color([0x65, 0xbd, 0x4f]);
-        
+
         self.hbd.render(renderer, 0, 0, depth_base);
     }
 }
