@@ -202,6 +202,14 @@ impl CombinedAnimations {
         self
     }
 
+    pub fn with_custom_indices(self, indices: Vec<usize>) -> Self {
+        CombinedAnimations {
+            animations: self.animations.into_iter().map(|animation| animation.with_selected_indices(indices.clone())).collect(),
+            num_frames: indices.len(),
+            ..self
+        }
+    }
+
     pub fn new(animations: Vec<Animation>, frame_duration_secs: f32) -> Self {
         let num_frames = animations[0].get_frame_count();
         CombinedAnimations {
@@ -350,7 +358,7 @@ impl Default for AnimationRepository {
         animations.insert(AnimationRepositoryKey::PlayerRun, CombinedAnimations::from_standard_strip_names("RUN".to_string(), "run".to_string(), 8, speed));
 
         animations.insert(AnimationRepositoryKey::PlayerAxe, CombinedAnimations::from_standard_strip_names("AXE".to_string(), "axe".to_string(), 10, 0.07).with_kind(AnimationKind::OneShot { trigger_frame: Some(7) }));
-        animations.insert(AnimationRepositoryKey::PlayerSword, CombinedAnimations::from_standard_strip_names("ATTACK".to_string(), "attack".to_string(), 10, 0.05).with_kind(AnimationKind::OneShot { trigger_frame: Some(7) }));
+        animations.insert(AnimationRepositoryKey::PlayerSword, CombinedAnimations::from_standard_strip_names("ATTACK".to_string(), "attack".to_string(), 10, 0.05).with_kind(AnimationKind::OneShot { trigger_frame: Some(7) }).with_custom_indices((0..9).collect()));
 
         animations.insert(AnimationRepositoryKey::PlayerCaught, CombinedAnimations::from_standard_strip_names("CAUGHT".to_string(), "caught".to_string(), 10, speed).with_kind(AnimationKind::OneShot { trigger_frame: None }));
         animations.insert(AnimationRepositoryKey::PlayerJump, CombinedAnimations::from_standard_strip_names("JUMP".to_string(), "jump".to_string(), 9, speed).with_kind(AnimationKind::OneShot { trigger_frame: None }));
