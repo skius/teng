@@ -209,7 +209,11 @@ impl Component<GameState> for GameComponent {
         shared_state: &SharedState<GameState>,
         depth_base: i32,
     ) {
-        renderer.set_default_bg_color([10, 50, 20]);
+        // #6ac84f
+        // renderer.set_default_bg_color([0x6a, 0xc8, 0x4f]);
+        // #65bd4f
+        renderer.set_default_bg_color([0x65, 0xbd, 0x4f]);
+        
         self.hbd.render(renderer, 0, 0, depth_base);
     }
 }
