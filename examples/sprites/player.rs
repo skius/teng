@@ -83,6 +83,7 @@ impl InputCache {
 #[derive(Debug)]
 pub struct Player {
     animation_controller: AnimationController<PlayerState>,
+    sword_attack_finished: bool,
     is_rolling: bool,
     roll_direction: (f64, f64),
     is_flipped_x: bool,
@@ -109,6 +110,7 @@ impl Default for Player {
             animation_controller,
             is_flipped_x: false,
             is_rolling: false,
+            sword_attack_finished: false,
             roll_direction: (0.0, 0.0),
             character_pos: (0.0, 0.0),
             input_cache: InputCache::default(),
@@ -122,6 +124,8 @@ impl Player {
             PlayerState::Axe => false,
             // overriden by roll itself
             PlayerState::Roll => !self.is_rolling,
+            // don't allow swapping once the trigger happened
+            PlayerState::Sword => !self.sword_attack_finished,
             _ => true,
         }
     }
@@ -188,7 +192,7 @@ impl Player {
             if player.is_rolling {
                 // special movement
                 let (dx, dy) = player.roll_direction;
-                let speed = 200.0;
+                let speed = 400.0;
                 let dt = update_info.dt;
                 player.character_pos.0 += dx * speed * dt;
                 player.character_pos.1 += dy * speed * dt;
@@ -237,6 +241,7 @@ impl Player {
                 player
                     .animation_controller
                     .set_animation_override(PlayerState::Sword);
+                player.sword_attack_finished = false;
             }
 
             if player.input_cache.space.consume() {
@@ -306,6 +311,9 @@ impl Player {
                     if state == PlayerState::Roll {
                         // stop rolling
                         player.is_rolling = false;
+                    }
+                    if state == PlayerState::Sword {
+                        player.sword_attack_finished = true;
                     }
                 }
                 KeyedAnimationResult::Finished(state) => {

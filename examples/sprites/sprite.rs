@@ -428,7 +428,7 @@ impl Default for AnimationRepository {
             AnimationRepositoryKey::PlayerSword,
             CombinedAnimations::from_standard_strip_names("ATTACK", "attack", 10, 0.05)
                 .with_kind(AnimationKind::OneShot {
-                    trigger_frame: Some(7),
+                    trigger_frame: Some(5),
                 })
                 .with_custom_indices((0..9).collect()),
         );
@@ -451,7 +451,7 @@ impl Default for AnimationRepository {
         );
         animations.insert(
             AnimationRepositoryKey::PlayerRoll,
-            CombinedAnimations::from_standard_strip_names("ROLL", "roll", 10, speed).with_kind(
+            CombinedAnimations::from_standard_strip_names("ROLL", "roll", 10, 0.05).with_kind(
                 AnimationKind::OneShot {
                     trigger_frame: Some(6),
                 },

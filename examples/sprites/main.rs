@@ -17,6 +17,7 @@ use crate::sprite::{
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::{io, thread};
+use std::time::Instant;
 use teng::components::Component;
 use teng::components::debuginfo::DebugMessage;
 use teng::rendering::color::Color;
@@ -28,6 +29,29 @@ use teng::{
     Game, SetupInfo, SharedState, UpdateInfo, install_panic_handler, terminal_cleanup,
     terminal_setup,
 };
+
+enum HurtGroup {
+    Player,
+    Goblin,
+}
+
+struct HurtBox {
+    min_x: f64,
+    max_x: f64,
+    min_y: f64,
+    max_y: f64,
+
+    start: Instant,
+    duration: f64,
+    hurt_tick_every_seconds: f64,
+    
+    // only entities in this group will be hurt
+    hurt_group: HurtGroup,
+    
+    // every tick
+    damage: f64,
+}
+
 
 #[derive(Debug)]
 struct GameState {

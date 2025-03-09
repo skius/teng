@@ -1,5 +1,21 @@
+use teng::components::Component;
+use teng::{SharedState, UpdateInfo};
 use crate::animationcontroller::AnimationController;
+use crate::GameState;
 use crate::sprite::{AnimationRepositoryKey, get_animation};
+
+// TODO: Hurtboxes,
+// TODO: Goblins
+
+pub struct GoblinComponent;
+
+impl Component<GameState> for GoblinComponent {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<GameState>) {
+        for goblin in &mut shared_state.custom.goblins {
+            
+        }
+    }
+}
 
 #[derive(Default, Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum GoblinState {
@@ -19,7 +35,7 @@ pub struct Goblin {
 }
 
 impl Goblin {
-    pub fn new() -> Self {
+    pub fn new_at(pos: (f64, f64)) -> Self {
         let mut animation_controller = AnimationController::default();
         animation_controller.register_animations_from_repository(vec![
             (GoblinState::Idle, AnimationRepositoryKey::GoblinIdle),
@@ -31,20 +47,8 @@ impl Goblin {
 
         Self {
             animation_controller,
-            pos: (0.0, 0.0),
+            pos,
             health: 100.0,
-        }
-    }
-
-    pub fn update(&mut self) {
-        if self.health <= 0.0 {
-            self.animation_controller.set_animation(GoblinState::Death);
-        } else if self.health < 50.0 {
-            self.animation_controller.set_animation(GoblinState::Hurt);
-        } else if self.health < 75.0 {
-            self.animation_controller.set_animation(GoblinState::Run);
-        } else {
-            self.animation_controller.set_animation(GoblinState::Walk);
         }
     }
 
