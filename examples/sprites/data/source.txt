@@ -1,0 +1,2 @@
+Assets from: https://danieldiggle.itch.io/sunnyside 
+Place "Sunnyside_World_Assets" folder as a sibling to this file.

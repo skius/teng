@@ -1,0 +1,235 @@
+mod sprite;
+
+use std::{io, thread};
+use std::collections::HashMap;
+use rayon::prelude::*;
+use teng::components::Component;
+use teng::rendering::color::Color;
+use teng::rendering::pixel::Pixel;
+use teng::rendering::render::{HalfBlockDisplayRender, Render};
+use teng::rendering::renderer::Renderer;
+use teng::util::fixedupdate::FixedUpdateRunner;
+use teng::{
+    Game, SetupInfo, SharedState, UpdateInfo, install_panic_handler, terminal_cleanup,
+    terminal_setup,
+};
+use crate::sprite::{Animation, CombinedAnimations};
+
+#[derive(Debug, Default)]
+struct GameState {
+
+}
+
+#[derive(Hash, Eq, PartialEq)]
+enum PlayerState {
+    Idle,
+    Walk,
+}
+
+
+struct PlayerAnimations {
+    map: HashMap<PlayerState, CombinedAnimations>,
+}
+
+impl PlayerAnimations {
+    fn new() -> Self {
+        let mut map = HashMap::new();
+
+        let idle_anims;
+        {
+            let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/base_idle_strip9.png", 0.1);
+            let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/bowlhair_idle_strip9.png", 0.1);
+            let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/tools_idle_strip9.png", 0.1);
+            idle_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools]);
+        }
+
+        let walk_anims;
+        {
+            let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/base_walk_strip8.png", 0.1);
+            let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/bowlhair_walk_strip8.png", 0.1);
+            let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/tools_walk_strip8.png", 0.1);
+            walk_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools]);
+        }
+
+        map.insert(PlayerState::Idle, idle_anims);
+        map.insert(PlayerState::Walk, walk_anims);
+        Self {
+            map,
+        }
+    }
+
+    fn set_flipped_x(&mut self, flipped_x: bool) {
+        for (_, anim) in &mut self.map {
+            anim.set_flipped_x(flipped_x);
+        }
+    }
+}
+
+struct GameComponent {
+    hbd: HalfBlockDisplayRender,
+    animations: PlayerAnimations,
+    player_state: PlayerState,
+    is_flipped_x: bool,
+    character_pos: (f64, f64),
+}
+
+impl GameComponent {
+    fn new() -> Self {
+        // let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WAITING/base_waiting_strip9.png", 0.1);
+        // let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WAITING/bowlhair_waiting_strip9.png", 0.1);
+
+        // let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/base_idle_strip9.png", 0.1);
+        // let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/bowlhair_idle_strip9.png", 0.1);
+        // let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/tools_idle_strip9.png", 0.1);
+
+        Self {
+            hbd: HalfBlockDisplayRender::new(0, 0),
+            animations: PlayerAnimations::new(),
+            player_state: PlayerState::Idle,
+            is_flipped_x: false,
+            character_pos: (0.0, 0.0),
+        }
+    }
+
+    fn speed_from_distance(&self, distance: f64) -> f64 {
+        // base distance is 10.0.
+        assert!(distance >= 10.0);
+        let normalized = distance - 10.0 + 1.0;
+        // speed grows based on distance
+        let speed = normalized.clamp(10.0, 60.0);
+        speed
+    }
+}
+
+impl Component<GameState> for GameComponent {
+    fn setup(&mut self, setup_info: &SetupInfo, shared_state: &mut SharedState<GameState>) {
+        let x = setup_info.display_info.width() as i64 / 2;
+        let y = setup_info.display_info.height() as i64 / 2 * 2; // * 2 because world is 2x taller than screen
+        self.character_pos = (x as f64, y as f64);
+        self.on_resize(
+            setup_info.display_info.width(),
+            setup_info.display_info.height(),
+            shared_state,
+        );
+    }
+
+    fn on_resize(
+        &mut self,
+        width: usize,
+        height: usize,
+        shared_state: &mut SharedState<GameState>,
+    ) {
+        self.hbd.resize_discard(width, 2 * height);
+    }
+
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<GameState>) {
+        let width = self.hbd.width();
+        let height = self.hbd.height();
+
+        // TODO: we really need a mouse_released struct (similar to mouse_pressed)
+        // if shared_state.mouse_info.left_mouse_down {
+        //     for anim in &mut self.animations {
+        //         anim.set_flipped_x(true);
+        //     }
+        // } else {
+        //     for anim in &mut self.animations {
+        //         anim.set_flipped_x(false);
+        //     }
+        // }
+
+        // check if mouse pos is on left or right half of screen, and flip accordingly
+        let mouse_x = shared_state.mouse_info.last_mouse_pos.0;
+        if (mouse_x as f64) < self.character_pos.0 {
+            if !self.is_flipped_x {
+                self.animations.set_flipped_x(true);
+                self.is_flipped_x = true;
+            }
+        } else {
+            if self.is_flipped_x {
+                self.animations.set_flipped_x(false);
+                self.is_flipped_x = false;
+            }
+        }
+
+        // move character slowly to mouse pos
+        let (mouse_x, mouse_y) = shared_state.mouse_info.last_mouse_pos;
+        let mouse_x = mouse_x as i64;
+        let mouse_y = mouse_y as i64 * 2; // world is 2x taller than screen
+        let (char_x, char_y) = self.character_pos;
+
+        let dx = mouse_x as f64 - char_x;
+        let dy = mouse_y as f64 - char_y;
+        let dist_sqr = (dx * dx + dy * dy);
+        if dist_sqr > 10.0 * 10.0 {
+            // move character
+            let dist = dist_sqr.sqrt();
+            let speed = self.speed_from_distance(dist);
+            // panic!("speed: {}", speed);
+            // let speed = 20.0;
+            let dt = update_info.dt;
+            let normalized = (dx / dist, dy / dist);
+            let (dx, dy) = normalized;
+            self.character_pos.0 += dx * speed * dt;
+            self.character_pos.1 += dy * speed * dt;
+            self.player_state = PlayerState::Walk;
+        } else {
+            self.player_state = PlayerState::Idle;
+        }
+
+        // render
+        self.hbd.clear();
+        let (draw_x, draw_y) = self.character_pos;
+        let draw_x = draw_x.floor() as i64;
+        let draw_y = draw_y.floor() as i64;
+        // for animation in &self.animations {
+        //     animation.render_to_hbd(draw_x, draw_y, &mut self.hbd, update_info.current_time);
+        // }
+
+        let anim = self.animations.map.get(&self.player_state).unwrap();
+        anim.render_to_hbd(draw_x, draw_y, &mut self.hbd, update_info.current_time);
+
+
+        // draw entire red-green color space
+        // for x in 0..=255 {
+        //     for y in 0..=255 {
+        //         let color = Color::Rgb([x as u8, y as u8, 0]);
+        //         self.hbd.set_color(x, y, color);
+        //     }
+        //     // same for red-blue
+        //     for y in 0..=255 {
+        //         let color = Color::Rgb([x as u8, 0, y as u8]);
+        //         self.hbd.set_color(x + 256, y, color);
+        //     }
+        // }
+    }
+
+    fn render(
+        &self,
+        renderer: &mut dyn Renderer,
+        shared_state: &SharedState<GameState>,
+        depth_base: i32,
+    ) {
+        renderer.set_default_bg_color([10, 50, 20]);
+        self.hbd.render(renderer, 0, 0, depth_base);
+    }
+}
+
+fn main() -> io::Result<()> {
+    terminal_setup()?;
+    install_panic_handler();
+    // we need to exit on panic, see TODO in teng::install_panic_handler
+    let old_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |panic_info| {
+        old_hook(panic_info);
+        std::process::exit(1);
+    }));
+
+    let mut game = Game::new_with_custom_buf_writer();
+    game.install_recommended_components();
+    game.add_component(Box::new(GameComponent::new()));
+    game.run()?;
+
+    terminal_cleanup()?;
+
+    Ok(())
+}
