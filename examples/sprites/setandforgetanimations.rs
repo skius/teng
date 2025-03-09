@@ -2,13 +2,14 @@ use crate::sprite::{AnimationKind, AnimationResult, CombinedAnimations};
 use std::time::Instant;
 use teng::rendering::render::HalfBlockDisplayRender;
 
+#[derive(Debug)]
 pub struct SetAndForgetAnimation {
     position: (i64, i64),
     start_time: Instant,
     animation: CombinedAnimations,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct SetAndForgetAnimations {
     animations: Vec<SetAndForgetAnimation>,
 }

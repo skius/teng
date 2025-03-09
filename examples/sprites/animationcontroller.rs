@@ -1,4 +1,4 @@
-use crate::sprite::{Animation, AnimationResult, CombinedAnimations};
+use crate::sprite::{get_animation, Animation, AnimationRepositoryKey, AnimationResult, CombinedAnimations};
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::time::Instant;
@@ -9,6 +9,7 @@ pub enum KeyedAnimationResult<K> {
     Finished(K),
 }
 
+#[derive(Debug)]
 pub struct AnimationController<K: Hash + Eq> {
     animation_map: HashMap<K, CombinedAnimations>,
     current_animation: K,
@@ -50,6 +51,12 @@ impl<K: Hash + Eq + Copy> AnimationController<K> {
 
     pub fn register_animation(&mut self, key: K, animation: CombinedAnimations) {
         self.animation_map.insert(key, animation);
+    }
+    
+    pub fn register_animation_bulk(&mut self, animations: Vec<(K, AnimationRepositoryKey)>) {
+        for (key, animation_key) in animations {
+            self.register_animation(key, get_animation(animation_key));
+        }
     }
 
     /// Sets the current animation to be played, but does not override a currently playing one-shot animation, except if the one-shot is finished.

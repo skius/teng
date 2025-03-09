@@ -328,6 +328,7 @@ impl<'a> Renderer for TransparentRendererAdapter<'a> {
 ///
 /// This is done by only providing the capability to draw differently colored pixels to the screen.
 /// Each pixel is one half of a terminal-sized pixel, and drawn via the Unicode half block characters, '▀' and '▄', and setting their respective foreground and background colors.
+#[derive(Debug)]
 pub struct HalfBlockDisplayRender {
     width: usize,
     height: usize,
