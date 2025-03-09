@@ -1,4 +1,6 @@
 mod sprite;
+mod impulse;
+mod animationcontroller;
 
 use std::{io, thread};
 use std::collections::HashMap;
@@ -13,80 +15,102 @@ use teng::{
     Game, SetupInfo, SharedState, UpdateInfo, install_panic_handler, terminal_cleanup,
     terminal_setup,
 };
-use crate::sprite::{Animation, CombinedAnimations};
+use teng::components::debuginfo::DebugMessage;
+use crate::animationcontroller::{AnimationController, KeyedAnimationResult};
+use crate::sprite::{Animation, AnimationKind, CombinedAnimations};
 
 #[derive(Debug, Default)]
 struct GameState {
 
 }
 
-#[derive(Hash, Eq, PartialEq)]
+#[derive(Hash, Eq, PartialEq, Default, Clone, Copy)]
 enum PlayerState {
+    #[default]
     Idle,
     Walk,
+    Axe,
 }
-
-
-struct PlayerAnimations {
-    map: HashMap<PlayerState, CombinedAnimations>,
-}
-
-impl PlayerAnimations {
-    fn new() -> Self {
-        let mut map = HashMap::new();
-        let speed = 0.1;
-
-        let idle_anims;
-        {
-            let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/base_idle_strip9.png", speed);
-            let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/bowlhair_idle_strip9.png", speed);
-            let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/tools_idle_strip9.png", speed);
-            idle_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools]);
-        }
-
-        let walk_anims;
-        {
-            let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/base_walk_strip8.png", speed);
-            let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/bowlhair_walk_strip8.png", speed);
-            let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/tools_walk_strip8.png", speed);
-            walk_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools]);
-        }
-
-        map.insert(PlayerState::Idle, idle_anims);
-        map.insert(PlayerState::Walk, walk_anims);
-        Self {
-            map,
-        }
-    }
-
-    fn set_flipped_x(&mut self, flipped_x: bool) {
-        for (_, anim) in &mut self.map {
-            anim.set_flipped_x(flipped_x);
-        }
-    }
-}
+// 
+// 
+// struct PlayerAnimations {
+//     map: HashMap<PlayerState, CombinedAnimations>,
+// }
+// 
+// impl PlayerAnimations {
+//     fn new() -> Self {
+//         let mut map = HashMap::new();
+//         let speed = 0.1;
+// 
+//         let idle_anims;
+//         {
+//             let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/base_idle_strip9.png");
+//             let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/bowlhair_idle_strip9.png");
+//             let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/tools_idle_strip9.png");
+//             idle_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools], speed);
+//         }
+// 
+//         let walk_anims;
+//         {
+//             let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/base_walk_strip8.png");
+//             let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/bowlhair_walk_strip8.png");
+//             let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/tools_walk_strip8.png");
+//             walk_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools], speed);
+//         }
+// 
+//         map.insert(PlayerState::Idle, idle_anims);
+//         map.insert(PlayerState::Walk, walk_anims);
+//         Self {
+//             map,
+//         }
+//     }
+// 
+//     fn set_flipped_x(&mut self, flipped_x: bool) {
+//         for (_, anim) in &mut self.map {
+//             anim.set_flipped_x(flipped_x);
+//         }
+//     }
+// }
 
 struct GameComponent {
     hbd: HalfBlockDisplayRender,
-    animations: PlayerAnimations,
-    player_state: PlayerState,
+    animation_controller: AnimationController<PlayerState>,
     is_flipped_x: bool,
     character_pos: (f64, f64),
 }
 
 impl GameComponent {
     fn new() -> Self {
-        // let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WAITING/base_waiting_strip9.png", 0.1);
-        // let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WAITING/bowlhair_waiting_strip9.png", 0.1);
+        let mut animation_controller = AnimationController::default();
+        let speed = 0.1;
 
-        // let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/base_idle_strip9.png", 0.1);
-        // let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/bowlhair_idle_strip9.png", 0.1);
-        // let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/tools_idle_strip9.png", 0.1);
+        {
+            let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/base_idle_strip9.png");
+            let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/bowlhair_idle_strip9.png");
+            let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/tools_idle_strip9.png");
+            let idle_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools], speed);
+            animation_controller.register_animation(PlayerState::Idle, idle_anims);
+        }
+        {
+            let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/base_walk_strip8.png");
+            let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/bowlhair_walk_strip8.png");
+            let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/tools_walk_strip8.png");
+            let walk_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools], speed);
+            animation_controller.register_animation(PlayerState::Walk, walk_anims);
+        }
+        // a one shot anim
+        {
+            let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/AXE/base_axe_strip10.png");
+            let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/AXE/bowlhair_axe_strip10.png");
+            let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/AXE/tools_axe_strip10.png");
+            let mut axe_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools], speed);
+            axe_anims.set_kind(AnimationKind::OneShot { trigger_frame: Some(7) });
+            animation_controller.register_animation(PlayerState::Axe, axe_anims);
+        }
 
         Self {
             hbd: HalfBlockDisplayRender::new(0, 0),
-            animations: PlayerAnimations::new(),
-            player_state: PlayerState::Idle,
+            animation_controller,
             is_flipped_x: false,
             character_pos: (0.0, 0.0),
         }
@@ -142,12 +166,12 @@ impl Component<GameState> for GameComponent {
         let mouse_x = shared_state.mouse_info.last_mouse_pos.0;
         if (mouse_x as f64) < self.character_pos.0 {
             if !self.is_flipped_x {
-                self.animations.set_flipped_x(true);
+                self.animation_controller.set_flipped_x(true);
                 self.is_flipped_x = true;
             }
         } else {
             if self.is_flipped_x {
-                self.animations.set_flipped_x(false);
+                self.animation_controller.set_flipped_x(false);
                 self.is_flipped_x = false;
             }
         }
@@ -172,9 +196,9 @@ impl Component<GameState> for GameComponent {
             let (dx, dy) = normalized;
             self.character_pos.0 += dx * speed * dt;
             self.character_pos.1 += dy * speed * dt;
-            self.player_state = PlayerState::Walk;
+            self.animation_controller.set_animation(PlayerState::Walk);
         } else {
-            self.player_state = PlayerState::Idle;
+            self.animation_controller.set_animation(PlayerState::Idle);
         }
 
         // render
@@ -185,9 +209,35 @@ impl Component<GameState> for GameComponent {
         // for animation in &self.animations {
         //     animation.render_to_hbd(draw_x, draw_y, &mut self.hbd, update_info.current_time);
         // }
+        
+        let anim_res = self.animation_controller.render_to_hbd(draw_x, draw_y, &mut self.hbd, update_info.current_time);
+        if let Some(anim_res) = anim_res {
+            match anim_res {
+                KeyedAnimationResult::Triggered(state) => {
+                    if state == PlayerState::Axe {
+                        // axe animation was triggered
+                        shared_state.debug_messages.push(DebugMessage::new_3s("Axe animation triggered!"));
+                    }
+                }
+                KeyedAnimationResult::Finished(state) => {
+                    if state == PlayerState::Axe {
+                        // axe animation was finished
+                        // TODO: this does not get triggered because the above blanket setting to ::Idle overrides the axe animation, since it's 'finished' so it can be overriden despite
+                        // the 'finished' not being consumed. Though I guess that's fine? as long as our trigger is consumed...
+                        shared_state.debug_messages.push(DebugMessage::new_3s("Axe animation finished!"));
+                        self.animation_controller.set_animation(PlayerState::Idle);
+                    }
+                }
+            }
+        }
+        
+        if shared_state.mouse_pressed.left {
+            // trigger axe animation
+            self.animation_controller.set_animation_override(PlayerState::Axe);
+        }
 
-        let anim = self.animations.map.get(&self.player_state).unwrap();
-        anim.render_to_hbd(draw_x, draw_y, &mut self.hbd, update_info.current_time);
+        // let anim = self.animations.map.get(&self.player_state).unwrap();
+        // anim.render_to_hbd(draw_x, draw_y, &mut self.hbd, update_info.current_time);
         // rot test
         // let first_sprite = self.animations.map.get(&self.player_state).unwrap().animations[0].frames[0].clone();
         // let mut angle = {

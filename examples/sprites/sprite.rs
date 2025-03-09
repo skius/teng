@@ -73,14 +73,27 @@ impl Sprite {
     }
 }
 
+pub enum AnimationKind {
+    Repeat,
+    /// This animation will not repeat. Instead it will indicate that it is done after the last frame.
+    /// It can also issue a trigger at a specific frame.
+    OneShot {
+        // if the animation passes this frame, it will issue a trigger.
+        trigger_frame: Option<usize>,
+    },
+}
+
+pub enum AnimationResult {
+    Done,
+    Trigger,
+}
+
 pub struct Animation {
     pub frames: Vec<Sprite>,
-    frame_duration_secs: f32,
-    start_time: Instant,
 }
 
 impl Animation {
-    pub fn from_strip(filename: impl Into<String>, frame_duration_secs: f32) -> Self {
+    pub fn from_strip(filename: impl Into<String>) -> Self {
         let filename = filename.into();
         // strip suffix, then read "stripN" where N is the frame number
         // TODO: make this prettier.
@@ -126,14 +139,10 @@ impl Animation {
 
         Animation {
             frames,
-            frame_duration_secs,
-            start_time: Instant::now(),
         }
     }
 
-    pub fn render_to_hbd(&self, x: i64, y: i64, hbd: &mut HalfBlockDisplayRender, current_time: Instant) {
-        let time_passed = current_time.duration_since(self.start_time).as_secs_f32();
-        let frame_index = (time_passed / self.frame_duration_secs) as usize % self.frames.len();
+    pub fn render_to_hbd(&self, x: i64, y: i64, hbd: &mut HalfBlockDisplayRender, frame_index: usize) {
         self.frames[frame_index].render_to_hbd(x, y, hbd);
     }
 
@@ -145,19 +154,103 @@ impl Animation {
 }
 
 pub struct CombinedAnimations {
+    // animation render order goes from low priority to high priority
+    // invariant: all animations have the same number of frames
     pub animations: Vec<Animation>,
+    pub num_frames: usize,
+    frame_duration_secs: f32,
+    last_rendered_frame: usize,
+    has_issued_trigger: bool,
+    kind: AnimationKind,
 }
 
 impl CombinedAnimations {
-    pub fn new(animations: Vec<Animation>) -> Self {
+    pub fn new(animations: Vec<Animation>, frame_duration_secs: f32) -> Self {
+        let num_frames = animations[0].frames.len();
         CombinedAnimations {
             animations,
+            num_frames,
+            frame_duration_secs,
+            last_rendered_frame: 0,
+            kind: AnimationKind::Repeat,
+            has_issued_trigger: false,
         }
     }
 
-    pub fn render_to_hbd(&self, x: i64, y: i64, hbd: &mut HalfBlockDisplayRender, current_time: Instant) {
+    pub fn reset(&mut self) {
+        self.last_rendered_frame = 0;
+        self.has_issued_trigger = false;
+    }
+
+    pub fn set_kind(&mut self, kind: AnimationKind) {
+        self.kind = kind;
+    }
+
+    pub fn is_oneshot(&self) -> bool {
+        match self.kind {
+            AnimationKind::OneShot { .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_finished(&self) -> bool {
+        match self.kind {
+            AnimationKind::OneShot { trigger_frame } => {
+                if self.last_rendered_frame < self.num_frames - 1 {
+                    return false;
+                }
+                // don't say it's finished if we haven't issued a trigger yet despite being past the last frame
+                if let Some(trigger_frame) = trigger_frame {
+                    if !self.has_issued_trigger && self.last_rendered_frame >= trigger_frame {
+                        return false;
+                    }
+                }
+                true
+            } ,
+            AnimationKind::Repeat => false,
+        }
+    }
+
+    fn render_frame_index_to_hbd(&self, x: i64, y: i64, hbd: &mut HalfBlockDisplayRender, frame_index: usize) {
         for animation in &self.animations {
-            animation.render_to_hbd(x, y, hbd, current_time);
+            animation.render_to_hbd(x, y, hbd, frame_index);
+        }
+    }
+
+    pub fn render_to_hbd(&mut self, x: i64, y: i64, hbd: &mut HalfBlockDisplayRender, time_passed: f32) -> Option<AnimationResult> {
+        let frame_index_unbounded = (time_passed / self.frame_duration_secs) as usize;
+        match self.kind {
+            AnimationKind::Repeat => {
+                let frame_index = frame_index_unbounded % self.num_frames;
+                self.last_rendered_frame = frame_index;
+                self.render_frame_index_to_hbd(x, y, hbd, frame_index);
+                None
+            }
+            AnimationKind::OneShot { trigger_frame } => {
+                // if this is the first time we've moved past the trigger frame, issue a trigger, even if we're past the last frame
+                let mut result = None;
+                if let Some(trigger_frame) = trigger_frame {
+                    let first_time_past_trigger = self.last_rendered_frame < trigger_frame && frame_index_unbounded >= trigger_frame;
+                    if first_time_past_trigger {
+                        self.has_issued_trigger = true;
+                        result = Some(AnimationResult::Trigger);
+                    }
+                }
+
+                if frame_index_unbounded >= self.num_frames {
+                    // just render the last frame
+                    let frame_index = self.num_frames - 1;
+                    self.render_frame_index_to_hbd(x, y, hbd, frame_index);
+                    self.last_rendered_frame = frame_index;
+                    return result.or(Some(AnimationResult::Done));
+                }
+
+                let frame_index = frame_index_unbounded;
+
+                self.last_rendered_frame = frame_index;
+                self.render_frame_index_to_hbd(x, y, hbd, frame_index);
+                result
+            }
         }
     }
 
