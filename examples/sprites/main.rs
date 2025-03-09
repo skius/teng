@@ -20,7 +20,7 @@ use teng::components::debuginfo::DebugMessage;
 use crate::animationcontroller::{AnimationController, KeyedAnimationResult};
 use crate::impulse::Trigger;
 use crate::setandforgetanimations::SetAndForgetAnimations;
-use crate::sprite::{Animation, AnimationKind, AnimationRepository, AnimationRepositoryKey, CombinedAnimations};
+use crate::sprite::{get_animation, init_animation_repository, Animation, AnimationKind, AnimationRepository, AnimationRepositoryKey, CombinedAnimations};
 
 #[derive(Debug, Default)]
 struct GameState {
@@ -79,7 +79,6 @@ impl InputCache {
 
 struct GameComponent {
     hbd: HalfBlockDisplayRender,
-    animation_repository: AnimationRepository,
     animation_controller: AnimationController<PlayerState>,
     set_and_forget_animations: SetAndForgetAnimations,
     is_rolling: bool,
@@ -93,34 +92,32 @@ struct GameComponent {
 impl GameComponent {
     fn new() -> Self {
         let mut animation_controller = AnimationController::default();
-        let animation_repository = AnimationRepository::default();
 
         {
-            animation_controller.register_animation(PlayerState::Idle, animation_repository.get(AnimationRepositoryKey::PlayerIdle));
+            animation_controller.register_animation(PlayerState::Idle, get_animation(AnimationRepositoryKey::PlayerIdle));
         }
         {
-            animation_controller.register_animation(PlayerState::Walk, animation_repository.get(AnimationRepositoryKey::PlayerWalk));
+            animation_controller.register_animation(PlayerState::Walk, get_animation(AnimationRepositoryKey::PlayerWalk));
         }
         // a one shot anim
         {
-            animation_controller.register_animation(PlayerState::Axe, animation_repository.get(AnimationRepositoryKey::PlayerAxe));
+            animation_controller.register_animation(PlayerState::Axe, get_animation(AnimationRepositoryKey::PlayerAxe));
         }
         {
-            animation_controller.register_animation(PlayerState::Sword, animation_repository.get(AnimationRepositoryKey::PlayerSword));
+            animation_controller.register_animation(PlayerState::Sword, get_animation(AnimationRepositoryKey::PlayerSword));
         }
         {
-            animation_controller.register_animation(PlayerState::Jump, animation_repository.get(AnimationRepositoryKey::PlayerJump));
+            animation_controller.register_animation(PlayerState::Jump, get_animation(AnimationRepositoryKey::PlayerJump));
         }
         {
-            animation_controller.register_animation(PlayerState::Roll, animation_repository.get(AnimationRepositoryKey::PlayerRoll));
+            animation_controller.register_animation(PlayerState::Roll, get_animation(AnimationRepositoryKey::PlayerRoll));
         }
         {
-            animation_controller.register_animation(PlayerState::Run, animation_repository.get(AnimationRepositoryKey::PlayerRun));
+            animation_controller.register_animation(PlayerState::Run, get_animation(AnimationRepositoryKey::PlayerRun));
         }
 
         Self {
             hbd: HalfBlockDisplayRender::new(0, 0),
-            animation_repository,
             animation_controller,
             set_and_forget_animations: SetAndForgetAnimations::default(),
             is_flipped_x: false,
@@ -321,7 +318,7 @@ impl Component<GameState> for GameComponent {
                         shared_state.debug_messages.push(DebugMessage::new_3s("Axe animation triggered!"));
                         // spawn animation, taking into consideration the x offset from the axe
                         let x_offset = if self.is_flipped_x { -20 } else { 20 };
-                        let anim = self.animation_repository.get(AnimationRepositoryKey::ChimneySmoke02);
+                        let anim = get_animation(AnimationRepositoryKey::ChimneySmoke02);
                         self.set_and_forget_animations.add((draw_x + x_offset, draw_y - 10), anim);
 
                     }
@@ -404,6 +401,8 @@ fn main() -> io::Result<()> {
         old_hook(panic_info);
         std::process::exit(1);
     }));
+
+    init_animation_repository();
 
     let mut game = Game::new_with_custom_buf_writer();
     game.install_recommended_components();

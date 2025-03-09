@@ -1,5 +1,7 @@
+use std::cell::OnceCell;
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::OnceLock;
 use std::time::Instant;
 use image::GenericImageView;
 use teng::rendering::color::Color;
@@ -75,7 +77,7 @@ impl Sprite {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum AnimationKind {
     Repeat,
     /// This animation will not repeat. Instead it will indicate that it is done after the last frame.
@@ -91,7 +93,7 @@ pub enum AnimationResult {
     Trigger,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Animation {
     frames: Vec<Sprite>,
     // how many times to virtually unroll this animation?
@@ -171,7 +173,7 @@ impl Animation {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CombinedAnimations {
     // animation render order goes from low priority to high priority
     // invariant: all animations have the same number of frames
@@ -320,6 +322,21 @@ pub enum AnimationRepositoryKey {
     ChimneySmoke02,
 }
 
+pub static ANIMATION_REPOSITORY: OnceLock<AnimationRepository> = OnceLock::new();
+
+pub fn init_animation_repository() {
+    ANIMATION_REPOSITORY.set(AnimationRepository::default()).unwrap();
+}
+
+pub fn get_animation_repository() -> &'static AnimationRepository {
+    ANIMATION_REPOSITORY.get().unwrap()
+}
+
+pub fn get_animation(key: AnimationRepositoryKey) -> CombinedAnimations {
+    get_animation_repository().get(key)
+}
+
+#[derive(Debug)]
 pub struct AnimationRepository {
     animations: HashMap<AnimationRepositoryKey, CombinedAnimations>,
 }
