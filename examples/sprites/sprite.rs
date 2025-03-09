@@ -186,7 +186,9 @@ pub struct CombinedAnimations {
 }
 
 impl CombinedAnimations {
-    pub fn from_standard_strip_names(dir_name: String, file_id_name: String, stripnum: usize, speed: f32) -> Self {
+    pub fn from_standard_strip_names(dir_name: impl AsRef<str>, file_id_name: impl AsRef<str>, stripnum: usize, speed: f32) -> Self {
+        let dir_name = dir_name.as_ref();
+        let file_id_name = file_id_name.as_ref();
         // load base, bowlhair, tools animations
         let mut animations = Vec::new();
         let base = Animation::from_strip(format!("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/{dir_name}/base_{file_id_name}_strip{stripnum}.png"));
@@ -322,6 +324,7 @@ pub enum AnimationRepositoryKey {
     ChimneySmoke02,
 }
 
+// TODO: replace CombinedAnimations' Vec<Animation> with something that statically borrows from this repository. that way we can avoid cloning animations.
 pub static ANIMATION_REPOSITORY: OnceLock<AnimationRepository> = OnceLock::new();
 
 pub fn init_animation_repository() {
@@ -370,16 +373,16 @@ impl Default for AnimationRepository {
         //     animations.insert(AnimationRepositoryKey::PlayerAxe, axe_anims);
         // }
 
-        animations.insert(AnimationRepositoryKey::PlayerIdle, CombinedAnimations::from_standard_strip_names("IDLE".to_string(), "idle".to_string(), 9, speed));
-        animations.insert(AnimationRepositoryKey::PlayerWalk, CombinedAnimations::from_standard_strip_names("WALKING".to_string(), "walk".to_string(), 8, speed));
-        animations.insert(AnimationRepositoryKey::PlayerRun, CombinedAnimations::from_standard_strip_names("RUN".to_string(), "run".to_string(), 8, speed));
+        animations.insert(AnimationRepositoryKey::PlayerIdle, CombinedAnimations::from_standard_strip_names("IDLE", "idle", 9, speed));
+        animations.insert(AnimationRepositoryKey::PlayerWalk, CombinedAnimations::from_standard_strip_names("WALKING", "walk", 8, speed));
+        animations.insert(AnimationRepositoryKey::PlayerRun, CombinedAnimations::from_standard_strip_names("RUN", "run", 8, speed));
 
-        animations.insert(AnimationRepositoryKey::PlayerAxe, CombinedAnimations::from_standard_strip_names("AXE".to_string(), "axe".to_string(), 10, 0.07).with_kind(AnimationKind::OneShot { trigger_frame: Some(7) }));
-        animations.insert(AnimationRepositoryKey::PlayerSword, CombinedAnimations::from_standard_strip_names("ATTACK".to_string(), "attack".to_string(), 10, 0.05).with_kind(AnimationKind::OneShot { trigger_frame: Some(7) }).with_custom_indices((0..9).collect()));
+        animations.insert(AnimationRepositoryKey::PlayerAxe, CombinedAnimations::from_standard_strip_names("AXE", "axe", 10, 0.07).with_kind(AnimationKind::OneShot { trigger_frame: Some(7) }));
+        animations.insert(AnimationRepositoryKey::PlayerSword, CombinedAnimations::from_standard_strip_names("ATTACK", "attack", 10, 0.05).with_kind(AnimationKind::OneShot { trigger_frame: Some(7) }).with_custom_indices((0..9).collect()));
 
-        animations.insert(AnimationRepositoryKey::PlayerCaught, CombinedAnimations::from_standard_strip_names("CAUGHT".to_string(), "caught".to_string(), 10, speed).with_kind(AnimationKind::OneShot { trigger_frame: None }));
-        animations.insert(AnimationRepositoryKey::PlayerJump, CombinedAnimations::from_standard_strip_names("JUMP".to_string(), "jump".to_string(), 9, speed).with_kind(AnimationKind::OneShot { trigger_frame: None }));
-        animations.insert(AnimationRepositoryKey::PlayerRoll, CombinedAnimations::from_standard_strip_names("ROLL".to_string(), "roll".to_string(), 10, speed).with_kind(AnimationKind::OneShot { trigger_frame: Some(6) }));
+        animations.insert(AnimationRepositoryKey::PlayerCaught, CombinedAnimations::from_standard_strip_names("CAUGHT", "caught", 10, speed).with_kind(AnimationKind::OneShot { trigger_frame: None }));
+        animations.insert(AnimationRepositoryKey::PlayerJump, CombinedAnimations::from_standard_strip_names("JUMP", "jump", 9, speed).with_kind(AnimationKind::OneShot { trigger_frame: None }));
+        animations.insert(AnimationRepositoryKey::PlayerRoll, CombinedAnimations::from_standard_strip_names("ROLL", "roll", 10, speed).with_kind(AnimationKind::OneShot { trigger_frame: Some(6) }));
 
         // animations.insert(AnimationRepositoryKey::DecoGlint, CombinedAnimations::from_standard_strip_names("VFX/Glint".to_string(), "deco_glint_01".to_string(), 6, speed));
 
