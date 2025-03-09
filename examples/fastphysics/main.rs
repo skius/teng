@@ -2,8 +2,9 @@ mod math;
 mod spatial_hash_grid;
 
 use crate::math::Vec2;
-use std::{io, thread};
+use crate::spatial_hash_grid::{Aabb, SpatialHashGrid};
 use rayon::prelude::*;
+use std::{io, thread};
 use teng::components::Component;
 use teng::rendering::color::Color;
 use teng::rendering::pixel::Pixel;
@@ -14,7 +15,6 @@ use teng::{
     Game, SetupInfo, SharedState, UpdateInfo, install_panic_handler, terminal_cleanup,
     terminal_setup,
 };
-use crate::spatial_hash_grid::{Aabb, SpatialHashGrid};
 
 /// Ball-shaped collision entity
 #[derive(Debug, Clone)]
@@ -119,10 +119,7 @@ impl Entity {
         // collision response, taking into account mass and coefficient of restitution
         let normal = (entity2.pos - entity1.pos).normalized();
         let relative_velocity = entity2.vel - entity1.vel;
-        let impulse = 2.0
-            * entity1.mass
-            * entity2.mass
-            * normal.dot(relative_velocity)
+        let impulse = 2.0 * entity1.mass * entity2.mass * normal.dot(relative_velocity)
             / (entity1.mass + entity2.mass);
         entity1.vel += impulse * normal / entity1.mass;
         entity2.vel -= impulse * normal / entity2.mass;
@@ -262,7 +259,6 @@ impl PhysicsComponent {
             rounds
         }
 
-
         let num_threads = 16;
         let num_pairs = 2 * num_threads;
         let num_matchings = num_pairs - 1;
@@ -360,7 +356,9 @@ impl PhysicsComponent {
             }
 
             thread::scope(|s| {
-                for ((first_partition, first), (second_partition, second_idx)) in paired_partitions.iter_mut() {
+                for ((first_partition, first), (second_partition, second_idx)) in
+                    paired_partitions.iter_mut()
+                {
                     // let (first, second) = (first.min(second), first.max(second));
                     // let (partitions1, partitions2) = partitions.split_at_mut(second);
                     // let first_partition = &mut partitions1[first];
@@ -368,7 +366,6 @@ impl PhysicsComponent {
 
                     // let first_partition = first_partition.as_mut().unwrap();
                     // let second_partition = second_partition.as_mut().unwrap();
-
 
                     // let shg1 = &shgs[first];
                     let shg2 = &shgs[*second_idx];
@@ -389,7 +386,6 @@ impl PhysicsComponent {
                         }
                     });
                 }
-
             });
 
             // reinsert
@@ -397,8 +393,6 @@ impl PhysicsComponent {
                 partitions[first] = Some(first_partition);
                 partitions[second] = Some(second_partition);
             }
-
-
         }
         // for matching_idx in 0..num_matchings {
         //     let matching = get_matching(num_threads, matching_idx);
@@ -429,7 +423,6 @@ impl PhysicsComponent {
         for partition in partitions {
             state.entities.extend(partition.unwrap());
         }
-
     }
 
     fn update_physics(&self, dt: f64, state: &mut GameState) {
@@ -446,7 +439,6 @@ impl PhysicsComponent {
         //     // handle world bounds and collisions
         //     entity.handle_world_collisions(state.world_width, state.world_height);
         // });
-
 
         // Step 2: Handle entity-entity collisions
         // self.entent_basic(dt, state);
@@ -475,15 +467,15 @@ impl Component<GameState> for PhysicsComponent {
             let avg = total_duration_secs / (total_iterations as f64);
             shared_state.debug_info.custom.insert(
                 "average_physics_tick_ms_cost".to_string(),
-                format!(
-                    "{:.5}",
-                    avg * 1000.0
-                ),
+                format!("{:.5}", avg * 1000.0),
             );
             if avg > self.fur.fixed_dt() {
                 let key = "entity_len_at_first_slow_physics_tick";
                 if !shared_state.debug_info.custom.contains_key(key) {
-                    shared_state.debug_info.custom.insert(key.to_string(), shared_state.custom.entities.len().to_string());
+                    shared_state.debug_info.custom.insert(
+                        key.to_string(),
+                        shared_state.custom.entities.len().to_string(),
+                    );
                 }
                 // Log:
                 // first impl, no shg: at 5400 entities.
@@ -543,7 +535,7 @@ impl Component<GameState> for GameComponent {
                     .custom
                     .entities
                     // .push(Entity::new_at(x as f64, y as f64).with_velocity((60.0, 0.0).into()).with_radius(2.0));
-                .push(Entity::new_at(x as f64, y as f64).with_velocity((60.0, 0.0).into()));
+                    .push(Entity::new_at(x as f64, y as f64).with_velocity((60.0, 0.0).into()));
             }
             shared_state.debug_info.custom.insert(
                 "total entities".to_string(),

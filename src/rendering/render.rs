@@ -400,13 +400,13 @@ impl Render for HalfBlockDisplayRender {
         let Some((min_x, min_y, max_x, max_y)) = self.dirty_rect else {
             return;
         };
-        
+
         // adjust y's to terminal space
         let min_y = min_y / 2;
         let max_y = max_y / 2;
-        
+
         // for y_offset in 0..(self.height / 2) {
-            // for x_offset in 0..self.width {
+        // for x_offset in 0..self.width {
         for y_offset in min_y..=max_y {
             for x_offset in min_x..=max_x {
                 let x = base_x + x_offset;

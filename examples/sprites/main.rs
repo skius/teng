@@ -1,12 +1,20 @@
-mod sprite;
-mod impulse;
 mod animationcontroller;
+mod impulse;
 mod setandforgetanimations;
+mod sprite;
 
-use std::{io, thread};
-use std::collections::HashMap;
+use crate::animationcontroller::{AnimationController, KeyedAnimationResult};
+use crate::impulse::Trigger;
+use crate::setandforgetanimations::SetAndForgetAnimations;
+use crate::sprite::{
+    Animation, AnimationKind, AnimationRepository, AnimationRepositoryKey, CombinedAnimations,
+    get_animation, init_animation_repository,
+};
 use rayon::prelude::*;
+use std::collections::HashMap;
+use std::{io, thread};
 use teng::components::Component;
+use teng::components::debuginfo::DebugMessage;
 use teng::rendering::color::Color;
 use teng::rendering::pixel::Pixel;
 use teng::rendering::render::{HalfBlockDisplayRender, Render};
@@ -16,16 +24,9 @@ use teng::{
     Game, SetupInfo, SharedState, UpdateInfo, install_panic_handler, terminal_cleanup,
     terminal_setup,
 };
-use teng::components::debuginfo::DebugMessage;
-use crate::animationcontroller::{AnimationController, KeyedAnimationResult};
-use crate::impulse::Trigger;
-use crate::setandforgetanimations::SetAndForgetAnimations;
-use crate::sprite::{get_animation, init_animation_repository, Animation, AnimationKind, AnimationRepository, AnimationRepositoryKey, CombinedAnimations};
 
 #[derive(Debug, Default)]
-struct GameState {
-
-}
+struct GameState {}
 
 #[derive(Hash, Eq, PartialEq, Default, Clone, Copy)]
 enum PlayerState {
@@ -73,7 +74,6 @@ impl InputCache {
         if shared_state.pressed_keys.did_press_char_ignore_case('d') {
             self.d.set();
         }
-
     }
 }
 
@@ -94,26 +94,47 @@ impl GameComponent {
         let mut animation_controller = AnimationController::default();
 
         {
-            animation_controller.register_animation(PlayerState::Idle, get_animation(AnimationRepositoryKey::PlayerIdle));
+            animation_controller.register_animation(
+                PlayerState::Idle,
+                get_animation(AnimationRepositoryKey::PlayerIdle),
+            );
         }
         {
-            animation_controller.register_animation(PlayerState::Walk, get_animation(AnimationRepositoryKey::PlayerWalk));
+            animation_controller.register_animation(
+                PlayerState::Walk,
+                get_animation(AnimationRepositoryKey::PlayerWalk),
+            );
         }
         // a one shot anim
         {
-            animation_controller.register_animation(PlayerState::Axe, get_animation(AnimationRepositoryKey::PlayerAxe));
+            animation_controller.register_animation(
+                PlayerState::Axe,
+                get_animation(AnimationRepositoryKey::PlayerAxe),
+            );
         }
         {
-            animation_controller.register_animation(PlayerState::Sword, get_animation(AnimationRepositoryKey::PlayerSword));
+            animation_controller.register_animation(
+                PlayerState::Sword,
+                get_animation(AnimationRepositoryKey::PlayerSword),
+            );
         }
         {
-            animation_controller.register_animation(PlayerState::Jump, get_animation(AnimationRepositoryKey::PlayerJump));
+            animation_controller.register_animation(
+                PlayerState::Jump,
+                get_animation(AnimationRepositoryKey::PlayerJump),
+            );
         }
         {
-            animation_controller.register_animation(PlayerState::Roll, get_animation(AnimationRepositoryKey::PlayerRoll));
+            animation_controller.register_animation(
+                PlayerState::Roll,
+                get_animation(AnimationRepositoryKey::PlayerRoll),
+            );
         }
         {
-            animation_controller.register_animation(PlayerState::Run, get_animation(AnimationRepositoryKey::PlayerRun));
+            animation_controller.register_animation(
+                PlayerState::Run,
+                get_animation(AnimationRepositoryKey::PlayerRun),
+            );
         }
 
         Self {
@@ -260,17 +281,20 @@ impl Component<GameState> for GameComponent {
         if self.allows_new_oneshot() {
             if self.input_cache.lmb.consume() {
                 // trigger axe animation
-                self.animation_controller.set_animation_override(PlayerState::Axe);
+                self.animation_controller
+                    .set_animation_override(PlayerState::Axe);
             }
 
             if self.input_cache.rmb.consume() {
                 // trigger sword animation
-                self.animation_controller.set_animation_override(PlayerState::Sword);
+                self.animation_controller
+                    .set_animation_override(PlayerState::Sword);
             }
 
             if self.input_cache.space.consume() {
                 // trigger jump
-                self.animation_controller.set_animation_override(PlayerState::Jump);
+                self.animation_controller
+                    .set_animation_override(PlayerState::Jump);
             }
 
             let mut roll_direction = None;
@@ -291,14 +315,12 @@ impl Component<GameState> for GameComponent {
 
             if let Some(roll_direction) = roll_direction {
                 // trigger roll
-                self.animation_controller.set_animation_override(PlayerState::Roll);
+                self.animation_controller
+                    .set_animation_override(PlayerState::Roll);
                 self.is_rolling = true;
                 self.roll_direction = roll_direction;
             }
-
         }
-
-
 
         // render
         self.hbd.clear();
@@ -309,18 +331,25 @@ impl Component<GameState> for GameComponent {
         //     animation.render_to_hbd(draw_x, draw_y, &mut self.hbd, update_info.current_time);
         // }
 
-        let anim_res = self.animation_controller.render_to_hbd(draw_x, draw_y, &mut self.hbd, update_info.current_time);
+        let anim_res = self.animation_controller.render_to_hbd(
+            draw_x,
+            draw_y,
+            &mut self.hbd,
+            update_info.current_time,
+        );
         if let Some(anim_res) = anim_res {
             match anim_res {
                 KeyedAnimationResult::Triggered(state) => {
                     if state == PlayerState::Axe {
                         // axe animation was triggered
-                        shared_state.debug_messages.push(DebugMessage::new_3s("Axe animation triggered!"));
+                        shared_state
+                            .debug_messages
+                            .push(DebugMessage::new_3s("Axe animation triggered!"));
                         // spawn animation, taking into consideration the x offset from the axe
                         let x_offset = if self.is_flipped_x { -20 } else { 20 };
                         let anim = get_animation(AnimationRepositoryKey::ChimneySmoke02);
-                        self.set_and_forget_animations.add((draw_x + x_offset, draw_y - 10), anim);
-
+                        self.set_and_forget_animations
+                            .add((draw_x + x_offset, draw_y - 10), anim);
                     }
                     if state == PlayerState::Roll {
                         // stop rolling
@@ -332,17 +361,17 @@ impl Component<GameState> for GameComponent {
                         // axe animation was finished
                         // TODO: this does not get triggered because the above blanket setting to ::Idle overrides the axe animation, since it's 'finished' so it can be overriden despite
                         // the 'finished' not being consumed. Though I guess that's fine? as long as our trigger is consumed...
-                        shared_state.debug_messages.push(DebugMessage::new_3s("Axe animation finished!"));
+                        shared_state
+                            .debug_messages
+                            .push(DebugMessage::new_3s("Axe animation finished!"));
                     }
                     self.animation_controller.set_animation(PlayerState::Idle);
-
                 }
             }
         }
         // render all set and forget animations
-        self.set_and_forget_animations.render_to_hbd(&mut self.hbd, update_info.current_time);
-
-
+        self.set_and_forget_animations
+            .render_to_hbd(&mut self.hbd, update_info.current_time);
 
         // let anim = self.animations.map.get(&self.player_state).unwrap();
         // anim.render_to_hbd(draw_x, draw_y, &mut self.hbd, update_info.current_time);
@@ -361,7 +390,6 @@ impl Component<GameState> for GameComponent {
         // }
         // let rotated = first_sprite.get_rotated(angle);
         // rotated.render_to_hbd(draw_x, draw_y, &mut self.hbd);
-
 
         // draw entire red-green color space
         // for x in 0..=255 {

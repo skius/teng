@@ -39,7 +39,7 @@ impl Vec2 {
     pub fn with_length(&self, length: f64) -> Self {
         self.normalized() * length
     }
-    
+
     pub fn dot(&self, other: Vec2) -> f64 {
         *self * other
     }

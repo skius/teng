@@ -1,8 +1,8 @@
+use crate::sprite::{Animation, AnimationResult, CombinedAnimations};
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::time::Instant;
 use teng::rendering::render::HalfBlockDisplayRender;
-use crate::sprite::{Animation, AnimationResult, CombinedAnimations};
 
 pub enum KeyedAnimationResult<K> {
     Triggered(K),
@@ -33,17 +33,17 @@ impl<K: Hash + Eq + Copy> AnimationController<K> {
     fn current_animation_mut(&mut self) -> &mut CombinedAnimations {
         self.animation_map.get_mut(&self.current_animation).unwrap()
     }
-    
+
     pub fn set_flipped_x(&mut self, flipped_x: bool) {
         for (_, animation) in self.animation_map.iter_mut() {
             animation.set_flipped_x(flipped_x);
         }
     }
-    
+
     pub fn is_currently_oneshot(&self) -> bool {
         self.current_animation().is_oneshot()
     }
-    
+
     pub fn current_state(&self) -> K {
         self.current_animation
     }
@@ -68,15 +68,20 @@ impl<K: Hash + Eq + Copy> AnimationController<K> {
         self.time_started = Instant::now();
     }
 
-    pub fn render_to_hbd(&mut self, x: i64, y: i64, hbd: &mut HalfBlockDisplayRender, current_time: Instant) -> Option<KeyedAnimationResult<K>> {
+    pub fn render_to_hbd(
+        &mut self,
+        x: i64,
+        y: i64,
+        hbd: &mut HalfBlockDisplayRender,
+        current_time: Instant,
+    ) -> Option<KeyedAnimationResult<K>> {
         let current_animation = self.animation_map.get_mut(&self.current_animation).unwrap();
         let time_passed = current_time.duration_since(self.time_started).as_secs_f32();
-        current_animation.render_to_hbd(x, y, hbd, time_passed).map(|anim_res|
-            match anim_res {
+        current_animation
+            .render_to_hbd(x, y, hbd, time_passed)
+            .map(|anim_res| match anim_res {
                 AnimationResult::Done => KeyedAnimationResult::Finished(self.current_animation),
                 AnimationResult::Trigger => KeyedAnimationResult::Triggered(self.current_animation),
-            }
-        )
+            })
     }
-
 }

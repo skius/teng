@@ -17,7 +17,7 @@ impl Trigger {
             }
         }
     }
-    
+
     /// Set the trigger to `Ready`.
     pub fn set(&mut self) {
         *self = Trigger::Ready;

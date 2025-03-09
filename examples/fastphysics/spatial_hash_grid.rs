@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use serde::Deserialize;
+use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
 pub struct Cell {
