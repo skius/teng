@@ -1,4 +1,6 @@
-use crate::sprite::{get_animation, Animation, AnimationRepositoryKey, AnimationResult, CombinedAnimations};
+use crate::sprite::{
+    Animation, AnimationRepositoryKey, AnimationResult, CombinedAnimations, get_animation,
+};
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::time::Instant;
@@ -52,8 +54,11 @@ impl<K: Hash + Eq + Copy> AnimationController<K> {
     pub fn register_animation(&mut self, key: K, animation: CombinedAnimations) {
         self.animation_map.insert(key, animation);
     }
-    
-    pub fn register_animations_from_repository(&mut self, animations: Vec<(K, AnimationRepositoryKey)>) {
+
+    pub fn register_animations_from_repository(
+        &mut self,
+        animations: Vec<(K, AnimationRepositoryKey)>,
+    ) {
         for (key, animation_key) in animations {
             self.register_animation(key, get_animation(animation_key));
         }

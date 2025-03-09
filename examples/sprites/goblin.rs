@@ -1,5 +1,5 @@
 use crate::animationcontroller::AnimationController;
-use crate::sprite::{get_animation, AnimationRepositoryKey};
+use crate::sprite::{AnimationRepositoryKey, get_animation};
 
 #[derive(Default, Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum GoblinState {
@@ -28,7 +28,7 @@ impl Goblin {
             (GoblinState::Hurt, AnimationRepositoryKey::GoblinHurt),
             (GoblinState::Death, AnimationRepositoryKey::GoblinDeath),
         ]);
-        
+
         Self {
             animation_controller,
             pos: (0.0, 0.0),
@@ -51,9 +51,8 @@ impl Goblin {
     pub fn get_pos(&self) -> (f64, f64) {
         self.pos
     }
-    
+
     pub fn get_animation_controller(&mut self) -> &mut AnimationController<GoblinState> {
         &mut self.animation_controller
     }
-    
 }

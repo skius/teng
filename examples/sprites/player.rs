@@ -1,14 +1,14 @@
+use crate::GameState;
+use crate::animationcontroller::{AnimationController, KeyedAnimationResult};
+use crate::impulse::Trigger;
+use crate::setandforgetanimations::SetAndForgetAnimations;
+use crate::sprite::{AnimationRepositoryKey, get_animation};
 use teng::components::Component;
-use teng::rendering::render::HalfBlockDisplayRender;
-use teng::{SetupInfo, SharedState, UpdateInfo};
 use teng::components::debuginfo::DebugMessage;
 use teng::components::keyboard::PressedKeys;
 use teng::components::mouse::MousePressedInfo;
-use crate::animationcontroller::{AnimationController, KeyedAnimationResult};
-use crate::GameState;
-use crate::impulse::Trigger;
-use crate::setandforgetanimations::SetAndForgetAnimations;
-use crate::sprite::{get_animation, AnimationRepositoryKey};
+use teng::rendering::render::HalfBlockDisplayRender;
+use teng::{SetupInfo, SharedState, UpdateInfo};
 
 // Handles updating the player struct from the global gamestate
 pub struct PlayerComponent;
@@ -22,10 +22,11 @@ impl Component<GameState> for PlayerComponent {
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<GameState>) {
         let player = &mut shared_state.custom.player;
-        player.input_cache.update(&shared_state.pressed_keys, &shared_state.mouse_pressed);
+        player
+            .input_cache
+            .update(&shared_state.pressed_keys, &shared_state.mouse_pressed);
 
         Player::update(update_info, shared_state);
-
     }
 }
 
@@ -116,7 +117,6 @@ impl Default for Player {
 }
 
 impl Player {
-
     fn allows_flipping_x(&self) -> bool {
         match self.animation_controller.current_state() {
             PlayerState::Axe => false,
@@ -227,19 +227,22 @@ impl Player {
         if player.allows_new_oneshot() {
             if player.input_cache.lmb.consume() {
                 // trigger axe animation
-                player.animation_controller
+                player
+                    .animation_controller
                     .set_animation_override(PlayerState::Axe);
             }
 
             if player.input_cache.rmb.consume() {
                 // trigger sword animation
-                player.animation_controller
+                player
+                    .animation_controller
                     .set_animation_override(PlayerState::Sword);
             }
 
             if player.input_cache.space.consume() {
                 // trigger jump
-                player.animation_controller
+                player
+                    .animation_controller
                     .set_animation_override(PlayerState::Jump);
             }
 
@@ -261,7 +264,8 @@ impl Player {
 
             if let Some(roll_direction) = roll_direction {
                 // trigger roll
-                player.animation_controller
+                player
+                    .animation_controller
                     .set_animation_override(PlayerState::Roll);
                 player.is_rolling = true;
                 player.roll_direction = roll_direction;
@@ -294,7 +298,9 @@ impl Player {
                         // spawn animation, taking into consideration the x offset from the axe
                         let x_offset = if player.is_flipped_x { -20 } else { 20 };
                         let anim = get_animation(AnimationRepositoryKey::ChimneySmoke02);
-                        shared_state.custom.set_and_forget_animations
+                        shared_state
+                            .custom
+                            .set_and_forget_animations
                             .add((draw_x + x_offset, draw_y - 10), anim);
                     }
                     if state == PlayerState::Roll {
@@ -316,7 +322,9 @@ impl Player {
             }
         }
         // render all set and forget animations
-        shared_state.custom.set_and_forget_animations
+        shared_state
+            .custom
+            .set_and_forget_animations
             .render_to_hbd(hbd, update_info.current_time);
     }
 }

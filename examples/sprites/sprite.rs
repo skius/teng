@@ -504,22 +504,20 @@ impl Default for AnimationRepository {
             let animation = Animation::from_strip(
                 "examples/sprites/data/Sunnyside_World_Assets/Characters/Goblin/PNG/spr_hurt_strip8.png",
             );
-            let goblin_hurt = CombinedAnimations::new(vec![animation], speed).with_kind(
-                AnimationKind::OneShot {
+            let goblin_hurt =
+                CombinedAnimations::new(vec![animation], speed).with_kind(AnimationKind::OneShot {
                     trigger_frame: None,
-                },
-            );
+                });
             animations.insert(AnimationRepositoryKey::GoblinHurt, goblin_hurt);
         }
         {
             let animation = Animation::from_strip(
                 "examples/sprites/data/Sunnyside_World_Assets/Characters/Goblin/PNG/spr_death_strip13.png",
             );
-            let goblin_death = CombinedAnimations::new(vec![animation], speed).with_kind(
-                AnimationKind::OneShot {
+            let goblin_death =
+                CombinedAnimations::new(vec![animation], speed).with_kind(AnimationKind::OneShot {
                     trigger_frame: None,
-                },
-            );
+                });
             animations.insert(AnimationRepositoryKey::GoblinDeath, goblin_death);
         }
 

@@ -1,12 +1,14 @@
 mod animationcontroller;
+mod goblin;
 mod impulse;
+mod player;
 mod setandforgetanimations;
 mod sprite;
-mod goblin;
-mod player;
 
 use crate::animationcontroller::{AnimationController, KeyedAnimationResult};
+use crate::goblin::Goblin;
 use crate::impulse::Trigger;
+use crate::player::{Player, PlayerComponent};
 use crate::setandforgetanimations::SetAndForgetAnimations;
 use crate::sprite::{
     Animation, AnimationKind, AnimationRepository, AnimationRepositoryKey, CombinedAnimations,
@@ -26,8 +28,6 @@ use teng::{
     Game, SetupInfo, SharedState, UpdateInfo, install_panic_handler, terminal_cleanup,
     terminal_setup,
 };
-use crate::goblin::Goblin;
-use crate::player::{Player, PlayerComponent};
 
 #[derive(Debug)]
 struct GameState {
@@ -48,13 +48,11 @@ impl Default for GameState {
     }
 }
 
-struct GameComponent {
-}
+struct GameComponent {}
 
 impl GameComponent {
     fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 }
 
