@@ -356,6 +356,7 @@ impl CombinedAnimations {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum AnimationRepositoryKey {
+    // Player
     PlayerIdle,
     PlayerWalk,
     PlayerRun,
@@ -364,8 +365,15 @@ pub enum AnimationRepositoryKey {
     PlayerCaught,
     PlayerJump,
     PlayerRoll,
+    // VFX
     DecoGlint,
     ChimneySmoke02,
+    // Goblins
+    GoblinIdle,
+    GoblinWalk,
+    GoblinRun,
+    GoblinHurt,
+    GoblinDeath,
 }
 
 // TODO: replace CombinedAnimations' Vec<Animation> with something that statically borrows from this repository. that way we can avoid cloning animations.
@@ -395,30 +403,7 @@ impl Default for AnimationRepository {
         let mut animations = HashMap::new();
         let speed = 0.1;
 
-        // {
-        //     let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/base_idle_strip9.png");
-        //     let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/bowlhair_idle_strip9.png");
-        //     let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/tools_idle_strip9.png");
-        //     let idle_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools], speed);
-        //     animations.insert(AnimationRepositoryKey::PlayerIdle, idle_anims);
-        // }
-        // {
-        //     let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/base_walk_strip8.png");
-        //     let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/bowlhair_walk_strip8.png");
-        //     let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/tools_walk_strip8.png");
-        //     let walk_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools], speed);
-        //     animations.insert(AnimationRepositoryKey::PlayerWalk, walk_anims);
-        // }
-        // // a one shot anim
-        // {
-        //     let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/AXE/base_axe_strip10.png");
-        //     let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/AXE/bowlhair_axe_strip10.png");
-        //     let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/AXE/tools_axe_strip10.png");
-        //     let mut axe_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools], speed);
-        //     axe_anims.set_kind(AnimationKind::OneShot { trigger_frame: Some(7) });
-        //     animations.insert(AnimationRepositoryKey::PlayerAxe, axe_anims);
-        // }
-
+        // Player
         animations.insert(
             AnimationRepositoryKey::PlayerIdle,
             CombinedAnimations::from_standard_strip_names("IDLE", "idle", 9, speed),
@@ -474,8 +459,7 @@ impl Default for AnimationRepository {
             ),
         );
 
-        // animations.insert(AnimationRepositoryKey::DecoGlint, CombinedAnimations::from_standard_strip_names("VFX/Glint".to_string(), "deco_glint_01".to_string(), 6, speed));
-
+        // VFX
         {
             let mut animation = Animation::from_strip(
                 "examples/sprites/data/Sunnyside_World_Assets/Elements/VFX/Glint/spr_deco_glint_01_strip6.png",
@@ -493,6 +477,51 @@ impl Default for AnimationRepository {
             let animation = animation.with_selected_indices(custom_indices);
             let smoke_anims = CombinedAnimations::new(vec![animation], speed);
             animations.insert(AnimationRepositoryKey::ChimneySmoke02, smoke_anims);
+        }
+
+        // Goblins
+        {
+            let animation = Animation::from_strip(
+                "examples/sprites/data/Sunnyside_World_Assets/Characters/Goblin/PNG/spr_idle_strip9.png",
+            );
+            let goblin_idle = CombinedAnimations::new(vec![animation], speed);
+            animations.insert(AnimationRepositoryKey::GoblinIdle, goblin_idle);
+        }
+        {
+            let animation = Animation::from_strip(
+                "examples/sprites/data/Sunnyside_World_Assets/Characters/Goblin/PNG/spr_walk_strip8.png",
+            );
+            let goblin_walk = CombinedAnimations::new(vec![animation], speed);
+            animations.insert(AnimationRepositoryKey::GoblinWalk, goblin_walk);
+        }
+        {
+            let animation = Animation::from_strip(
+                "examples/sprites/data/Sunnyside_World_Assets/Characters/Goblin/PNG/spr_run_strip8.png",
+            );
+            let goblin_run = CombinedAnimations::new(vec![animation], speed);
+            animations.insert(AnimationRepositoryKey::GoblinRun, goblin_run);
+        }
+        {
+            let animation = Animation::from_strip(
+                "examples/sprites/data/Sunnyside_World_Assets/Characters/Goblin/PNG/spr_hurt_strip8.png",
+            );
+            let goblin_hurt = CombinedAnimations::new(vec![animation], speed).with_kind(
+                AnimationKind::OneShot {
+                    trigger_frame: None,
+                },
+            );
+            animations.insert(AnimationRepositoryKey::GoblinHurt, goblin_hurt);
+        }
+        {
+            let animation = Animation::from_strip(
+                "examples/sprites/data/Sunnyside_World_Assets/Characters/Goblin/PNG/spr_death_strip13.png",
+            );
+            let goblin_death = CombinedAnimations::new(vec![animation], speed).with_kind(
+                AnimationKind::OneShot {
+                    trigger_frame: None,
+                },
+            );
+            animations.insert(AnimationRepositoryKey::GoblinDeath, goblin_death);
         }
 
         Self { animations }
