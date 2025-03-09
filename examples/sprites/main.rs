@@ -18,6 +18,7 @@ use teng::{
 };
 use teng::components::debuginfo::DebugMessage;
 use crate::animationcontroller::{AnimationController, KeyedAnimationResult};
+use crate::impulse::Trigger;
 use crate::setandforgetanimations::SetAndForgetAnimations;
 use crate::sprite::{Animation, AnimationKind, AnimationRepository, AnimationRepositoryKey, CombinedAnimations};
 
@@ -35,21 +36,44 @@ enum PlayerState {
     Jump,
     Roll,
     Axe,
+    Sword,
 }
 
-impl PlayerState {
-    fn allows_flipping_x(&self) -> bool {
-        match self {
-            PlayerState::Axe => false,
-            _ => true,
-        }
-    }
+#[derive(Default)]
+struct InputCache {
+    lmb: Trigger,
+    rmb: Trigger,
+    space: Trigger,
+    w: Trigger,
+    a: Trigger,
+    s: Trigger,
+    d: Trigger,
+}
 
-    fn allows_moving(&self) -> bool {
-        match self {
-            PlayerState::Axe => false,
-            _ => true,
+impl InputCache {
+    fn update(&mut self, shared_state: &SharedState<GameState>) {
+        if shared_state.mouse_pressed.left {
+            self.lmb.set();
         }
+        if shared_state.mouse_pressed.right {
+            self.rmb.set();
+        }
+        if shared_state.pressed_keys.did_press_char_ignore_case(' ') {
+            self.space.set();
+        }
+        if shared_state.pressed_keys.did_press_char_ignore_case('w') {
+            self.w.set();
+        }
+        if shared_state.pressed_keys.did_press_char_ignore_case('a') {
+            self.a.set();
+        }
+        if shared_state.pressed_keys.did_press_char_ignore_case('s') {
+            self.s.set();
+        }
+        if shared_state.pressed_keys.did_press_char_ignore_case('d') {
+            self.d.set();
+        }
+
     }
 }
 
@@ -59,8 +83,11 @@ struct GameComponent {
     animation_controller: AnimationController<PlayerState>,
     set_and_forget_animations: SetAndForgetAnimations,
     is_rolling: bool,
+    roll_direction: (f64, f64),
     is_flipped_x: bool,
     character_pos: (f64, f64),
+    // TODO: have a way to time out the input cache, so that a key press is not consumed if it's too old
+    input_cache: InputCache,
 }
 
 impl GameComponent {
@@ -79,6 +106,9 @@ impl GameComponent {
             animation_controller.register_animation(PlayerState::Axe, animation_repository.get(AnimationRepositoryKey::PlayerAxe));
         }
         {
+            animation_controller.register_animation(PlayerState::Sword, animation_repository.get(AnimationRepositoryKey::PlayerSword));
+        }
+        {
             animation_controller.register_animation(PlayerState::Jump, animation_repository.get(AnimationRepositoryKey::PlayerJump));
         }
         {
@@ -95,21 +125,62 @@ impl GameComponent {
             set_and_forget_animations: SetAndForgetAnimations::default(),
             is_flipped_x: false,
             is_rolling: false,
+            roll_direction: (0.0, 0.0),
             character_pos: (0.0, 0.0),
+            input_cache: InputCache::default(),
+        }
+    }
+
+    fn allows_flipping_x(&self) -> bool {
+        match self.animation_controller.current_state() {
+            PlayerState::Axe => false,
+            // overriden by roll itself
+            PlayerState::Roll => !self.is_rolling,
+            _ => true,
+        }
+    }
+
+    fn allows_moving(&self) -> bool {
+        match self.animation_controller.current_state() {
+            PlayerState::Axe => false,
+            _ => true,
+        }
+    }
+
+    fn allows_new_oneshot(&self) -> bool {
+        match self.animation_controller.current_state() {
+            PlayerState::Axe => false,
+            PlayerState::Sword => false,
+            PlayerState::Jump => false,
+            PlayerState::Roll => !self.is_rolling,
+            _ => true,
         }
     }
 
     fn speed_from_distance(&self, distance: f64) -> f64 {
-        if self.is_rolling {
-            return 200.0;
+        let mut min = 30.0;
+        let mut max = 80.0;
+        if self.animation_controller.current_state() == PlayerState::Sword {
+            // if we're attacking, our max is slower, but at the same time we want to move as quickly as possible to our target
+            // so our min is higher
+            min = 50.0;
+            max = 50.0;
         }
 
         // base distance is 10.0.
         assert!(distance >= 10.0);
         let normalized = distance - 10.0 + 1.0;
         // speed grows based on distance
-        let speed = normalized.clamp(30.0, 80.0);
+        let speed = normalized.clamp(min, max);
         speed
+    }
+
+    fn set_flipped_x(&mut self, flipped_x: bool) {
+        if self.is_flipped_x == flipped_x {
+            return;
+        }
+        self.is_flipped_x = flipped_x;
+        self.animation_controller.set_flipped_x(flipped_x);
     }
 }
 
@@ -136,70 +207,98 @@ impl Component<GameState> for GameComponent {
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<GameState>) {
         // check if mouse pos is on left or right half of screen, and flip accordingly
-        if self.animation_controller.current_state().allows_flipping_x() {
+        if self.allows_flipping_x() {
             let mouse_x = shared_state.mouse_info.last_mouse_pos.0;
             if (mouse_x as f64) < self.character_pos.0 {
-                if !self.is_flipped_x {
-                    self.animation_controller.set_flipped_x(true);
-                    self.is_flipped_x = true;
-                }
+                self.set_flipped_x(true);
             } else {
-                if self.is_flipped_x {
-                    self.animation_controller.set_flipped_x(false);
-                    self.is_flipped_x = false;
-                }
+                self.set_flipped_x(false);
             }
         }
 
-        // move character slowly to mouse pos
-        if self.animation_controller.current_state().allows_moving() {
-            let (mouse_x, mouse_y) = shared_state.mouse_info.last_mouse_pos;
-            let mouse_x = mouse_x as i64;
-            let mouse_y = mouse_y as i64 * 2; // world is 2x taller than screen
-            let (char_x, char_y) = self.character_pos;
+        // cache input so that they can be applied as soon as the animation is over
+        self.input_cache.update(shared_state);
 
-            let dx = mouse_x as f64 - char_x;
-            let dy = mouse_y as f64 - char_y;
-            let dist_sqr = (dx * dx + dy * dy);
-            if dist_sqr > 10.0 * 10.0 {
-                // move character
-                let dist = dist_sqr.sqrt();
-                let speed = self.speed_from_distance(dist);
-                // panic!("speed: {}", speed);
-                // let speed = 20.0;
+        // move character slowly to mouse pos
+        if self.allows_moving() {
+            if self.is_rolling {
+                // special movement
+                let (dx, dy) = self.roll_direction;
+                let speed = 200.0;
                 let dt = update_info.dt;
-                let normalized = (dx / dist, dy / dist);
-                let (dx, dy) = normalized;
                 self.character_pos.0 += dx * speed * dt;
                 self.character_pos.1 += dy * speed * dt;
-                if speed > 50.0 {
-                    self.animation_controller.set_animation(PlayerState::Run);
-                } else {
-                    self.animation_controller.set_animation(PlayerState::Walk);
-                }
             } else {
-                self.animation_controller.set_animation(PlayerState::Idle);
+                let (mouse_x, mouse_y) = shared_state.mouse_info.last_mouse_pos;
+                let mouse_x = mouse_x as i64;
+                let mouse_y = mouse_y as i64 * 2; // world is 2x taller than screen
+                let (char_x, char_y) = self.character_pos;
+
+                let dx = mouse_x as f64 - char_x;
+                let dy = mouse_y as f64 - char_y;
+                let dist_sqr = (dx * dx + dy * dy);
+                if dist_sqr > 10.0 * 10.0 {
+                    // move character
+                    let dist = dist_sqr.sqrt();
+                    let speed = self.speed_from_distance(dist);
+                    // panic!("speed: {}", speed);
+                    // let speed = 20.0;
+                    let dt = update_info.dt;
+                    let normalized = (dx / dist, dy / dist);
+                    let (dx, dy) = normalized;
+                    self.character_pos.0 += dx * speed * dt;
+                    self.character_pos.1 += dy * speed * dt;
+                    if speed > 50.0 {
+                        self.animation_controller.set_animation(PlayerState::Run);
+                    } else {
+                        self.animation_controller.set_animation(PlayerState::Walk);
+                    }
+                } else {
+                    self.animation_controller.set_animation(PlayerState::Idle);
+                }
             }
         }
 
         // only allow other actions if we're done with the current one
-        if !self.animation_controller.is_currently_oneshot() {
-            if shared_state.mouse_pressed.left {
+        if self.allows_new_oneshot() {
+            if self.input_cache.lmb.consume() {
                 // trigger axe animation
                 self.animation_controller.set_animation_override(PlayerState::Axe);
             }
 
-            if shared_state.pressed_keys.did_press_char_ignore_case(' ') {
+            if self.input_cache.rmb.consume() {
+                // trigger sword animation
+                self.animation_controller.set_animation_override(PlayerState::Sword);
+            }
+
+            if self.input_cache.space.consume() {
                 // trigger jump
                 self.animation_controller.set_animation_override(PlayerState::Jump);
             }
 
-            // TODO: do for other directions, and do actually dash
-            if shared_state.pressed_keys.did_press_char_ignore_case('w') {
+            let mut roll_direction = None;
+            if self.input_cache.w.consume() {
+                roll_direction = Some((0.0, -1.0));
+            }
+            if self.input_cache.a.consume() {
+                roll_direction = Some((-1.0, 0.0));
+                self.set_flipped_x(true);
+            }
+            if self.input_cache.s.consume() {
+                roll_direction = Some((0.0, 1.0));
+            }
+            if self.input_cache.d.consume() {
+                roll_direction = Some((1.0, 0.0));
+                self.set_flipped_x(false);
+            }
+
+            if let Some(roll_direction) = roll_direction {
                 // trigger roll
                 self.animation_controller.set_animation_override(PlayerState::Roll);
                 self.is_rolling = true;
+                self.roll_direction = roll_direction;
             }
+
         }
 
 

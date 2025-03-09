@@ -148,14 +148,14 @@ impl Animation {
             repeat_num: 1,
         }
     }
-    
+
     fn with_selected_indices(self, indices: Vec<usize>) -> Self {
         Animation {
             frames: indices.into_iter().map(|i| self.frames[i].clone()).collect(),
             ..self
         }
     }
-    
+
     fn get_frame_count(&self) -> usize {
         self.frames.len() * self.repeat_num
     }
@@ -193,15 +193,15 @@ impl CombinedAnimations {
         animations.push(base);
         animations.push(bowlhair);
         animations.push(tools);
-        
-        CombinedAnimations::new(animations, speed)        
+
+        CombinedAnimations::new(animations, speed)
     }
-    
+
     pub fn with_kind(mut self, kind: AnimationKind) -> Self {
         self.kind = kind;
         self
     }
-    
+
     pub fn new(animations: Vec<Animation>, frame_duration_secs: f32) -> Self {
         let num_frames = animations[0].get_frame_count();
         CombinedAnimations {
@@ -304,6 +304,7 @@ pub enum AnimationRepositoryKey {
     PlayerWalk,
     PlayerRun,
     PlayerAxe,
+    PlayerSword,
     PlayerCaught,
     PlayerJump,
     PlayerRoll,
@@ -347,15 +348,16 @@ impl Default for AnimationRepository {
         animations.insert(AnimationRepositoryKey::PlayerIdle, CombinedAnimations::from_standard_strip_names("IDLE".to_string(), "idle".to_string(), 9, speed));
         animations.insert(AnimationRepositoryKey::PlayerWalk, CombinedAnimations::from_standard_strip_names("WALKING".to_string(), "walk".to_string(), 8, speed));
         animations.insert(AnimationRepositoryKey::PlayerRun, CombinedAnimations::from_standard_strip_names("RUN".to_string(), "run".to_string(), 8, speed));
-        
-        animations.insert(AnimationRepositoryKey::PlayerAxe, CombinedAnimations::from_standard_strip_names("AXE".to_string(), "axe".to_string(), 10, speed).with_kind(AnimationKind::OneShot { trigger_frame: Some(7) }));
-        
+
+        animations.insert(AnimationRepositoryKey::PlayerAxe, CombinedAnimations::from_standard_strip_names("AXE".to_string(), "axe".to_string(), 10, 0.07).with_kind(AnimationKind::OneShot { trigger_frame: Some(7) }));
+        animations.insert(AnimationRepositoryKey::PlayerSword, CombinedAnimations::from_standard_strip_names("ATTACK".to_string(), "attack".to_string(), 10, 0.05).with_kind(AnimationKind::OneShot { trigger_frame: Some(7) }));
+
         animations.insert(AnimationRepositoryKey::PlayerCaught, CombinedAnimations::from_standard_strip_names("CAUGHT".to_string(), "caught".to_string(), 10, speed).with_kind(AnimationKind::OneShot { trigger_frame: None }));
         animations.insert(AnimationRepositoryKey::PlayerJump, CombinedAnimations::from_standard_strip_names("JUMP".to_string(), "jump".to_string(), 9, speed).with_kind(AnimationKind::OneShot { trigger_frame: None }));
         animations.insert(AnimationRepositoryKey::PlayerRoll, CombinedAnimations::from_standard_strip_names("ROLL".to_string(), "roll".to_string(), 10, speed).with_kind(AnimationKind::OneShot { trigger_frame: Some(6) }));
-        
+
         // animations.insert(AnimationRepositoryKey::DecoGlint, CombinedAnimations::from_standard_strip_names("VFX/Glint".to_string(), "deco_glint_01".to_string(), 6, speed));
-        
+
         {
             let mut animation = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Elements/VFX/Glint/spr_deco_glint_01_strip6.png");
             animation.repeat_num = 5;
@@ -368,7 +370,7 @@ impl Default for AnimationRepository {
             let animation = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Elements/VFX/Chimney Smoke/chimneysmoke_02_strip30.png");
             let animation = animation.with_selected_indices(custom_indices);
             let smoke_anims = CombinedAnimations::new(vec![animation], speed);
-            animations.insert(AnimationRepositoryKey::ChimneySmoke02, smoke_anims);   
+            animations.insert(AnimationRepositoryKey::ChimneySmoke02, smoke_anims);
         }
 
         Self {
