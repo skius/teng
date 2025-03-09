@@ -1,6 +1,7 @@
 mod sprite;
 mod impulse;
 mod animationcontroller;
+mod setandforgetanimations;
 
 use std::{io, thread};
 use std::collections::HashMap;
@@ -17,7 +18,8 @@ use teng::{
 };
 use teng::components::debuginfo::DebugMessage;
 use crate::animationcontroller::{AnimationController, KeyedAnimationResult};
-use crate::sprite::{Animation, AnimationKind, CombinedAnimations};
+use crate::setandforgetanimations::SetAndForgetAnimations;
+use crate::sprite::{Animation, AnimationKind, AnimationRepository, AnimationRepositoryKey, CombinedAnimations};
 
 #[derive(Debug, Default)]
 struct GameState {
@@ -29,19 +31,20 @@ enum PlayerState {
     #[default]
     Idle,
     Walk,
+    Jump,
     Axe,
 }
-// 
-// 
+//
+//
 // struct PlayerAnimations {
 //     map: HashMap<PlayerState, CombinedAnimations>,
 // }
-// 
+//
 // impl PlayerAnimations {
 //     fn new() -> Self {
 //         let mut map = HashMap::new();
 //         let speed = 0.1;
-// 
+//
 //         let idle_anims;
 //         {
 //             let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/base_idle_strip9.png");
@@ -49,7 +52,7 @@ enum PlayerState {
 //             let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/tools_idle_strip9.png");
 //             idle_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools], speed);
 //         }
-// 
+//
 //         let walk_anims;
 //         {
 //             let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/base_walk_strip8.png");
@@ -57,14 +60,14 @@ enum PlayerState {
 //             let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/tools_walk_strip8.png");
 //             walk_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools], speed);
 //         }
-// 
+//
 //         map.insert(PlayerState::Idle, idle_anims);
 //         map.insert(PlayerState::Walk, walk_anims);
 //         Self {
 //             map,
 //         }
 //     }
-// 
+//
 //     fn set_flipped_x(&mut self, flipped_x: bool) {
 //         for (_, anim) in &mut self.map {
 //             anim.set_flipped_x(flipped_x);
@@ -74,7 +77,9 @@ enum PlayerState {
 
 struct GameComponent {
     hbd: HalfBlockDisplayRender,
+    animation_repository: AnimationRepository,
     animation_controller: AnimationController<PlayerState>,
+    set_and_forget_animations: SetAndForgetAnimations,
     is_flipped_x: bool,
     character_pos: (f64, f64),
 }
@@ -82,35 +87,27 @@ struct GameComponent {
 impl GameComponent {
     fn new() -> Self {
         let mut animation_controller = AnimationController::default();
-        let speed = 0.1;
+        let animation_repository = AnimationRepository::default();
 
         {
-            let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/base_idle_strip9.png");
-            let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/bowlhair_idle_strip9.png");
-            let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/tools_idle_strip9.png");
-            let idle_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools], speed);
-            animation_controller.register_animation(PlayerState::Idle, idle_anims);
+            animation_controller.register_animation(PlayerState::Idle, animation_repository.get(AnimationRepositoryKey::PlayerIdle));
         }
         {
-            let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/base_walk_strip8.png");
-            let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/bowlhair_walk_strip8.png");
-            let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/tools_walk_strip8.png");
-            let walk_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools], speed);
-            animation_controller.register_animation(PlayerState::Walk, walk_anims);
+            animation_controller.register_animation(PlayerState::Walk, animation_repository.get(AnimationRepositoryKey::PlayerWalk));
         }
         // a one shot anim
         {
-            let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/AXE/base_axe_strip10.png");
-            let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/AXE/bowlhair_axe_strip10.png");
-            let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/AXE/tools_axe_strip10.png");
-            let mut axe_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools], speed);
-            axe_anims.set_kind(AnimationKind::OneShot { trigger_frame: Some(7) });
-            animation_controller.register_animation(PlayerState::Axe, axe_anims);
+            animation_controller.register_animation(PlayerState::Axe, animation_repository.get(AnimationRepositoryKey::PlayerAxe));
+        }
+        {
+            animation_controller.register_animation(PlayerState::Jump, animation_repository.get(AnimationRepositoryKey::PlayerJump));
         }
 
         Self {
             hbd: HalfBlockDisplayRender::new(0, 0),
+            animation_repository,
             animation_controller,
+            set_and_forget_animations: SetAndForgetAnimations::default(),
             is_flipped_x: false,
             character_pos: (0.0, 0.0),
         }
@@ -148,58 +145,64 @@ impl Component<GameState> for GameComponent {
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<GameState>) {
-        let width = self.hbd.width();
-        let height = self.hbd.height();
-
-        // TODO: we really need a mouse_released struct (similar to mouse_pressed)
-        // if shared_state.mouse_info.left_mouse_down {
-        //     for anim in &mut self.animations {
-        //         anim.set_flipped_x(true);
-        //     }
-        // } else {
-        //     for anim in &mut self.animations {
-        //         anim.set_flipped_x(false);
-        //     }
-        // }
-
-        // check if mouse pos is on left or right half of screen, and flip accordingly
-        let mouse_x = shared_state.mouse_info.last_mouse_pos.0;
-        if (mouse_x as f64) < self.character_pos.0 {
-            if !self.is_flipped_x {
-                self.animation_controller.set_flipped_x(true);
-                self.is_flipped_x = true;
+        // only handle mouse input if we're not doing an action
+        if !self.animation_controller.is_currently_oneshot() {
+            // check if mouse pos is on left or right half of screen, and flip accordingly
+            let mouse_x = shared_state.mouse_info.last_mouse_pos.0;
+            if (mouse_x as f64) < self.character_pos.0 {
+                if !self.is_flipped_x {
+                    self.animation_controller.set_flipped_x(true);
+                    self.is_flipped_x = true;
+                }
+            } else {
+                if self.is_flipped_x {
+                    self.animation_controller.set_flipped_x(false);
+                    self.is_flipped_x = false;
+                }
             }
-        } else {
-            if self.is_flipped_x {
-                self.animation_controller.set_flipped_x(false);
-                self.is_flipped_x = false;
+
+            // move character slowly to mouse pos
+            let (mouse_x, mouse_y) = shared_state.mouse_info.last_mouse_pos;
+            let mouse_x = mouse_x as i64;
+            let mouse_y = mouse_y as i64 * 2; // world is 2x taller than screen
+            let (char_x, char_y) = self.character_pos;
+
+            let dx = mouse_x as f64 - char_x;
+            let dy = mouse_y as f64 - char_y;
+            let dist_sqr = (dx * dx + dy * dy);
+            if dist_sqr > 10.0 * 10.0 {
+                // move character
+                let dist = dist_sqr.sqrt();
+                let speed = self.speed_from_distance(dist);
+                // panic!("speed: {}", speed);
+                // let speed = 20.0;
+                let dt = update_info.dt;
+                let normalized = (dx / dist, dy / dist);
+                let (dx, dy) = normalized;
+                self.character_pos.0 += dx * speed * dt;
+                self.character_pos.1 += dy * speed * dt;
+                self.animation_controller.set_animation(PlayerState::Walk);
+            } else {
+                self.animation_controller.set_animation(PlayerState::Idle);
+            }
+
+            if shared_state.mouse_pressed.left {
+                // trigger axe animation
+                self.animation_controller.set_animation_override(PlayerState::Axe);
+            }
+
+            if shared_state.pressed_keys.did_press_char_ignore_case(' ') {
+                // trigger jump
+                self.animation_controller.set_animation_override(PlayerState::Jump);
+            }
+
+            // TODO: do for other directions
+            if shared_state.pressed_keys.did_press_char_ignore_case('w') {
+                // trigger roll
+                
             }
         }
 
-        // move character slowly to mouse pos
-        let (mouse_x, mouse_y) = shared_state.mouse_info.last_mouse_pos;
-        let mouse_x = mouse_x as i64;
-        let mouse_y = mouse_y as i64 * 2; // world is 2x taller than screen
-        let (char_x, char_y) = self.character_pos;
-
-        let dx = mouse_x as f64 - char_x;
-        let dy = mouse_y as f64 - char_y;
-        let dist_sqr = (dx * dx + dy * dy);
-        if dist_sqr > 10.0 * 10.0 {
-            // move character
-            let dist = dist_sqr.sqrt();
-            let speed = self.speed_from_distance(dist);
-            // panic!("speed: {}", speed);
-            // let speed = 20.0;
-            let dt = update_info.dt;
-            let normalized = (dx / dist, dy / dist);
-            let (dx, dy) = normalized;
-            self.character_pos.0 += dx * speed * dt;
-            self.character_pos.1 += dy * speed * dt;
-            self.animation_controller.set_animation(PlayerState::Walk);
-        } else {
-            self.animation_controller.set_animation(PlayerState::Idle);
-        }
 
         // render
         self.hbd.clear();
@@ -209,7 +212,7 @@ impl Component<GameState> for GameComponent {
         // for animation in &self.animations {
         //     animation.render_to_hbd(draw_x, draw_y, &mut self.hbd, update_info.current_time);
         // }
-        
+
         let anim_res = self.animation_controller.render_to_hbd(draw_x, draw_y, &mut self.hbd, update_info.current_time);
         if let Some(anim_res) = anim_res {
             match anim_res {
@@ -217,6 +220,11 @@ impl Component<GameState> for GameComponent {
                     if state == PlayerState::Axe {
                         // axe animation was triggered
                         shared_state.debug_messages.push(DebugMessage::new_3s("Axe animation triggered!"));
+                        // spawn animation, taking into consideration the x offset from the axe
+                        let x_offset = if self.is_flipped_x { -20 } else { 20 };
+                        let anim = self.animation_repository.get(AnimationRepositoryKey::ChimneySmoke02);
+                        self.set_and_forget_animations.add((draw_x + x_offset, draw_y - 10), anim);
+
                     }
                 }
                 KeyedAnimationResult::Finished(state) => {
@@ -225,16 +233,16 @@ impl Component<GameState> for GameComponent {
                         // TODO: this does not get triggered because the above blanket setting to ::Idle overrides the axe animation, since it's 'finished' so it can be overriden despite
                         // the 'finished' not being consumed. Though I guess that's fine? as long as our trigger is consumed...
                         shared_state.debug_messages.push(DebugMessage::new_3s("Axe animation finished!"));
-                        self.animation_controller.set_animation(PlayerState::Idle);
                     }
+                    self.animation_controller.set_animation(PlayerState::Idle);
+
                 }
             }
         }
-        
-        if shared_state.mouse_pressed.left {
-            // trigger axe animation
-            self.animation_controller.set_animation_override(PlayerState::Axe);
-        }
+        // render all set and forget animations
+        self.set_and_forget_animations.render_to_hbd(&mut self.hbd, update_info.current_time);
+
+
 
         // let anim = self.animations.map.get(&self.player_state).unwrap();
         // anim.render_to_hbd(draw_x, draw_y, &mut self.hbd, update_info.current_time);

@@ -40,6 +40,10 @@ impl<K: Hash + Eq + Copy> AnimationController<K> {
         }
     }
     
+    pub fn is_currently_oneshot(&self) -> bool {
+        self.current_animation().is_oneshot()
+    }
+    
     pub fn current_state(&self) -> K {
         self.current_animation
     }

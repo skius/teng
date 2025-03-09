@@ -1,8 +1,10 @@
+use std::collections::HashMap;
 use std::path::Path;
 use std::time::Instant;
 use image::GenericImageView;
 use teng::rendering::color::Color;
 use teng::rendering::render::HalfBlockDisplayRender;
+use crate::PlayerState;
 
 /// A pixel sprite.
 ///
@@ -73,6 +75,7 @@ impl Sprite {
     }
 }
 
+#[derive(Clone)]
 pub enum AnimationKind {
     Repeat,
     /// This animation will not repeat. Instead it will indicate that it is done after the last frame.
@@ -88,8 +91,11 @@ pub enum AnimationResult {
     Trigger,
 }
 
+#[derive(Clone)]
 pub struct Animation {
-    pub frames: Vec<Sprite>,
+    frames: Vec<Sprite>,
+    // how many times to virtually unroll this animation?
+    repeat_num: usize,
 }
 
 impl Animation {
@@ -139,11 +145,23 @@ impl Animation {
 
         Animation {
             frames,
+            repeat_num: 1,
         }
+    }
+    
+    fn with_selected_indices(self, indices: Vec<usize>) -> Self {
+        Animation {
+            frames: indices.into_iter().map(|i| self.frames[i].clone()).collect(),
+            ..self
+        }
+    }
+    
+    fn get_frame_count(&self) -> usize {
+        self.frames.len() * self.repeat_num
     }
 
     pub fn render_to_hbd(&self, x: i64, y: i64, hbd: &mut HalfBlockDisplayRender, frame_index: usize) {
-        self.frames[frame_index].render_to_hbd(x, y, hbd);
+        self.frames[frame_index % self.frames.len()].render_to_hbd(x, y, hbd);
     }
 
     pub fn set_flipped_x(&mut self, flipped_x: bool) {
@@ -153,6 +171,7 @@ impl Animation {
     }
 }
 
+#[derive(Clone)]
 pub struct CombinedAnimations {
     // animation render order goes from low priority to high priority
     // invariant: all animations have the same number of frames
@@ -165,8 +184,26 @@ pub struct CombinedAnimations {
 }
 
 impl CombinedAnimations {
+    pub fn from_standard_strip_names(dir_name: String, file_id_name: String, stripnum: usize, speed: f32) -> Self {
+        // load base, bowlhair, tools animations
+        let mut animations = Vec::new();
+        let base = Animation::from_strip(format!("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/{dir_name}/base_{file_id_name}_strip{stripnum}.png"));
+        let bowlhair = Animation::from_strip(format!("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/{dir_name}/bowlhair_{file_id_name}_strip{stripnum}.png"));
+        let tools = Animation::from_strip(format!("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/{dir_name}/tools_{file_id_name}_strip{stripnum}.png"));
+        animations.push(base);
+        animations.push(bowlhair);
+        animations.push(tools);
+        
+        CombinedAnimations::new(animations, speed)        
+    }
+    
+    pub fn with_kind(mut self, kind: AnimationKind) -> Self {
+        self.kind = kind;
+        self
+    }
+    
     pub fn new(animations: Vec<Animation>, frame_duration_secs: f32) -> Self {
-        let num_frames = animations[0].frames.len();
+        let num_frames = animations[0].get_frame_count();
         CombinedAnimations {
             animations,
             num_frames,
@@ -258,5 +295,88 @@ impl CombinedAnimations {
         for animation in &mut self.animations {
             animation.set_flipped_x(flipped_x);
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum AnimationRepositoryKey {
+    PlayerIdle,
+    PlayerWalk,
+    PlayerAxe,
+    PlayerCaught,
+    PlayerJump,
+    PlayerRoll,
+    DecoGlint,
+    ChimneySmoke02,
+}
+
+pub struct AnimationRepository {
+    animations: HashMap<AnimationRepositoryKey, CombinedAnimations>,
+}
+
+impl Default for AnimationRepository {
+    fn default() -> Self {
+        let mut animations = HashMap::new();
+        let speed = 0.1;
+
+        // {
+        //     let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/base_idle_strip9.png");
+        //     let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/bowlhair_idle_strip9.png");
+        //     let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/tools_idle_strip9.png");
+        //     let idle_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools], speed);
+        //     animations.insert(AnimationRepositoryKey::PlayerIdle, idle_anims);
+        // }
+        // {
+        //     let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/base_walk_strip8.png");
+        //     let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/bowlhair_walk_strip8.png");
+        //     let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/tools_walk_strip8.png");
+        //     let walk_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools], speed);
+        //     animations.insert(AnimationRepositoryKey::PlayerWalk, walk_anims);
+        // }
+        // // a one shot anim
+        // {
+        //     let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/AXE/base_axe_strip10.png");
+        //     let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/AXE/bowlhair_axe_strip10.png");
+        //     let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/AXE/tools_axe_strip10.png");
+        //     let mut axe_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools], speed);
+        //     axe_anims.set_kind(AnimationKind::OneShot { trigger_frame: Some(7) });
+        //     animations.insert(AnimationRepositoryKey::PlayerAxe, axe_anims);
+        // }
+
+        animations.insert(AnimationRepositoryKey::PlayerIdle, CombinedAnimations::from_standard_strip_names("IDLE".to_string(), "idle".to_string(), 9, speed));
+        animations.insert(AnimationRepositoryKey::PlayerWalk, CombinedAnimations::from_standard_strip_names("WALKING".to_string(), "walk".to_string(), 8, speed));
+        
+        animations.insert(AnimationRepositoryKey::PlayerAxe, CombinedAnimations::from_standard_strip_names("AXE".to_string(), "axe".to_string(), 10, speed).with_kind(AnimationKind::OneShot { trigger_frame: Some(7) }));
+        
+        animations.insert(AnimationRepositoryKey::PlayerCaught, CombinedAnimations::from_standard_strip_names("CAUGHT".to_string(), "caught".to_string(), 10, speed));
+        animations.insert(AnimationRepositoryKey::PlayerJump, CombinedAnimations::from_standard_strip_names("JUMP".to_string(), "jump".to_string(), 9, speed).with_kind(AnimationKind::OneShot { trigger_frame: None }));
+        animations.insert(AnimationRepositoryKey::PlayerRoll, CombinedAnimations::from_standard_strip_names("ROLL".to_string(), "roll".to_string(), 10, speed));
+        
+        // animations.insert(AnimationRepositoryKey::DecoGlint, CombinedAnimations::from_standard_strip_names("VFX/Glint".to_string(), "deco_glint_01".to_string(), 6, speed));
+        
+        {
+            let mut animation = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Elements/VFX/Glint/spr_deco_glint_01_strip6.png");
+            animation.repeat_num = 5;
+            let glint_anims = CombinedAnimations::new(vec![animation], speed);
+            animations.insert(AnimationRepositoryKey::DecoGlint, glint_anims);
+        }
+
+        {
+            let custom_indices = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 26, 27, 28, 29];
+            let animation = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Elements/VFX/Chimney Smoke/chimneysmoke_02_strip30.png");
+            let animation = animation.with_selected_indices(custom_indices);
+            let smoke_anims = CombinedAnimations::new(vec![animation], speed);
+            animations.insert(AnimationRepositoryKey::ChimneySmoke02, smoke_anims);   
+        }
+
+        Self {
+            animations
+        }
+    }
+}
+
+impl AnimationRepository {
+    pub fn get(&self, key: AnimationRepositoryKey) -> CombinedAnimations {
+        self.animations.get(&key).unwrap().clone()
     }
 }
