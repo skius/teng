@@ -23,9 +23,9 @@ impl Component<GameState> for PlayerComponent {
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<GameState>) {
         let player = &mut shared_state.custom.player;
         player.input_cache.update(&shared_state.pressed_keys, &shared_state.mouse_pressed);
-        
+
         Player::update(update_info, shared_state);
-        
+
     }
 }
 
@@ -94,49 +94,15 @@ impl Default for Player {
     fn default() -> Self {
         let mut animation_controller = AnimationController::default();
 
-        {
-            animation_controller.register_animation(
-                PlayerState::Idle,
-                get_animation(AnimationRepositoryKey::PlayerIdle),
-            );
-        }
-        {
-            animation_controller.register_animation(
-                PlayerState::Walk,
-                get_animation(AnimationRepositoryKey::PlayerWalk),
-            );
-        }
-        // a one shot anim
-        {
-            animation_controller.register_animation(
-                PlayerState::Axe,
-                get_animation(AnimationRepositoryKey::PlayerAxe),
-            );
-        }
-        {
-            animation_controller.register_animation(
-                PlayerState::Sword,
-                get_animation(AnimationRepositoryKey::PlayerSword),
-            );
-        }
-        {
-            animation_controller.register_animation(
-                PlayerState::Jump,
-                get_animation(AnimationRepositoryKey::PlayerJump),
-            );
-        }
-        {
-            animation_controller.register_animation(
-                PlayerState::Roll,
-                get_animation(AnimationRepositoryKey::PlayerRoll),
-            );
-        }
-        {
-            animation_controller.register_animation(
-                PlayerState::Run,
-                get_animation(AnimationRepositoryKey::PlayerRun),
-            );
-        }
+        animation_controller.register_animations_from_repository(vec![
+            (PlayerState::Idle, AnimationRepositoryKey::PlayerIdle),
+            (PlayerState::Walk, AnimationRepositoryKey::PlayerWalk),
+            (PlayerState::Axe, AnimationRepositoryKey::PlayerAxe),
+            (PlayerState::Sword, AnimationRepositoryKey::PlayerSword),
+            (PlayerState::Jump, AnimationRepositoryKey::PlayerJump),
+            (PlayerState::Roll, AnimationRepositoryKey::PlayerRoll),
+            (PlayerState::Run, AnimationRepositoryKey::PlayerRun),
+        ]);
 
         Self {
             animation_controller,
@@ -202,11 +168,11 @@ impl Player {
         self.is_flipped_x = flipped_x;
         self.animation_controller.set_flipped_x(flipped_x);
     }
-    
+
     fn update(update_info: UpdateInfo, shared_state: &mut SharedState<GameState>) {
         let player = &mut shared_state.custom.player;
         let hbd = &mut shared_state.custom.hbd;
-        
+
         // check if mouse pos is on left or right half of screen, and flip accordingly
         if player.allows_flipping_x() {
             let mouse_x = shared_state.mouse_info.last_mouse_pos.0;

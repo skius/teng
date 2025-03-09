@@ -21,11 +21,14 @@ pub struct Goblin {
 impl Goblin {
     pub fn new() -> Self {
         let mut animation_controller = AnimationController::default();
-        animation_controller.register_animation(GoblinState::Idle, get_animation(AnimationRepositoryKey::GoblinIdle));
-        animation_controller.register_animation(GoblinState::Walk, get_animation(AnimationRepositoryKey::GoblinWalk));
-        animation_controller.register_animation(GoblinState::Run, get_animation(AnimationRepositoryKey::GoblinRun));
-        animation_controller.register_animation(GoblinState::Hurt, get_animation(AnimationRepositoryKey::GoblinHurt));
-        animation_controller.register_animation(GoblinState::Death, get_animation(AnimationRepositoryKey::GoblinDeath));
+        animation_controller.register_animations_from_repository(vec![
+            (GoblinState::Idle, AnimationRepositoryKey::GoblinIdle),
+            (GoblinState::Walk, AnimationRepositoryKey::GoblinWalk),
+            (GoblinState::Run, AnimationRepositoryKey::GoblinRun),
+            (GoblinState::Hurt, AnimationRepositoryKey::GoblinHurt),
+            (GoblinState::Death, AnimationRepositoryKey::GoblinDeath),
+        ]);
+        
         Self {
             animation_controller,
             pos: (0.0, 0.0),

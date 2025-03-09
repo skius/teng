@@ -53,7 +53,7 @@ impl<K: Hash + Eq + Copy> AnimationController<K> {
         self.animation_map.insert(key, animation);
     }
     
-    pub fn register_animation_bulk(&mut self, animations: Vec<(K, AnimationRepositoryKey)>) {
+    pub fn register_animations_from_repository(&mut self, animations: Vec<(K, AnimationRepositoryKey)>) {
         for (key, animation_key) in animations {
             self.register_animation(key, get_animation(animation_key));
         }
