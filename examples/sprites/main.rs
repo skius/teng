@@ -31,55 +31,34 @@ enum PlayerState {
     #[default]
     Idle,
     Walk,
+    Run,
     Jump,
+    Roll,
     Axe,
 }
-//
-//
-// struct PlayerAnimations {
-//     map: HashMap<PlayerState, CombinedAnimations>,
-// }
-//
-// impl PlayerAnimations {
-//     fn new() -> Self {
-//         let mut map = HashMap::new();
-//         let speed = 0.1;
-//
-//         let idle_anims;
-//         {
-//             let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/base_idle_strip9.png");
-//             let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/bowlhair_idle_strip9.png");
-//             let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/IDLE/tools_idle_strip9.png");
-//             idle_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools], speed);
-//         }
-//
-//         let walk_anims;
-//         {
-//             let animation_base = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/base_walk_strip8.png");
-//             let animation_bowlhair = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/bowlhair_walk_strip8.png");
-//             let animation_tools = Animation::from_strip("examples/sprites/data/Sunnyside_World_Assets/Characters/Human/WALKING/tools_walk_strip8.png");
-//             walk_anims = CombinedAnimations::new(vec![animation_base, animation_bowlhair, animation_tools], speed);
-//         }
-//
-//         map.insert(PlayerState::Idle, idle_anims);
-//         map.insert(PlayerState::Walk, walk_anims);
-//         Self {
-//             map,
-//         }
-//     }
-//
-//     fn set_flipped_x(&mut self, flipped_x: bool) {
-//         for (_, anim) in &mut self.map {
-//             anim.set_flipped_x(flipped_x);
-//         }
-//     }
-// }
+
+impl PlayerState {
+    fn allows_flipping_x(&self) -> bool {
+        match self {
+            PlayerState::Axe => false,
+            _ => true,
+        }
+    }
+
+    fn allows_moving(&self) -> bool {
+        match self {
+            PlayerState::Axe => false,
+            _ => true,
+        }
+    }
+}
 
 struct GameComponent {
     hbd: HalfBlockDisplayRender,
     animation_repository: AnimationRepository,
     animation_controller: AnimationController<PlayerState>,
     set_and_forget_animations: SetAndForgetAnimations,
+    is_rolling: bool,
     is_flipped_x: bool,
     character_pos: (f64, f64),
 }
@@ -102,6 +81,12 @@ impl GameComponent {
         {
             animation_controller.register_animation(PlayerState::Jump, animation_repository.get(AnimationRepositoryKey::PlayerJump));
         }
+        {
+            animation_controller.register_animation(PlayerState::Roll, animation_repository.get(AnimationRepositoryKey::PlayerRoll));
+        }
+        {
+            animation_controller.register_animation(PlayerState::Run, animation_repository.get(AnimationRepositoryKey::PlayerRun));
+        }
 
         Self {
             hbd: HalfBlockDisplayRender::new(0, 0),
@@ -109,11 +94,16 @@ impl GameComponent {
             animation_controller,
             set_and_forget_animations: SetAndForgetAnimations::default(),
             is_flipped_x: false,
+            is_rolling: false,
             character_pos: (0.0, 0.0),
         }
     }
 
     fn speed_from_distance(&self, distance: f64) -> f64 {
+        if self.is_rolling {
+            return 200.0;
+        }
+
         // base distance is 10.0.
         assert!(distance >= 10.0);
         let normalized = distance - 10.0 + 1.0;
@@ -145,9 +135,8 @@ impl Component<GameState> for GameComponent {
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<GameState>) {
-        // only handle mouse input if we're not doing an action
-        if !self.animation_controller.is_currently_oneshot() {
-            // check if mouse pos is on left or right half of screen, and flip accordingly
+        // check if mouse pos is on left or right half of screen, and flip accordingly
+        if self.animation_controller.current_state().allows_flipping_x() {
             let mouse_x = shared_state.mouse_info.last_mouse_pos.0;
             if (mouse_x as f64) < self.character_pos.0 {
                 if !self.is_flipped_x {
@@ -160,8 +149,10 @@ impl Component<GameState> for GameComponent {
                     self.is_flipped_x = false;
                 }
             }
+        }
 
-            // move character slowly to mouse pos
+        // move character slowly to mouse pos
+        if self.animation_controller.current_state().allows_moving() {
             let (mouse_x, mouse_y) = shared_state.mouse_info.last_mouse_pos;
             let mouse_x = mouse_x as i64;
             let mouse_y = mouse_y as i64 * 2; // world is 2x taller than screen
@@ -181,11 +172,18 @@ impl Component<GameState> for GameComponent {
                 let (dx, dy) = normalized;
                 self.character_pos.0 += dx * speed * dt;
                 self.character_pos.1 += dy * speed * dt;
-                self.animation_controller.set_animation(PlayerState::Walk);
+                if speed > 50.0 {
+                    self.animation_controller.set_animation(PlayerState::Run);
+                } else {
+                    self.animation_controller.set_animation(PlayerState::Walk);
+                }
             } else {
                 self.animation_controller.set_animation(PlayerState::Idle);
             }
+        }
 
+        // only allow other actions if we're done with the current one
+        if !self.animation_controller.is_currently_oneshot() {
             if shared_state.mouse_pressed.left {
                 // trigger axe animation
                 self.animation_controller.set_animation_override(PlayerState::Axe);
@@ -196,12 +194,14 @@ impl Component<GameState> for GameComponent {
                 self.animation_controller.set_animation_override(PlayerState::Jump);
             }
 
-            // TODO: do for other directions
+            // TODO: do for other directions, and do actually dash
             if shared_state.pressed_keys.did_press_char_ignore_case('w') {
                 // trigger roll
-                
+                self.animation_controller.set_animation_override(PlayerState::Roll);
+                self.is_rolling = true;
             }
         }
+
 
 
         // render
@@ -225,6 +225,10 @@ impl Component<GameState> for GameComponent {
                         let anim = self.animation_repository.get(AnimationRepositoryKey::ChimneySmoke02);
                         self.set_and_forget_animations.add((draw_x + x_offset, draw_y - 10), anim);
 
+                    }
+                    if state == PlayerState::Roll {
+                        // stop rolling
+                        self.is_rolling = false;
                     }
                 }
                 KeyedAnimationResult::Finished(state) => {

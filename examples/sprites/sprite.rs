@@ -302,6 +302,7 @@ impl CombinedAnimations {
 pub enum AnimationRepositoryKey {
     PlayerIdle,
     PlayerWalk,
+    PlayerRun,
     PlayerAxe,
     PlayerCaught,
     PlayerJump,
@@ -345,12 +346,13 @@ impl Default for AnimationRepository {
 
         animations.insert(AnimationRepositoryKey::PlayerIdle, CombinedAnimations::from_standard_strip_names("IDLE".to_string(), "idle".to_string(), 9, speed));
         animations.insert(AnimationRepositoryKey::PlayerWalk, CombinedAnimations::from_standard_strip_names("WALKING".to_string(), "walk".to_string(), 8, speed));
+        animations.insert(AnimationRepositoryKey::PlayerRun, CombinedAnimations::from_standard_strip_names("RUN".to_string(), "run".to_string(), 8, speed));
         
         animations.insert(AnimationRepositoryKey::PlayerAxe, CombinedAnimations::from_standard_strip_names("AXE".to_string(), "axe".to_string(), 10, speed).with_kind(AnimationKind::OneShot { trigger_frame: Some(7) }));
         
-        animations.insert(AnimationRepositoryKey::PlayerCaught, CombinedAnimations::from_standard_strip_names("CAUGHT".to_string(), "caught".to_string(), 10, speed));
+        animations.insert(AnimationRepositoryKey::PlayerCaught, CombinedAnimations::from_standard_strip_names("CAUGHT".to_string(), "caught".to_string(), 10, speed).with_kind(AnimationKind::OneShot { trigger_frame: None }));
         animations.insert(AnimationRepositoryKey::PlayerJump, CombinedAnimations::from_standard_strip_names("JUMP".to_string(), "jump".to_string(), 9, speed).with_kind(AnimationKind::OneShot { trigger_frame: None }));
-        animations.insert(AnimationRepositoryKey::PlayerRoll, CombinedAnimations::from_standard_strip_names("ROLL".to_string(), "roll".to_string(), 10, speed));
+        animations.insert(AnimationRepositoryKey::PlayerRoll, CombinedAnimations::from_standard_strip_names("ROLL".to_string(), "roll".to_string(), 10, speed).with_kind(AnimationKind::OneShot { trigger_frame: Some(6) }));
         
         // animations.insert(AnimationRepositoryKey::DecoGlint, CombinedAnimations::from_standard_strip_names("VFX/Glint".to_string(), "deco_glint_01".to_string(), 6, speed));
         
