@@ -46,6 +46,7 @@ pub enum PlayerState {
 struct InputCache {
     lmb: Trigger,
     rmb: Trigger,
+    mmb: Trigger,
     space: Trigger,
     w: Trigger,
     a: Trigger,
@@ -61,6 +62,9 @@ impl InputCache {
         }
         if mouse_pressed.right {
             self.rmb.set();
+        }
+        if mouse_pressed.middle {
+            self.mmb.set();
         }
         if pressed_keys.did_press_char_ignore_case(' ') {
             self.space.set();
@@ -177,9 +181,13 @@ impl Player {
         let player = &mut shared_state.custom.player;
         let hbd = &mut shared_state.custom.hbd;
 
+        let (mouse_x, mouse_y) = shared_state.mouse_info.last_mouse_pos;
+        let mouse_x = mouse_x as i64;
+        let mouse_y = mouse_y as i64 * 2; // world is 2x taller than screen
+
         // check if mouse pos is on left or right half of screen, and flip accordingly
         if player.allows_flipping_x() {
-            let mouse_x = shared_state.mouse_info.last_mouse_pos.0;
+            // let mouse_x = shared_state.mouse_info.last_mouse_pos.0;
             if (mouse_x as f64) < player.character_pos.0 {
                 player.set_flipped_x(true);
             } else {
@@ -192,14 +200,13 @@ impl Player {
             if player.is_rolling {
                 // special movement
                 let (dx, dy) = player.roll_direction;
+                let dist = (dx * dx + dy * dy).sqrt();
+                let (dx, dy) = (dx / dist, dy / dist);
                 let speed = 400.0;
                 let dt = update_info.dt;
                 player.character_pos.0 += dx * speed * dt;
                 player.character_pos.1 += dy * speed * dt;
             } else {
-                let (mouse_x, mouse_y) = shared_state.mouse_info.last_mouse_pos;
-                let mouse_x = mouse_x as i64;
-                let mouse_y = mouse_y as i64 * 2; // world is 2x taller than screen
                 let (char_x, char_y) = player.character_pos;
 
                 let dx = mouse_x as f64 - char_x;
@@ -265,6 +272,12 @@ impl Player {
             if player.input_cache.d.consume() {
                 roll_direction = Some((1.0, 0.0));
                 player.set_flipped_x(false);
+            }
+            if player.input_cache.mmb.consume() {
+                // direction based on diff from player to mouse
+                let (dx, dy) = (mouse_x as f64 - player.character_pos.0, mouse_y as f64 - player.character_pos.1);
+                // will be normalized
+                roll_direction = Some((dx, dy));
             }
 
             if let Some(roll_direction) = roll_direction {

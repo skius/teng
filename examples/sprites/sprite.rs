@@ -7,12 +7,16 @@ use std::time::Instant;
 use teng::rendering::color::Color;
 use teng::rendering::render::HalfBlockDisplayRender;
 
-//TODO:
+//TODO: (sprite render order)
 // A sprite renderer that is essentially a HalfBlockDisplayRender, but it collects all sprites before rendering.
 // Then, when rendering, it sorts sprites based on their y position, and renders them in that order. this should be better
 // for determining which sprite is in front of which.
 // Though, some approach is needed to render "CombinedSprites" that have a fixed overlay order and should be treated as
 // the same sprite.
+
+//TODO: (fragment shader)
+// Can we do a fragment shader over the entire screen? Does that support normal maps the way we want it to?
+// How do normal maps even work in the context of a 2D game?
 
 /// A pixel sprite.
 ///
