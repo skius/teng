@@ -275,6 +275,7 @@ impl State {
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::PRIMARY,
+            // Allow NVIDIA cards to run inside WSL2 through the kisak-mesa dozen vulkan driver
             flags: wgpu::InstanceFlags::default().union(wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER),
             ..Default::default()
         });
@@ -282,6 +283,7 @@ impl State {
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 // power_preference: wgpu::PowerPreference::default(),
+                // Select between low power or high performance GPU
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: None,
                 force_fallback_adapter: false,
