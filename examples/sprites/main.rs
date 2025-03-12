@@ -4,6 +4,7 @@ mod impulse;
 mod player;
 mod setandforgetanimations;
 mod sprite;
+mod wgpurender;
 
 use crate::animationcontroller::{AnimationController, KeyedAnimationResult};
 use crate::goblin::Goblin;
@@ -29,6 +30,8 @@ use teng::{
     Game, SetupInfo, SharedState, UpdateInfo, install_panic_handler, terminal_cleanup,
     terminal_setup,
 };
+use teng::components::keyboard::KeypressDebouncerComponent;
+use crate::wgpurender::WgpuRenderComponent;
 
 enum HurtGroup {
     Player,
@@ -145,8 +148,10 @@ fn main() -> io::Result<()> {
 
     let mut game = Game::new_with_custom_buf_writer();
     game.install_recommended_components();
+    game.add_component(Box::new(KeypressDebouncerComponent::new(70)));
     game.add_component(Box::new(GameComponent::new()));
     game.add_component(Box::new(PlayerComponent));
+    game.add_component(Box::new(WgpuRenderComponent::new()));
     game.add_component(Box::new(RendererComponent));
     game.run()?;
 

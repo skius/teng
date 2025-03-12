@@ -86,6 +86,14 @@ bincode = "1.3.3"
 # some examples
 [dev-dependencies]
 rayon = "1.10.0"
+
+# for sprites example
 image = "0.25.5"
 rotsprite = "0.1.4"
-
+wgpu = { version = "24" }
+bytemuck = { version = "1.22.0", features = [ "derive" ] }
+pollster = "0.4.0"
+env_logger = "0.11"
+log = "0.4"
+cgmath = "0.18.0"
+anyhow = "1.0"
