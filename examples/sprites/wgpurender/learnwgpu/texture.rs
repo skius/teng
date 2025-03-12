@@ -1,5 +1,6 @@
 use anyhow::*;
 use image::GenericImageView;
+use teng::rendering::render::HalfBlockDisplayRender;
 
 pub struct Texture {
     #[allow(unused)]
@@ -9,6 +10,15 @@ pub struct Texture {
 }
 
 impl Texture {
+    pub fn from_hbd(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        hbd: &HalfBlockDisplayRender,
+        label: &str,
+    ) -> Result<Self> {
+        todo!()
+    }
+    
     pub fn from_bytes(
         device: &wgpu::Device,
         queue: &wgpu::Queue,

@@ -9,6 +9,7 @@ use teng::rendering::color::Color;
 use teng::rendering::render::HalfBlockDisplayRender;
 
 mod texture;
+pub mod shadertoy;
 
 const NUM_INSTANCES_PER_ROW: u32 = 10;
 const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
@@ -452,6 +453,10 @@ impl State {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("marble.wgsl").into()),
+        });
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -677,6 +682,7 @@ impl State {
                 let b = window[2];
                 let a = window[3];
 
+                // TODO: iterating over even the not good chunks is inefficient. should just index the data directly.
                 if x < good_row_size {
                     // if alpha is not entire solid, render as transparent
                     if a != 255 {
