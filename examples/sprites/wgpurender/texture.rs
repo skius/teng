@@ -52,6 +52,46 @@ fn buf_from_hbd(hbd: &HalfBlockDisplayRender) -> (Vec<u8>, u32, u32) {
 }
 
 impl Texture {
+    pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float; // 1.
+
+    pub fn create_depth_texture(device: &wgpu::Device, size: (u32, u32), label: &str) -> Self {
+        let size = wgpu::Extent3d { // 2.
+            width: size.0.max(1),
+            height: size.1.max(1),
+            depth_or_array_layers: 1,
+        };
+        let desc = wgpu::TextureDescriptor {
+            label: Some(label),
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: Self::DEPTH_FORMAT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT // 3.
+                | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        };
+        let texture = device.create_texture(&desc);
+
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let sampler = device.create_sampler(
+            &wgpu::SamplerDescriptor { // 4.
+                address_mode_u: wgpu::AddressMode::ClampToEdge,
+                address_mode_v: wgpu::AddressMode::ClampToEdge,
+                address_mode_w: wgpu::AddressMode::ClampToEdge,
+                mag_filter: wgpu::FilterMode::Linear,
+                min_filter: wgpu::FilterMode::Linear,
+                mipmap_filter: wgpu::FilterMode::Nearest,
+                compare: Some(wgpu::CompareFunction::LessEqual), // 5.
+                lod_min_clamp: 0.0,
+                lod_max_clamp: 100.0,
+                ..Default::default()
+            }
+        );
+
+        Self { texture, view, sampler }
+    }
+
     pub fn update_to_hbd(&mut self, bind_group: &mut wgpu::BindGroup, bind_group_layout: &wgpu::BindGroupLayout, device: &mut wgpu::Device, queue: &mut wgpu::Queue, label: Option<&str>, hbd: &HalfBlockDisplayRender) {
         let (buf, bytes_per_row, rows_per_image) = buf_from_hbd(hbd);
         let size = wgpu::Extent3d {

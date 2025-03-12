@@ -259,6 +259,7 @@ pub struct State {
     texture_view: TextureView,
     output_buffer: wgpu::Buffer,
     adapter_info: AdapterInfo,
+    depth_texture: texture::Texture,
 }
 
 const U32_SIZE: u32 = std::mem::size_of::<u32>() as u32;
@@ -496,7 +497,13 @@ impl State {
                 // Requires Features::CONSERVATIVE_RASTERIZATION
                 conservative: false,
             },
-            depth_stencil: None,
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: texture::Texture::DEPTH_FORMAT,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less, // 1.
+                stencil: wgpu::StencilState::default(), // 2.
+                bias: wgpu::DepthBiasState::default(),
+            }),
             multisample: wgpu::MultisampleState {
                 count: 1,
                 mask: !0,
@@ -521,6 +528,8 @@ impl State {
         });
         let num_indices = INDICES.len() as u32;
 
+        let depth_texture = texture::Texture::create_depth_texture(&device, size, "depth_texture");
+        
         Self {
             device,
             queue,
@@ -543,6 +552,7 @@ impl State {
             texture,
             texture_view,
             output_buffer,
+            depth_texture,
             adapter_info: adapter.get_info(),
         }
     }
@@ -555,6 +565,9 @@ impl State {
         if new_size != self.size {
             self.size = new_size;
             self.camera.aspect = self.size.0 as f32 / self.size.1 as f32;
+            
+            // adjust depth texture
+            self.depth_texture = texture::Texture::create_depth_texture(&self.device, self.size, "depth_texture");
 
             // adjust windowless things
             self.texture_desc.size = wgpu::Extent3d {
@@ -622,7 +635,14 @@ impl State {
                         store: wgpu::StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: None,
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth_texture.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
