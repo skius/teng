@@ -11,8 +11,11 @@ TODO look into how coords get passed from vertex to fragment shaders
 
 
 # TODO:
-- [ ] Use a depth buffer.
+- [x] Use a depth buffer.
 - [ ] Create an instance for a sprite incl width, height, position, (texture?)
+  - [ ] allow defining a view into the source texture by offset(xy) and size(wh), which then computes tex coords.
+  maybe by giving the instance a top-left and bottom-right uv coord, and then the vs shader
+    can determine the correct uv coord by deciding which corner it is based on its model index.
 - [ ] Use a single sprite texture atlas and run animations based on some passed 
 frame index and then sampling the correct texture location.
 

@@ -11,7 +11,7 @@ var<uniform> screen_size: vec2<f32>;
 
 struct VertexInput {
     @builtin(vertex_index) idx: u32,
-    @location(0) position: vec3<f32>,
+    @location(0) position: vec2<f32>,
     @location(1) tex_coords: vec2<f32>,
 }
 struct InstanceInput {
@@ -29,43 +29,11 @@ fn vs_main(
     model: VertexInput,
     instance: InstanceInput,
 ) -> VertexOutput {
-
-    // compute the 6 vertices of a quad so we can render the InstanceInput
-
-    // TODO: fix this and take into account instance pos and scale
-
-
-    // Define the quad vertices
-    const quad_positions = array(
-        vec2<f32>(-0.5, -0.5) + vec2<f32>(0.5, 0.5),
-        vec2<f32>(-0.5,  0.5) + vec2<f32>(0.5, 0.5),
-        vec2<f32>( 0.5,  0.5) + vec2<f32>(0.5, 0.5),
-        vec2<f32>(-0.5, -0.5) + vec2<f32>(0.5, 0.5),
-        vec2<f32>( 0.5,  0.5) + vec2<f32>(0.5, 0.5),
-        vec2<f32>( 0.5, -0.5) + vec2<f32>(0.5, 0.5),
-    );
-
-    // Define the texture coordinates
-    const tex_coords = array(
-        vec2<f32>(0.0, 0.0),
-        vec2<f32>(0.0, 1.0),
-        vec2<f32>(1.0, 1.0),
-        vec2<f32>(0.0, 0.0),
-        vec2<f32>(1.0, 1.0),
-        vec2<f32>(1.0, 0.0),
-    );
-
     var out: VertexOutput;
+    out.tex_coords = model.tex_coords;
 
-    out.tex_coords = tex_coords[model.idx];
-
-    // Apply instance position and scale
-    let pos = quad_positions[model.idx] * instance.sprite_scale + instance.sprite_position.xy;
-
-
+    let pos = model.position * instance.sprite_scale + instance.sprite_position.xy;
     out.clip_position = camera.view_proj * vec4<f32>(pos, instance.sprite_position.z, 1.0);
-//    out.clip_position = camera.view_proj * vec4<f32>(model.position.xy, 20.0, 1.0);
-//    out.clip_position = vec4<f32>(model.position.xy, 20.0, 1.0);
 
     return out;
 }

@@ -21,7 +21,7 @@ const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct Vertex {
-    position: [f32; 3],
+    position: [f32; 2],
     tex_coords: [f32; 2],
 }
 
@@ -35,10 +35,10 @@ impl Vertex {
                 wgpu::VertexAttribute {
                     offset: 0,
                     shader_location: 0,
-                    format: wgpu::VertexFormat::Float32x3,
+                    format: wgpu::VertexFormat::Float32x2,
                 },
                 wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+                    offset: mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
                     shader_location: 1,
                     format: wgpu::VertexFormat::Float32x2,
                 },
@@ -47,34 +47,32 @@ impl Vertex {
     }
 }
 
-// TODO: fix this and either hardcode the vertices correctly or just delete them.
-// honestly might be good idea to hard code them to -1, 1 and then do scaling on that in the shader?
-// can keep tex coords for now
+// a quad defined by two triangles
 const VERTICES: &[Vertex] = &[
     Vertex {
-        position: [10.0, 60.0, 0.0],
-        tex_coords: [0.4131759, 0.00759614],
-    }, // A
+        position: [0.0, 0.0],
+        tex_coords: [0.0, 0.0],
+    },
     Vertex {
-        position: [60.0, 60.0, 0.0],
-        tex_coords: [0.0048659444, 0.43041354],
-    }, // B
+        position: [0.0, 1.0],
+        tex_coords: [0.0, 1.0],
+    },
     Vertex {
-        position: [10.0, 10.0, 0.0],
-        tex_coords: [0.28081453, 0.949397],
-    }, // C
+        position: [1.0, 1.0],
+        tex_coords: [1.0, 1.0],
+    },
     Vertex {
-        position: [10.0, 10.0, 0.0],
-        tex_coords: [0.85967, 0.84732914],
-    }, // D
+        position: [0.0, 0.0],
+        tex_coords: [0.0, 0.0],
+    },
     Vertex {
-        position: [60.0, 60.0, 0.0],
-        tex_coords: [0.9414737, 0.2652641],
-    }, // E
+        position: [1.0, 1.0],
+        tex_coords: [1.0, 1.0],
+    },
     Vertex {
-        position: [60.0, 10.0, 0.0],
-        tex_coords: [0.9414737, 0.2652641],
-    }, // E
+        position: [1.0, 0.0],
+        tex_coords: [1.0, 0.0],
+    },
 ];
 
 const INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4, /* padding */ 0];
@@ -654,7 +652,7 @@ impl State {
             0,
             bytemuck::cast_slice(&self.instances),
         );
-        
+
         // self.camera_controller.update_camera(&mut self.camera);
         // self.camera_uniform.update_view_proj(&self.camera);
         // self.queue.write_buffer(
