@@ -3,6 +3,13 @@ WGSL struct alignments (needs Chrome): https://webgpufundamentals.org/webgpu/les
 
 "Learn WGPU": https://sotrh.github.io/learn-wgpu/
 
+when using the perspective projection camera, clip_position coords get x y in [0, screen_width] and [0, screen_height] I think.
+hmm. why does the tutorial say the camera computes normalized coordinates? 
+TODO look into how coords get passed from vertex to fragment shaders
+
+
+
+
 # TODO:
 - [ ] Use a depth buffer.
 - [ ] Create an instance for a sprite incl width, height, position, (texture?)

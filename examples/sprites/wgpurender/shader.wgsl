@@ -51,3 +51,17 @@ var s_diffuse: sampler;
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     return textureSample(t_diffuse, s_diffuse, in.tex_coords);
 }
+
+
+//@fragment
+//fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+//    let x = in.clip_position.x;
+//    let y = in.clip_position.y;
+//    // draw colors according to position
+//    let color = vec3<f32>(
+//        x / 200.,
+//        y / 120.,
+//        0.,
+//    );
+//    return vec4<f32>(color, 1.0);
+//}

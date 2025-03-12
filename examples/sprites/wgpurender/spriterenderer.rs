@@ -9,8 +9,6 @@ use teng::rendering::color::Color;
 use teng::rendering::render::HalfBlockDisplayRender;
 use crate::wgpurender::texture;
 
-pub mod shadertoy;
-
 const NUM_INSTANCES_PER_ROW: u32 = 10;
 const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
     NUM_INSTANCES_PER_ROW as f32 * 0.5,
