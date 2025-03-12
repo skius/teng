@@ -31,44 +31,21 @@ fn vs_main(
 ) -> VertexOutput {
 
     // compute the 6 vertices of a quad so we can render the InstanceInput
-    const pos = array(
-        vec2<f32>(-1.0, 1.0),
-        vec2<f32>(-1.0, -1.0),
-        vec2<f32>(1.0, -1.0),
-        vec2<f32>(-1.0, 1.0),
-        vec2<f32>(1.0, -1.0),
-        vec2<f32>(1.0, 1.0),
-    );
-    
+
     // TODO: fix this and take into account instance pos and scale
 
-//    // move the quad to the position of the sprite, which is in screen coords, so we need to take screen_size into account
-//    let sprite_position = instance.sprite_position.xy / screen_size * 2.0 - 1.0;
-//    let sprite_scale = instance.sprite_scale;
-//    // need to scale down sprite_scale to [0, 2] range as well
-//    let new_scale = sprite_scale / screen_size * 2.0;
-//    let pos_shifted = pos[model.idx] * sprite_scale + sprite_position;
-//    
-//    // for all 6 corners, define where each vertex should be according to sprite_position and sprite_scale
-//    let scaled_vertex_positions = array(
-//        vec2<f32>(-1.0 + sprite_position.x, 1.0 - sprite_position.y),
-//        vec2<f32>(-1.0, -1.0),
-//        vec2<f32>(1.0, -1.0),
-//        vec2<f32>(-1.0, 1.0),
-//        vec2<f32>(1.0, -1.0),
-//        vec2<f32>(1.0, 1.0),
-//    );
 
-    let pos_shifted = pos[model.idx];
-
-    // compute the clip position
-    let clip_position = vec4<f32>(
-        pos_shifted,
-        0.0,
-        1.0,
+    // Define the quad vertices
+    const quad_positions = array(
+        vec2<f32>(-0.5, -0.5) + vec2<f32>(0.5, 0.5),
+        vec2<f32>(-0.5,  0.5) + vec2<f32>(0.5, 0.5),
+        vec2<f32>( 0.5,  0.5) + vec2<f32>(0.5, 0.5),
+        vec2<f32>(-0.5, -0.5) + vec2<f32>(0.5, 0.5),
+        vec2<f32>( 0.5,  0.5) + vec2<f32>(0.5, 0.5),
+        vec2<f32>( 0.5, -0.5) + vec2<f32>(0.5, 0.5),
     );
-    
-    // for tex coords just take full uv
+
+    // Define the texture coordinates
     const tex_coords = array(
         vec2<f32>(0.0, 0.0),
         vec2<f32>(0.0, 1.0),
@@ -77,12 +54,18 @@ fn vs_main(
         vec2<f32>(1.0, 1.0),
         vec2<f32>(1.0, 0.0),
     );
-    
-    var out: VertexOutput;
-    
-    out.tex_coords = tex_coords[model.idx];
-    out.clip_position = clip_position;
 
+    var out: VertexOutput;
+
+    out.tex_coords = tex_coords[model.idx];
+
+    // Apply instance position and scale
+    let pos = quad_positions[model.idx] * instance.sprite_scale + instance.sprite_position.xy;
+
+
+    out.clip_position = camera.view_proj * vec4<f32>(pos, instance.sprite_position.z, 1.0);
+//    out.clip_position = camera.view_proj * vec4<f32>(model.position.xy, 20.0, 1.0);
+//    out.clip_position = vec4<f32>(model.position.xy, 20.0, 1.0);
 
     return out;
 }

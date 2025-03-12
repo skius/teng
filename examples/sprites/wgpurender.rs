@@ -15,7 +15,7 @@ pub struct WgpuSpriteRenderComponent {
 
 impl WgpuSpriteRenderComponent {
     pub fn new() -> Self {
-        let state = pollster::block_on(spriterenderer::State::new((10, 10)));
+        let state = pollster::block_on(spriterenderer::State::new((200, 200)));
 
         Self {
             state,
@@ -50,6 +50,12 @@ impl Component<GameState> for WgpuSpriteRenderComponent {
             return;
         }
 
+        if shared_state.mouse_info.left_mouse_down {
+            let (x, y) = shared_state.mouse_info.last_mouse_pos;
+            let y = 2 * y;
+            self.state.update(x, y, &shared_state);
+        }
+        
         let game_state = &mut shared_state.custom;
 
         let hbd = &mut game_state.hbd;
@@ -60,7 +66,7 @@ impl Component<GameState> for WgpuSpriteRenderComponent {
             self.state.update_texture_to_hbd(hbd);
         }
 
-        self.state.update();
+
 
         shared_state.debug_info.custom.insert("adapter_info".to_string(), format!("{:?}", self.state.get_adapter_info()));
 

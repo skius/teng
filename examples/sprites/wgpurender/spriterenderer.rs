@@ -7,6 +7,8 @@ use wgpu::{AdapterInfo, TextureView};
 use wgpu::util::DeviceExt;
 use teng::rendering::color::Color;
 use teng::rendering::render::HalfBlockDisplayRender;
+use teng::SharedState;
+use crate::GameState;
 use crate::wgpurender::texture;
 
 const NUM_INSTANCES_PER_ROW: u32 = 10;
@@ -50,27 +52,27 @@ impl Vertex {
 // can keep tex coords for now
 const VERTICES: &[Vertex] = &[
     Vertex {
-        position: [-0.0868241, 0.49240386, 0.0],
+        position: [10.0, 60.0, 0.0],
         tex_coords: [0.4131759, 0.00759614],
     }, // A
     Vertex {
-        position: [-0.49513406, 0.06958647, 0.0],
+        position: [60.0, 60.0, 0.0],
         tex_coords: [0.0048659444, 0.43041354],
     }, // B
     Vertex {
-        position: [-0.21918549, -0.44939706, 0.0],
+        position: [10.0, 10.0, 0.0],
         tex_coords: [0.28081453, 0.949397],
     }, // C
     Vertex {
-        position: [0.35966998, -0.3473291, 0.0],
+        position: [10.0, 10.0, 0.0],
         tex_coords: [0.85967, 0.84732914],
     }, // D
     Vertex {
-        position: [0.44147372, 0.2347359, 0.0],
+        position: [60.0, 60.0, 0.0],
         tex_coords: [0.9414737, 0.2652641],
     }, // E
     Vertex {
-        position: [0.44147372, 0.2347359, 0.0],
+        position: [60.0, 10.0, 0.0],
         tex_coords: [0.9414737, 0.2652641],
     }, // E
 ];
@@ -96,11 +98,14 @@ struct Camera {
 }
 
 impl Camera {
-    fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
-        let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
-        let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
-        proj * view
-    }
+    // fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
+    //     // orthographic projection
+    //     let mat = cgmath::ortho()
+    //
+    //     let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
+    //     let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
+    //     proj * view
+    // }
 }
 
 #[repr(C)]
@@ -116,8 +121,15 @@ impl CameraUniform {
         }
     }
 
-    fn update_view_proj(&mut self, camera: &Camera) {
-        self.view_proj = (OPENGL_TO_WGPU_MATRIX * camera.build_view_projection_matrix()).into();
+    fn update_view_proj(&mut self, left: f32, right: f32, bottom: f32, top: f32) {
+        let znear = -100.0;
+        let zfar = 100.0;
+        // note: top/bottom flipped
+        let view_proj_mat = OPENGL_TO_WGPU_MATRIX * cgmath::ortho(left, right, top, bottom, znear, zfar);
+        self.view_proj = view_proj_mat.into();
+        // panic!("Example: multiplying 20.0, 20.0 by view proj mat: {:?}", view_proj_mat * cgmath::Vector4::new(20.0, 20.0, 2.0, 1.0));
+
+        // self.view_proj = (OPENGL_TO_WGPU_MATRIX * cgmath::ortho(left, right, bottom, top, znear, zfar)).into();
     }
 }
 
@@ -370,7 +382,7 @@ impl State {
         let camera_controller = CameraController::new(0.2);
 
         let mut camera_uniform = CameraUniform::new();
-        camera_uniform.update_view_proj(&camera);
+        camera_uniform.update_view_proj(0.0, size.0 as f32, 0.0, size.1 as f32,);
 
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Camera Buffer"),
@@ -418,7 +430,7 @@ impl State {
         let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Instance Buffer"),
             contents: bytemuck::cast_slice(&instance_data),
-            usage: wgpu::BufferUsages::VERTEX,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         });
 
         let camera_bind_group_layout =
@@ -500,7 +512,8 @@ impl State {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Back),
+                // cull_mode: Some(wgpu::Face::Back),
+                cull_mode: None,
                 // Setting this to anything other than Fill requires Features::POLYGON_MODE_LINE
                 // or Features::POLYGON_MODE_POINT
                 polygon_mode: wgpu::PolygonMode::Fill,
@@ -579,6 +592,14 @@ impl State {
             self.size = new_size;
             self.camera.aspect = self.size.0 as f32 / self.size.1 as f32;
 
+            // adjust camera uniform
+            self.camera_uniform.update_view_proj(0.0, self.size.0 as f32, 0.0, self.size.1 as f32);
+            self.queue.write_buffer(
+                &self.camera_buffer,
+                0,
+                bytemuck::cast_slice(&[self.camera_uniform]),
+            );
+
             // adjust position buffer
             self.queue.write_buffer(
                 &self.position_buffer,
@@ -613,21 +634,34 @@ impl State {
     }
 
     pub fn input(&mut self, event: &HashSet<KeyCode>) -> bool {
-        self.camera_controller.process_events(event)
+        // self.camera_controller.process_events(event)
+        true
     }
 
     pub fn update_texture_to_hbd(&mut self, hbd: &HalfBlockDisplayRender) {
         self.diffuse_texture.update_to_hbd(&mut self.diffuse_bind_group, &self.diffuse_bind_group_layout, &mut self.device, &mut self.queue, Some("hbd texture"), hbd);
     }
 
-    pub fn update(&mut self) {
-        self.camera_controller.update_camera(&mut self.camera);
-        self.camera_uniform.update_view_proj(&self.camera);
+    pub fn update(&mut self, x: usize, y: usize, shared_state: &SharedState<GameState>) {
+        let x = x as f32;
+        let y = y as f32;
+        self.instances[0].position = [x, y, 0.0];
+        if shared_state.pressed_keys.did_press_char_ignore_case('w') {
+            self.instances[0].scale = [self.instances[0].scale[0] + 1.0, self.instances[0].scale[1] + 1.0];
+        }
         self.queue.write_buffer(
-            &self.camera_buffer,
+            &self.instance_buffer,
             0,
-            bytemuck::cast_slice(&[self.camera_uniform]),
+            bytemuck::cast_slice(&self.instances),
         );
+        
+        // self.camera_controller.update_camera(&mut self.camera);
+        // self.camera_uniform.update_view_proj(&self.camera);
+        // self.queue.write_buffer(
+        //     &self.camera_buffer,
+        //     0,
+        //     bytemuck::cast_slice(&[self.camera_uniform]),
+        // );
     }
 
     pub fn render(&mut self, hbd: &mut HalfBlockDisplayRender) -> Result<(), wgpu::SurfaceError> {
@@ -647,9 +681,9 @@ impl State {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
+                            r: 0.01,
+                            g: 0.01,
+                            b: 0.01,
                             a: 1.0,
                         }),
                         store: wgpu::StoreOp::Store,
