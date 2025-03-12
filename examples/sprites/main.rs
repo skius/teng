@@ -151,8 +151,8 @@ fn main() -> io::Result<()> {
     game.add_component(Box::new(KeypressDebouncerComponent::new(70)));
     game.add_component(Box::new(GameComponent::new()));
     game.add_component(Box::new(PlayerComponent));
-    // game.add_component(Box::new(WgpuRenderComponent::new()));
-    game.add_component(Box::new(WgpuShadertoyRenderComponent::new()));
+    game.add_component(Box::new(WgpuRenderComponent::new()));
+    // game.add_component(Box::new(WgpuShadertoyRenderComponent::new()));
     game.add_component(Box::new(RendererComponent));
     game.run()?;
 

@@ -7,6 +7,7 @@ use wgpu::{AdapterInfo, TextureView};
 use wgpu::util::DeviceExt;
 use teng::rendering::color::Color;
 use teng::rendering::render::HalfBlockDisplayRender;
+use crate::wgpurender::learnwgpu::texture::Texture;
 
 mod texture;
 pub mod shadertoy;
@@ -245,6 +246,7 @@ pub struct State {
     num_indices: u32,
     #[allow(dead_code)]
     diffuse_texture: texture::Texture,
+    diffuse_bind_group_layout: wgpu::BindGroupLayout,
     diffuse_bind_group: wgpu::BindGroup,
     camera: Camera,
     camera_controller: CameraController,
@@ -335,7 +337,7 @@ impl State {
         let diffuse_texture =
             texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png").unwrap();
 
-        let texture_bind_group_layout =
+        let diffuse_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[
                     wgpu::BindGroupLayoutEntry {
@@ -359,7 +361,7 @@ impl State {
             });
 
         let diffuse_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &texture_bind_group_layout,
+            layout: &diffuse_bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -453,15 +455,11 @@ impl State {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("marble.wgsl").into()),
-        });
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout],
+                bind_group_layouts: &[&diffuse_bind_group_layout, &camera_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -534,6 +532,7 @@ impl State {
             index_buffer,
             num_indices,
             diffuse_texture,
+            diffuse_bind_group_layout,
             diffuse_bind_group,
             camera,
             camera_controller,
@@ -584,6 +583,10 @@ impl State {
 
     pub fn input(&mut self, event: &HashSet<KeyCode>) -> bool {
         self.camera_controller.process_events(event)
+    }
+
+    pub fn update_texture_to_hbd(&mut self, hbd: &HalfBlockDisplayRender) {
+        self.diffuse_texture.update_to_hbd(&mut self.diffuse_bind_group, &self.diffuse_bind_group_layout, &mut self.device, &mut self.queue, Some("hbd texture"), hbd);
     }
 
     pub fn update(&mut self) {
