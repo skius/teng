@@ -61,7 +61,7 @@ impl Texture {
         };
 
         if self.texture.size() != size {
-            // recreate the texture
+            // recreate the texture, since its size changed
             let format = wgpu::TextureFormat::Rgba8UnormSrgb;
 
             self.texture = device.create_texture(&wgpu::TextureDescriptor {
@@ -76,22 +76,23 @@ impl Texture {
             });
 
             self.view = self.texture.create_view(&wgpu::TextureViewDescriptor::default());
-        }
 
-        *bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&self.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&self.sampler),
-                },
-            ],
-            label: Some("diffuse_bind_group"),
-        });
+            // since we changed the texture, we also need to adjust the bind group.
+            *bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: &bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&self.view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&self.sampler),
+                    },
+                ],
+                label: Some("diffuse_bind_group"),
+            });
+        }
         
 
         queue.write_texture(
