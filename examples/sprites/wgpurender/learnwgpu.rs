@@ -289,7 +289,8 @@ impl State {
                 // Select between low power or high performance GPU
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: None,
-                force_fallback_adapter: false,
+                // Turn this to false for a real GPU.
+                force_fallback_adapter: true,
             })
             .await
             .unwrap();
