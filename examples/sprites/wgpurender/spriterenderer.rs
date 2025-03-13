@@ -343,7 +343,7 @@ impl State {
         //     })
         //     .collect::<Vec<_>>();
 
-        let instances = [
+        let mut instances = vec![
             Instance {
                 position: [0.0, 0.0, 3.0],
                 scale: [30.0, 30.0],
@@ -357,7 +357,17 @@ impl State {
                 scale: [60.0, 60.0],
         }];
 
-        let instance_data = instances.clone().into_iter().collect::<Vec<_>>();
+        // for performance testing
+        // for _ in 0..1000000 {
+        //     let random_x = rand::random::<f32>() * 100.0;
+        //     let random_y = rand::random::<f32>() * 100.0;
+        //     instances.push(Instance {
+        //         position: [random_x, random_y, 10.0],
+        //         scale: [30.0, 30.0],
+        //     });
+        // }
+
+        let instance_data = instances.clone();
         let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Instance Buffer"),
             contents: bytemuck::cast_slice(&instance_data),
@@ -501,7 +511,7 @@ impl State {
             camera_bind_group,
             position_buffer,
             camera_uniform,
-            instances: instances.to_vec(),
+            instances: instances.clone(),
             instance_buffer,
             texture_desc,
             texture,
