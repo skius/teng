@@ -11,6 +11,8 @@ TODO look into how coords get passed from vertex to fragment shaders
 
 
 # TODO:
+- [x] Switch from the weird VertexAttr descs to the wgpu macro wgpu::vertex_attr_array!
+  - Done. But needed to use const { }. Maybe look around for easier wgpu wrappers?
 - [x] Use a depth buffer.
 - [ ] Create an instance for a sprite incl width, height, position, (texture?)
   - [ ] allow defining a view into the source texture by offset(xy) and size(wh), which then computes tex coords.
@@ -18,6 +20,9 @@ TODO look into how coords get passed from vertex to fragment shaders
     can determine the correct uv coord by deciding which corner it is based on its model index.
 - [ ] Use a single sprite texture atlas and run animations based on some passed 
 frame index and then sampling the correct texture location.
+- [ ] Test normal maps!
+  - Keep in mind the weirdness with normal maps and the fact that the normal map is in tangent space.
+- [ ] Need to add lights!
 
 # Ideas:
 First pass: render everything to a texture.

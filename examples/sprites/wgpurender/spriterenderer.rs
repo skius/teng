@@ -26,28 +26,42 @@ struct Vertex {
 }
 
 impl Vertex {
+    // fn desc() -> wgpu::VertexBufferLayout<'static> {
+    //     use std::mem;
+    //     wgpu::VertexBufferLayout {
+    //         array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
+    //         step_mode: wgpu::VertexStepMode::Vertex,
+    //         attributes: &[
+    //             wgpu::VertexAttribute {
+    //                 offset: 0,
+    //                 shader_location: 0,
+    //                 format: wgpu::VertexFormat::Float32x2,
+    //             },
+    //             wgpu::VertexAttribute {
+    //                 offset: mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
+    //                 shader_location: 1,
+    //                 format: wgpu::VertexFormat::Float32x2,
+    //             },
+    //         ],
+    //     }
+    // }
+
     fn desc() -> wgpu::VertexBufferLayout<'static> {
         use std::mem;
         wgpu::VertexBufferLayout {
             array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float32x2,
-                },
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x2,
-                },
-            ],
+            // need the "const" because vertex_attr_array does too complex things for automatic lifetime promotion
+            attributes: &const { wgpu::vertex_attr_array![
+                0 => Float32x2,
+                1 => Float32x2,
+            ] },
         }
     }
 }
 
 // a quad defined by two triangles
+// every instance uses exactly these vertices. the vertex shader scales and translates them.
 const VERTICES: &[Vertex] = &[
     Vertex {
         position: [0.0, 0.0],
@@ -75,6 +89,7 @@ const VERTICES: &[Vertex] = &[
     },
 ];
 
+// TODO: delete
 const INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4, /* padding */ 0];
 
 // TODO: switch from cgmath to glam-rs?
@@ -145,6 +160,33 @@ struct Instance {
 
 // NEW!
 impl Instance {
+    // fn desc() -> wgpu::VertexBufferLayout<'static> {
+    //     use std::mem;
+    //     wgpu::VertexBufferLayout {
+    //         array_stride: mem::size_of::<Instance>() as wgpu::BufferAddress,
+    //         // We need to switch from using a step mode of Vertex to Instance
+    //         // This means that our shaders will only change to use the next
+    //         // instance when the shader starts processing a new instance
+    //         step_mode: wgpu::VertexStepMode::Instance,
+    //         attributes: &[
+    //             wgpu::VertexAttribute {
+    //                 offset: 0,
+    //                 // While our vertex shader only uses locations 0, and 1 now, in later tutorials we'll
+    //                 // be using 2, 3, and 4, for Vertex. We'll start at slot 5 not conflict with them later
+    //                 shader_location: 5,
+    //                 format: wgpu::VertexFormat::Float32x3,
+    //             },
+    //             // A mat4 takes up 4 vertex slots as it is technically 4 vec4s. We need to define a slot
+    //             // for each vec4. We don't have to do this in code though.
+    //             wgpu::VertexAttribute {
+    //                 offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+    //                 shader_location: 6,
+    //                 format: wgpu::VertexFormat::Float32x2,
+    //             },
+    //         ],
+    //     }
+    // }
+    
     fn desc() -> wgpu::VertexBufferLayout<'static> {
         use std::mem;
         wgpu::VertexBufferLayout {
@@ -153,22 +195,11 @@ impl Instance {
             // This means that our shaders will only change to use the next
             // instance when the shader starts processing a new instance
             step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    // While our vertex shader only uses locations 0, and 1 now, in later tutorials we'll
-                    // be using 2, 3, and 4, for Vertex. We'll start at slot 5 not conflict with them later
-                    shader_location: 5,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-                // A mat4 takes up 4 vertex slots as it is technically 4 vec4s. We need to define a slot
-                // for each vec4. We don't have to do this in code though.
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
-                    shader_location: 6,
-                    format: wgpu::VertexFormat::Float32x2,
-                },
-            ],
+            // need the "const" because vertex_attr_array does too complex things for automatic lifetime promotion
+            attributes: &const { wgpu::vertex_attr_array![
+                5 => Float32x3,
+                6 => Float32x2,
+            ] },
         }
     }
 }
