@@ -77,7 +77,7 @@ const VERTICES: &[Vertex] = &[
 
 const INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4, /* padding */ 0];
 
-// this matrix seems very wrong.
+// TODO: switch from cgmath to glam-rs?
 #[rustfmt::skip]
 pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
     1.0, 0.0, 0.0, 0.0,
@@ -102,6 +102,16 @@ impl CameraUniform {
     fn update_view_proj(&mut self, left: f32, right: f32, bottom: f32, top: f32) {
         let znear = -0.1;
         let zfar = 100.0;
+
+        // See below comments for notes on cgmath. cgmath::ortho is right handed, also in OpenGL conventions.
+        // here we use glam, which uses wgpu conventions, so we don't need to multiply with OPENGL_TO_WGPU_MATRIX.
+        // Additionally, we use the left-handed version of orthographic_lh, because our top/bottom flip
+        // performs the right-to-left handedness conversion. So we don't need the orthographic projection to do another
+        // right-to-left conversion, and instead we use _lh.
+        // See the version below with cgmath for how to use a orthographic_rh projection instead.
+        let glam_ortho = glam::Mat4::orthographic_lh(left, right, bottom, top, znear, zfar);
+        self.view_proj = glam_ortho.to_cols_array_2d();
+        return;
 
         // NOTE: AHA, the problem seems to be handedness, specifically the c2r2 component should flip sign?
         // maybe this is useful: https://learnopengl.com/In-Practice/2D-Game/Rendering-Sprites
