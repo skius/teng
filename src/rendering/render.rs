@@ -430,10 +430,18 @@ impl Render for HalfBlockDisplayRender {
                         renderer.render_pixel(x, y, pixel, depth);
                     }
                     (color_top, color_bottom) => {
-                        let mut pixel = Pixel::new('▀');
-                        pixel.color = color_top;
-                        pixel.bg_color = color_bottom;
-                        renderer.render_pixel(x, y, pixel, depth);
+                        if color_top == color_bottom {
+                            // slight optimization, don't draw the bg color.
+                            let mut pixel = Pixel::new('█');
+                            pixel.color = color_top;
+                            pixel.bg_color = Color::Transparent;
+                            renderer.render_pixel(x, y, pixel, depth);
+                        } else {
+                            let mut pixel = Pixel::new('▀');
+                            pixel.color = color_top;
+                            pixel.bg_color = color_bottom;
+                            renderer.render_pixel(x, y, pixel, depth);
+                        }
                     }
                 }
             }

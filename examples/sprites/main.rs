@@ -124,12 +124,40 @@ impl Component<GameState> for GameComponent {
 struct RendererComponent;
 
 impl Component<GameState> for RendererComponent {
+    fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<GameState>) {
+        // screen tearing test
+        // let random_grey = rand::random::<u8>();
+        // shared_state.custom.hbd.set_color(0, 0, Color::Rgb([random_grey; 3]));
+
+        let mut some_sprite = get_animation(AnimationRepositoryKey::PlayerIdle);
+        let (x, y) = shared_state.mouse_info.last_mouse_pos;
+        let y = 2*y;
+        some_sprite.render_to_hbd(x as i64, y as i64, &mut shared_state.custom.hbd, 0.0);
+        some_sprite.render_to_hbd(x as i64, y as i64 + 16, &mut shared_state.custom.hbd, 0.0);
+        some_sprite.render_to_hbd(x as i64, y as i64 + 32, &mut shared_state.custom.hbd, 0.0);
+    }
+
     fn render(
         &self,
         renderer: &mut dyn Renderer,
         shared_state: &SharedState<GameState>,
         depth_base: i32,
     ) {
+        // screen tearing test
+        let size_x = 30;
+        let size_y = 30;
+        let (x, y) = shared_state.mouse_info.last_mouse_pos;
+
+        for i in 0..size_x {
+            for j in 0..size_y {
+                // interesting. No screen tear when I'm not holding down LMB and moving the hbd pixels,
+                // but screen tear when I'm holding down LMB and moving the hbd pixels.
+                // Visually there is no difference, but I believe the hbd still sets the background color,
+                // we just don't see it because the full block is drawn over it.
+                renderer.render_pixel(x + i, y + j, Pixel::new('█'), depth_base);
+            }
+        }
+
         shared_state.custom.hbd.render(renderer, 0, 0, depth_base);
     }
 }

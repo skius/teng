@@ -44,7 +44,9 @@ frame index and then sampling the correct texture location.
   - For some weird reason, as soon as I press 'i' the screen tearing goes away. Maybe it's something about
     a buggy position being kept track in the DisplayRenderer? DebugInfo renders its first position very early since
     it basically always has a diff, so that could be a reason. Test this!
-
+  - ok no. It seems to be HBD? when I just have a full block render thing moving around there's no screen tearing.
+    but if I have (even something behind the full block block, so occluded) a hbd will cause screen tearing when it's moving around
+    ??? no idea why.
 # Ideas:
 First pass: render everything to a texture.
 Second pass: in the beginning, just display this texture over the entire screen
