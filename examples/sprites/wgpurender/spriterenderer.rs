@@ -186,7 +186,7 @@ impl Instance {
     //         ],
     //     }
     // }
-    
+
     fn desc() -> wgpu::VertexBufferLayout<'static> {
         use std::mem;
         wgpu::VertexBufferLayout {
@@ -271,6 +271,8 @@ impl State {
             .unwrap();
 
         // From windowless example
+        // this texture is where we will write the screen output to
+        // TODO: refactor this code to make it look better
         let texture_size = size;
         let texture_desc = wgpu::TextureDescriptor {
             size: wgpu::Extent3d {
@@ -302,9 +304,14 @@ impl State {
         let output_buffer = device.create_buffer(&output_buffer_desc);
         // End windowless example
 
-        let diffuse_bytes = include_bytes!("happy-tree.png");
+        let diffuse_bytes = include_bytes!("crate_diffuse.png");
         let diffuse_texture =
-            texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png").unwrap();
+            texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "crate_diffuse.png", false).unwrap();
+
+        // TODO: use a separate binding group for this? right now we crash if we render the hbd to a texture since we don't set a normal texture.
+        let normal_bytes = include_bytes!("crate_normal.png");
+        let normal_texture =
+            texture::Texture::from_bytes(&device, &queue, normal_bytes, "crate_normal.png", true).unwrap();
 
         let diffuse_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -325,6 +332,22 @@ impl State {
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                         count: None,
                     },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
                 ],
                 label: Some("texture_bind_group_layout"),
             });
@@ -339,6 +362,14 @@ impl State {
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&normal_texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(&normal_texture.sampler),
                 },
             ],
             label: Some("diffuse_bind_group"),
@@ -494,8 +525,8 @@ impl State {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
-                // cull_mode: Some(wgpu::Face::Back),
-                cull_mode: None,
+                cull_mode: Some(wgpu::Face::Back),
+                // cull_mode: None,
                 // Setting this to anything other than Fill requires Features::POLYGON_MODE_LINE
                 // or Features::POLYGON_MODE_POINT
                 polygon_mode: wgpu::PolygonMode::Fill,
@@ -663,7 +694,7 @@ impl State {
                             r: 0.01,
                             g: 0.01,
                             b: 0.01,
-                            a: 1.0,
+                            a: 0.0,
                         }),
                         store: wgpu::StoreOp::Store,
                     },
@@ -741,6 +772,7 @@ impl State {
                 if x < good_row_size {
                     // if alpha is not entire solid, render as transparent
                     if a != 255 {
+                        // TODO: maybe just don't render at all?
                         hbd.set_color(x, y, Color::Transparent);
                     } else {
                         let color = Color::Rgb([r, g, b]);

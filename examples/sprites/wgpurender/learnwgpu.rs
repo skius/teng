@@ -335,7 +335,7 @@ impl State {
 
         let diffuse_bytes = include_bytes!("happy-tree.png");
         let diffuse_texture =
-            texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png").unwrap();
+            texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png", false).unwrap();
 
         let diffuse_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

@@ -40,6 +40,19 @@ fn vs_main(
     let pos = model_pos * instance.sprite_scale + sprite_pos;
     out.clip_position = camera.view_proj * vec4<f32>(pos, instance.sprite_position.z, 1.0);
 
+    // try and compute a uv frame for the region of a 128x128 texture starting at 20,20 and being 50x50 big
+    // TODO: use this to use a sprite atlas
+    let tex_width = 128.0;
+    let tex_height = 128.0;
+    let tex_size = vec2<f32>(tex_width, tex_height);
+    let start = vec2<f32>(60.0, 80.0);
+    let size = vec2<f32>(50.0, 30.0);
+    let uv_top_left = start / tex_size;
+    let uv_bottom_right = (start + size) / tex_size;
+    let uv_size = uv_bottom_right - uv_top_left;
+    let uv = uv_top_left + model.tex_coords * uv_size;
+    out.tex_coords = uv;
+
     return out;
 }
 
@@ -50,9 +63,36 @@ var t_diffuse: texture_2d<f32>;
 @group(0)@binding(1)
 var s_diffuse: sampler;
 
+@group(0) @binding(2)
+var t_normal: texture_2d<f32>;
+@group(0)@binding(3)
+var s_normal: sampler;
+
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return textureSample(t_diffuse, s_diffuse, in.tex_coords);
+    let frag_color = textureSample(t_diffuse, s_diffuse, in.tex_coords);
+    // skip entirely transparent pixels
+    if (frag_color.a < 0.001) {
+        discard;
+    }
+
+    // do normal mapping
+    // TODO: add uniform for a bunch of lights
+    let light_pos = vec3<f32>(100., 100., -20.);
+    let normal_raw = textureSample(t_normal, s_normal, in.tex_coords).xyz;
+    let normal = normalize(normal_raw * -2.0 + 1.0);
+    // QUESTION: do we want z component of input clip position?
+//    let in_pos = in.clip_position.xyz;
+    let in_pos = vec3<f32>(in.clip_position.xy, 0.0);
+    let light_dir = normalize(light_pos - in.clip_position.xyz);
+    let light_intensity = max(dot(normal, light_dir), 0.0);
+    let light_color = vec3<f32>(1.0, 1.0, 1.0);
+    let ambient_color = vec3<f32>(0.1, 0.1, 0.1);
+    // TODO: attenuation depending on distance?
+    let color = frag_color.rgb * (light_intensity * light_color + ambient_color);
+
+
+    return vec4<f32>(color, frag_color.a);
 }
 
 
