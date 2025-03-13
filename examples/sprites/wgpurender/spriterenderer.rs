@@ -77,12 +77,13 @@ const VERTICES: &[Vertex] = &[
 
 const INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4, /* padding */ 0];
 
+// this matrix seems very wrong.
 #[rustfmt::skip]
 pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
     1.0, 0.0, 0.0, 0.0,
     0.0, 1.0, 0.0, 0.0,
-    0.0, 0.0, 0.5, 0.5,
-    0.0, 0.0, 0.0, 1.0,
+    0.0, 0.0, 0.5, 0.0,
+    0.0, 0.0, 0.5, 1.0,
 );
 
 #[repr(C)]
@@ -99,39 +100,44 @@ impl CameraUniform {
     }
 
     fn update_view_proj(&mut self, left: f32, right: f32, bottom: f32, top: f32) {
-        let znear = 0.0;
+        let znear = -0.1;
         let zfar = 100.0;
-        // // note: top/bottom flipped
-        // // let view_proj_mat = cgmath::ortho(left, right, top, bottom, znear, zfar);
-        // let ortho_mat = cgmath::ortho(left, right, bottom, top, znear, zfar);
+        // note: top/bottom flipped
+        // let view_proj_mat = cgmath::ortho(left, right, top, bottom, znear, zfar);
+        // NOTE: AHA, the problem seems to be handedness, specifically the c2r2 component should flip sign?
+        let mut ortho_mat = cgmath::ortho(left, right, bottom, top, znear, zfar);
+        // Flip z because our coordinate system convention is that we look down z, so we want to see positive z values.
+        ortho_mat.z.z = -ortho_mat.z.z; // THIS WORKS
         // let view_proj_mat = ortho_mat;
-        // // let view_proj_mat = OPENGL_TO_WGPU_MATRIX * cgmath::ortho(left, right, top, bottom, znear, zfar);
-        // // let view_proj_mat = OPENGL_TO_WGPU_MATRIX * cgmath::ortho(left, right, bottom, top, znear, zfar);
-        //
-        // // look at positive z
-        // // let lookat = cgmath::Matrix4::look_at_rh(
-        // //     cgmath::Point3::new(0.0, 0.0, 10.0),
-        // //     cgmath::Point3::new(0.0, 0.0, 0.0),
-        // //     cgmath::Vector3::unit_y(),
-        // // );
-        // // let view_proj_mat = OPENGL_TO_WGPU_MATRIX * view_proj_mat * lookat;
-        //
-        // self.view_proj = view_proj_mat.into();
+        let view_proj_mat = OPENGL_TO_WGPU_MATRIX * ortho_mat;
+        // let view_proj_mat = OPENGL_TO_WGPU_MATRIX * cgmath::ortho(left, right, top, bottom, znear, zfar);
+        // let view_proj_mat = OPENGL_TO_WGPU_MATRIX * cgmath::ortho(left, right, bottom, top, znear, zfar);
+
+        // look at positive z
+        // let lookat = cgmath::Matrix4::look_at_rh(
+        //     cgmath::Point3::new(0.0, 0.0, -10.0),
+        //     cgmath::Point3::new(0.0, 0.0, 0.0),
+        //     cgmath::Vector3::unit_y(),
+        // );
+        // let view_proj_mat = OPENGL_TO_WGPU_MATRIX * view_proj_mat * lookat;
+
+        self.view_proj = view_proj_mat.into();
+        return;
 
         // I don't know what I'm doing wrong with cgmath, but this seems to work as long as znear is 0.0
-        let view_proj_mat = cgmath::Matrix4::new(
-            2.0 / right, 0.0,                0.0, 0.0,
-            0.0,               -2.0 / bottom, 0.0, 0.0,
-            0.0,                0.0,                1.0 / (zfar-znear), 0.0,
-            -1.0,                1.0,                0.0, 1.0,
-        );
+        // let view_proj_mat = cgmath::Matrix4::new(
+        //     2.0 / right, 0.0,                0.0, 0.0,
+        //     0.0,               -2.0 / bottom, 0.0, 0.0,
+        //     0.0,                0.0,                1.0 / (zfar-znear), 0.0,
+        //     -1.0,                1.0,                0.0, 1.0,
+        // );
 
-        // let test_vec = cgmath::Vector4::new(100.0, 0.0, 50.1, 1.0);
-        // let out = view_proj_mat * test_vec;
-        // let out_normalized = out / out.w;
-        // let out_no_opengl_conversion = ortho_mat * test_vec;
-        // let out_no_opengl_conversion_normalized = out_no_opengl_conversion / out_no_opengl_conversion.w;
-        // panic!("Example: multiplying {:?} by view proj mat: {:?}, normalized: {:?}, no opengl conversion: {:?}, no opengl conversion normalized: {:?}", test_vec, out, out_normalized, out_no_opengl_conversion, out_no_opengl_conversion_normalized);
+        let test_vec = cgmath::Vector4::new(0.0, 0.0, 50.1, 1.0);
+        let out = view_proj_mat * test_vec;
+        let out_normalized = out / out.w;
+        let out_no_opengl_conversion = ortho_mat * test_vec;
+        let out_no_opengl_conversion_normalized = out_no_opengl_conversion / out_no_opengl_conversion.w;
+        panic!("Example: multiplying {:?} by view proj mat: {:?}, normalized: {:?}, no opengl conversion: {:?}, no opengl conversion normalized: {:?}", test_vec, out, out_normalized, out_no_opengl_conversion, out_no_opengl_conversion_normalized);
 
         self.view_proj = view_proj_mat.into();
 
@@ -369,7 +375,7 @@ impl State {
 
         let instances = [
             Instance {
-                position: [0.0, 0.0, 0.0],
+                position: [0.0, 0.0, 3.0],
                 scale: [30.0, 30.0],
             },
             Instance {
