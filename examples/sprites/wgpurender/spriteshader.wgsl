@@ -31,7 +31,7 @@ fn vs_main(
 ) -> VertexOutput {
     var out: VertexOutput;
     out.tex_coords = model.tex_coords;
-    
+
 //    let model_pos = vec2<f32>(model.position.x, 1.0 - model.position.y);
     let model_pos = model.position.xy;
 //    let sprite_pos = vec2<f32>(instance.sprite_position.x, screen_size.y - instance.sprite_position.y) - vec2<f32>(0.0, instance.sprite_scale.y);

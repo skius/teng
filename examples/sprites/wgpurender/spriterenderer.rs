@@ -105,6 +105,13 @@ impl CameraUniform {
         // note: top/bottom flipped
         // let view_proj_mat = cgmath::ortho(left, right, top, bottom, znear, zfar);
         // NOTE: AHA, the problem seems to be handedness, specifically the c2r2 component should flip sign?
+        // maybe this is useful: https://learnopengl.com/In-Practice/2D-Game/Rendering-Sprites
+        // ah, I think it's because we flip bottom/top, this is already a change of coordinate system.
+        // so. Our input coords (screen coords with z pointing inside screen) are actually right handed coords.
+        // so in theory, the right-to-left conversion that cgmath::ortho (and OpenGL) does is good.
+        // BUT because we flip bottom/top, we _already_ flipped the coordinate system.
+        // so the additional flip by changing z coords is too much, and we can get rid of it.
+        // IDEA: I think using a lookat with up = -y might help and be the more idiomatic way? let's try this.
         let mut ortho_mat = cgmath::ortho(left, right, bottom, top, znear, zfar);
         // Flip z because our coordinate system convention is that we look down z, so we want to see positive z values.
         ortho_mat.z.z = -ortho_mat.z.z; // THIS WORKS
