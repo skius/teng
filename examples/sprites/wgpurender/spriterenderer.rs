@@ -105,13 +105,43 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct CameraUniform {
     view_proj: [[f32; 4]; 4],
+    camera_size: [f32; 2],
+    // center of camera in world pos
+    camera_position: [f32; 2],
 }
 
 impl CameraUniform {
     fn new() -> Self {
         Self {
             view_proj: cgmath::Matrix4::identity().into(),
+            camera_size: [1.0, 1.0],
+            camera_position: [0.0, 0.0],
         }
+    }
+
+    fn resize(&mut self, width: f32, height: f32) {
+        // TODO: to make camera sizes that don't match up with the screen size work, we need to scale a bit in the vertex shader.
+        // This affects the sprite size but also its position.
+        // self.update_camera_size(width * 2.0, height * 2.0);
+        self.update_camera_size(width, height);
+        self.update_view_proj(0.0, width, height, 0.0);
+    }
+
+    fn screen_to_world_coords(&self, x: f32, y: f32) -> (f32, f32) {
+        // let x = x - self.camera_position[0] + self.camera_size[0] / 2.0;
+        // let y = y - self.camera_position[1] + self.camera_size[1] / 2.0;
+        // (x, y)
+        let x = x + self.camera_position[0] - self.camera_size[0] / 2.0;
+        let y = y + self.camera_position[1] - self.camera_size[1] / 2.0;
+        (x, y)
+    }
+
+    fn update_camera_position(&mut self, x: f32, y: f32) {
+        self.camera_position = [x, y];
+    }
+
+    fn update_camera_size(&mut self, width: f32, height: f32) {
+        self.camera_size = [width, height];
     }
 
     fn update_view_proj(&mut self, left: f32, right: f32, bottom: f32, top: f32) {
@@ -380,7 +410,7 @@ impl State {
         });
 
         let mut camera_uniform = CameraUniform::new();
-        camera_uniform.update_view_proj(0.0, size.0 as f32, size.1 as f32, 0.0);
+        camera_uniform.resize(size.0 as f32, size.1 as f32);
 
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Camera Buffer"),
@@ -647,7 +677,7 @@ impl State {
             self.size = new_size;
 
             // adjust camera uniform
-            self.camera_uniform.update_view_proj(0.0, self.size.0 as f32, self.size.1 as f32, 0.0);
+            self.camera_uniform.resize(self.size.0 as f32, self.size.1 as f32);
             self.queue.write_buffer(
                 &self.camera_buffer,
                 0,
@@ -699,6 +729,7 @@ impl State {
     pub fn update(&mut self, x: usize, y: usize, shared_state: &SharedState<GameState>) {
         let x = x as f32;
         let y = y as f32;
+        let (x, y) = self.camera_uniform.screen_to_world_coords(x, y);
         self.instances[0].position = [x, y, self.instances[0].position[2]];
         if shared_state.pressed_keys.did_press_char_ignore_case('w') {
             self.instances[0].size = [self.instances[0].size[0] + 1.0, self.instances[0].size[1] + 1.0];
@@ -708,6 +739,17 @@ impl State {
             0,
             bytemuck::cast_slice(&self.instances),
         );
+
+        if shared_state.pressed_keys.did_press_char_ignore_case('d') {
+            let curr_x = self.camera_uniform.camera_position[0];
+            let curr_y = self.camera_uniform.camera_position[1];
+            self.camera_uniform.update_camera_position(curr_x + 1.0, curr_y);
+            self.queue.write_buffer(
+                &self.camera_buffer,
+                0,
+                bytemuck::cast_slice(&[self.camera_uniform]),
+            );
+        }
 
         // self.camera_controller.update_camera(&mut self.camera);
         // self.camera_uniform.update_view_proj(&self.camera);
