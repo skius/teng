@@ -22,6 +22,7 @@ TODO look into how coords get passed from vertex to fragment shaders
 frame index and then sampling the correct texture location.
 - [ ] Test normal maps!
   - Keep in mind the weirdness with normal maps and the fact that the normal map is in tangent space.
+  - oh! WGSL has builtin dpdx/dpdy... could be useful!
 - [ ] Need to add lights!
 
 # Ideas:
