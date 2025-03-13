@@ -246,6 +246,7 @@ impl<W: Write> DisplayRenderer<W> {
     /// to the terminal output using `crossterm`. It optimizes updates by only
     /// redrawing pixels that have changed since the last `flush()`.
     pub fn flush(&mut self) -> io::Result<()> {
+        // queue!(self.sink, crossterm::terminal::BeginSynchronizedUpdate)?;
         queue!(self.sink, crossterm::cursor::MoveTo(0, 0))?;
 
         let render_everything = self.last_bg_color != self.default_bg_color
@@ -318,6 +319,8 @@ impl<W: Write> DisplayRenderer<W> {
             }
         }
 
+        // queue!(self.sink, crossterm::terminal::EndSynchronizedUpdate)?;
+        
         self.sink.flush()?;
         std::mem::swap(&mut self.display, &mut self.prev_display);
 
