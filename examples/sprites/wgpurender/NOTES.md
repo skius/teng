@@ -20,6 +20,8 @@ TODO look into how coords get passed from vertex to fragment shaders
     can determine the correct uv coord by deciding which corner it is based on its model index.
 - [ ] Use a single sprite texture atlas and run animations based on some passed 
 frame index and then sampling the correct texture location.
+  - [ ] We have the atlas ability now. How do we actually generate the atlas though?
+    - This seems to be enough for our purposes: https://umesh-kc.itch.io/free-online-texture-packer-alternative
 - [ ] Test normal maps!
   - Keep in mind the weirdness with normal maps and the fact that the normal map is in tangent space.
   - oh! WGSL has builtin dpdx/dpdy... could be useful!
