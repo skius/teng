@@ -31,8 +31,13 @@ fn vs_main(
 ) -> VertexOutput {
     var out: VertexOutput;
     out.tex_coords = model.tex_coords;
+    
+//    let model_pos = vec2<f32>(model.position.x, 1.0 - model.position.y);
+    let model_pos = model.position.xy;
+//    let sprite_pos = vec2<f32>(instance.sprite_position.x, screen_size.y - instance.sprite_position.y) - vec2<f32>(0.0, instance.sprite_scale.y);
+    let sprite_pos = instance.sprite_position.xy;
 
-    let pos = model.position * instance.sprite_scale + instance.sprite_position.xy;
+    let pos = model_pos * instance.sprite_scale + sprite_pos;
     out.clip_position = camera.view_proj * vec4<f32>(pos, instance.sprite_position.z, 1.0);
 
     return out;

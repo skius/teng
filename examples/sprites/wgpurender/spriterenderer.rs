@@ -120,14 +120,33 @@ impl CameraUniform {
     }
 
     fn update_view_proj(&mut self, left: f32, right: f32, bottom: f32, top: f32) {
-        let znear = -100.0;
+        let znear = 0.0;
         let zfar = 100.0;
         // note: top/bottom flipped
+        // let view_proj_mat = cgmath::ortho(left, right, top, bottom, znear, zfar);
         let view_proj_mat = OPENGL_TO_WGPU_MATRIX * cgmath::ortho(left, right, top, bottom, znear, zfar);
+        // let view_proj_mat = OPENGL_TO_WGPU_MATRIX * cgmath::ortho(left, right, bottom, top, znear, zfar);
+
+        // look at positive z
+        // let lookat = cgmath::Matrix4::look_at_rh(
+        //     cgmath::Point3::new(0.0, 0.0, 10.0),
+        //     cgmath::Point3::new(0.0, 0.0, 0.0),
+        //     cgmath::Vector3::unit_y(),
+        // );
+        // let view_proj_mat = OPENGL_TO_WGPU_MATRIX * view_proj_mat * lookat;
+
         self.view_proj = view_proj_mat.into();
         // panic!("Example: multiplying 20.0, 20.0 by view proj mat: {:?}", view_proj_mat * cgmath::Vector4::new(20.0, 20.0, 2.0, 1.0));
 
         // self.view_proj = (OPENGL_TO_WGPU_MATRIX * cgmath::ortho(left, right, bottom, top, znear, zfar)).into();
+
+        // let ortho = cgmath::Matrix4::new(
+        //     2.0 / right, 0.0,                0.0, 0.0,
+        //     0.0,               -2.0 / bottom, 0.0, 0.0,
+        //     0.0,                0.0,                1.0 / 100.0, 0.0,
+        //     -1.0,                1.0,                0.0, 1.0,
+        // );
+        // self.view_proj = ortho.into();
     }
 }
 
@@ -419,9 +438,18 @@ impl State {
         //     })
         //     .collect::<Vec<_>>();
 
-        let instances = [Instance {
-            position: [0.0, 0.0, 0.0],
-            scale: [30.0, 30.0],
+        let instances = [
+            Instance {
+                position: [0.0, 0.0, -252.0],
+                scale: [30.0, 30.0],
+            },
+            Instance {
+                position: [0.0, 0.0, 6.0],
+                scale: [30.0, 30.0],
+            },
+            Instance {
+                position: [0.0, 0.0, 4.0],
+                scale: [60.0, 60.0],
         }];
 
         let instance_data = instances.clone().into_iter().collect::<Vec<_>>();
@@ -510,8 +538,8 @@ impl State {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
-                // cull_mode: Some(wgpu::Face::Back),
-                cull_mode: None,
+                cull_mode: Some(wgpu::Face::Back),
+                // cull_mode: None,
                 // Setting this to anything other than Fill requires Features::POLYGON_MODE_LINE
                 // or Features::POLYGON_MODE_POINT
                 polygon_mode: wgpu::PolygonMode::Fill,
@@ -643,7 +671,7 @@ impl State {
     pub fn update(&mut self, x: usize, y: usize, shared_state: &SharedState<GameState>) {
         let x = x as f32;
         let y = y as f32;
-        self.instances[0].position = [x, y, 0.0];
+        self.instances[0].position = [x, y, self.instances[0].position[2]];
         if shared_state.pressed_keys.did_press_char_ignore_case('w') {
             self.instances[0].scale = [self.instances[0].scale[0] + 1.0, self.instances[0].scale[1] + 1.0];
         }
