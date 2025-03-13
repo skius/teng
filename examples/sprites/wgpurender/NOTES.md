@@ -40,6 +40,10 @@ frame index and then sampling the correct texture location.
     everything should just be handled for us.
 - [ ] Restructure the code to look better. In particular, split up bind groups, have everything be typed correctly (looking especially at bytemuck::cast_slice arguments!!!!),
   and also pass in some general arguments to the shaders like frame count, time, etc.
+- [ ] Figure out screen tearing that's happening when debug info is not showing.
+  - For some weird reason, as soon as I press 'i' the screen tearing goes away. Maybe it's something about
+    a buggy position being kept track in the DisplayRenderer? DebugInfo renders its first position very early since
+    it basically always has a diff, so that could be a reason. Test this!
 
 # Ideas:
 First pass: render everything to a texture.

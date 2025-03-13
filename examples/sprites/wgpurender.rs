@@ -55,7 +55,7 @@ impl Component<GameState> for WgpuSpriteRenderComponent {
             let y = 2 * y;
             self.state.update(x, y, &shared_state);
         }
-        
+
         let game_state = &mut shared_state.custom;
 
         let hbd = &mut game_state.hbd;
