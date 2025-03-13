@@ -9,6 +9,9 @@ var<uniform> camera: Camera;
 @group(1) @binding(1)
 var<uniform> screen_size: vec2<f32>;
 
+@group(2) @binding(0)
+var<uniform> texture_atlas_dimensions: vec2<f32>;
+
 struct VertexInput {
     @builtin(vertex_index) idx: u32,
     @location(0) position: vec2<f32>,
@@ -16,7 +19,10 @@ struct VertexInput {
 }
 struct InstanceInput {
     @location(5) sprite_position: vec3<f32>,
-    @location(6) sprite_scale: vec2<f32>,
+    // The size of the sprite in pixels. Since we don't scale our sprites, this is also the size in screen pixels.
+    @location(6) sprite_size: vec2<f32>,
+    // The offset in pixels into the texture atlas where this sprite begins.
+    @location(7) sprite_tex_atlas_offset: vec2<f32>,
 }
 
 struct VertexOutput {
@@ -34,24 +40,24 @@ fn vs_main(
 
 //    let model_pos = vec2<f32>(model.position.x, 1.0 - model.position.y);
     let model_pos = model.position.xy;
-//    let sprite_pos = vec2<f32>(instance.sprite_position.x, screen_size.y - instance.sprite_position.y) - vec2<f32>(0.0, instance.sprite_scale.y);
+//    let sprite_pos = vec2<f32>(instance.sprite_position.x, screen_size.y - instance.sprite_position.y) - vec2<f32>(0.0, instance.sprite_size.y);
     let sprite_pos = instance.sprite_position.xy;
 
-    let pos = model_pos * instance.sprite_scale + sprite_pos;
+    let pos = model_pos * instance.sprite_size + sprite_pos;
     out.clip_position = camera.view_proj * vec4<f32>(pos, instance.sprite_position.z, 1.0);
 
     // try and compute a uv frame for the region of a 128x128 texture starting at 20,20 and being 50x50 big
     // TODO: use this to use a sprite atlas
-    let tex_width = 128.0;
-    let tex_height = 128.0;
-    let tex_size = vec2<f32>(tex_width, tex_height);
-    let start = vec2<f32>(60.0, 80.0);
-    let size = vec2<f32>(50.0, 30.0);
-    let uv_top_left = start / tex_size;
-    let uv_bottom_right = (start + size) / tex_size;
-    let uv_size = uv_bottom_right - uv_top_left;
-    let uv = uv_top_left + model.tex_coords * uv_size;
-    out.tex_coords = uv;
+    if texture_atlas_dimensions.x > 0.0 {
+        let start = instance.sprite_tex_atlas_offset;
+        let size = instance.sprite_size;
+        let uv_top_left = start / texture_atlas_dimensions;
+        let uv_bottom_right = (start + size) / texture_atlas_dimensions;
+        let uv_size = uv_bottom_right - uv_top_left;
+        let uv = uv_top_left + model.tex_coords * uv_size;
+        out.tex_coords = uv;
+    }
+
 
     return out;
 }

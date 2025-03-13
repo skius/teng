@@ -24,6 +24,14 @@ frame index and then sampling the correct texture location.
   - Keep in mind the weirdness with normal maps and the fact that the normal map is in tangent space.
   - oh! WGSL has builtin dpdx/dpdy... could be useful!
 - [ ] Need to add lights!
+  - Have something that seems to work.
+- [ ] It's probably really a good idea to have instances/sprites actually store their 'world' positions, maybe even with positive y,
+  since when we move the camera, we would have to move _every instance_ in order to get the moving camera effect.
+  Instead, if we compute the screen space coords _inside the shader_ this is much faster since it's parallel.
+  - [ ] This should also make "zooming out" easier, since if we pass in a 'wrong' camera size that does not correspond to our screen,
+    everything should just be handled for us.
+- [ ] Restructure the code to look better. In particular, split up bind groups, have everything be typed correctly (looking especially at bytemuck::cast_slice arguments!!!!),
+  and also pass in some general arguments to the shaders like frame count, time, etc.
 
 # Ideas:
 First pass: render everything to a texture.

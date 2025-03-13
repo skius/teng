@@ -155,7 +155,9 @@ struct Instance {
     /// xyz, z being depth for render order but ignored due to orthographic projection, xy in screen coords
     position: [f32; 3],
     /// height/width of the desired sprite in pixels
-    scale: [f32; 2],
+    size: [f32; 2],
+    /// offset in pixels from the top left corner of the texture atlas
+    sprite_tex_atlas_offset: [f32; 2],
 }
 
 // NEW!
@@ -199,6 +201,7 @@ impl Instance {
             attributes: &const { wgpu::vertex_attr_array![
                 5 => Float32x3,
                 6 => Float32x2,
+                7 => Float32x2,
             ] },
         }
     }
@@ -220,6 +223,7 @@ pub struct State {
     camera_buffer: wgpu::Buffer,
     position_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
+    texture_atlas_size_bind_group: wgpu::BindGroup,
     instances: Vec<Instance>,
     #[allow(dead_code)]
     instance_buffer: wgpu::Buffer,
@@ -418,15 +422,18 @@ impl State {
         let mut instances = vec![
             Instance {
                 position: [0.0, 0.0, 3.0],
-                scale: [30.0, 30.0],
+                size: [30.0, 30.0],
+                sprite_tex_atlas_offset: [30.0, 30.0],
             },
             Instance {
                 position: [0.0, 0.0, 2.0],
-                scale: [30.0, 30.0],
+                size: [30.0, 30.0],
+                sprite_tex_atlas_offset: [0.0, 0.0],
             },
             Instance {
                 position: [0.0, 0.0, 4.0],
-                scale: [60.0, 60.0],
+                size: [60.0, 60.0],
+                sprite_tex_atlas_offset: [0.0, 0.0],
         }];
 
         // for performance testing
@@ -487,6 +494,42 @@ impl State {
             label: Some("camera_bind_group"),
         });
 
+        let texture_atlas_size_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+            label: Some("texture_atlas_size_bind_group_layout"),
+        });
+        // TODO: IMPORTANT LEARNING
+        // IF WE JUST USE [128.0, 128.0] WITHOUT TYPE ANNOTATIONS, then we will not get f32 bytes but something else.
+        // probably f64. So this is not good, and we should also change it for the other place where we're doing this.
+        let tex_size: [f32; 2] = [128.0, 128.0];
+        // TODO: don't hardcode this
+        let texture_atlas_size_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Texture Atlas Size Buffer"),
+            contents: bytemuck::cast_slice(&[tex_size]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+        let texture_atlas_size_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &texture_atlas_size_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: texture_atlas_size_buffer.as_entire_binding(),
+                },
+            ],
+            label: Some("texture_atlas_size_bind_group"),
+        });
+
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("spriteshader.wgsl").into()),
@@ -495,7 +538,7 @@ impl State {
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&diffuse_bind_group_layout, &camera_bind_group_layout],
+                bind_group_layouts: &[&diffuse_bind_group_layout, &camera_bind_group_layout, &texture_atlas_size_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -581,6 +624,7 @@ impl State {
             diffuse_bind_group,
             camera_buffer,
             camera_bind_group,
+            texture_atlas_size_bind_group,
             position_buffer,
             camera_uniform,
             instances: instances.clone(),
@@ -657,7 +701,7 @@ impl State {
         let y = y as f32;
         self.instances[0].position = [x, y, self.instances[0].position[2]];
         if shared_state.pressed_keys.did_press_char_ignore_case('w') {
-            self.instances[0].scale = [self.instances[0].scale[0] + 1.0, self.instances[0].scale[1] + 1.0];
+            self.instances[0].size = [self.instances[0].size[0] + 1.0, self.instances[0].size[1] + 1.0];
         }
         self.queue.write_buffer(
             &self.instance_buffer,
@@ -714,6 +758,7 @@ impl State {
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+            render_pass.set_bind_group(2, &self.texture_atlas_size_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
             // render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
