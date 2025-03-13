@@ -85,27 +85,6 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
     0.0, 0.0, 0.0, 1.0,
 );
 
-struct Camera {
-    eye: cgmath::Point3<f32>,
-    target: cgmath::Point3<f32>,
-    up: cgmath::Vector3<f32>,
-    aspect: f32,
-    fovy: f32,
-    znear: f32,
-    zfar: f32,
-}
-
-impl Camera {
-    // fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
-    //     // orthographic projection
-    //     let mat = cgmath::ortho()
-    //
-    //     let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
-    //     let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
-    //     proj * view
-    // }
-}
-
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct CameraUniform {
@@ -122,21 +101,39 @@ impl CameraUniform {
     fn update_view_proj(&mut self, left: f32, right: f32, bottom: f32, top: f32) {
         let znear = 0.0;
         let zfar = 100.0;
-        // note: top/bottom flipped
-        // let view_proj_mat = cgmath::ortho(left, right, top, bottom, znear, zfar);
-        let view_proj_mat = OPENGL_TO_WGPU_MATRIX * cgmath::ortho(left, right, top, bottom, znear, zfar);
-        // let view_proj_mat = OPENGL_TO_WGPU_MATRIX * cgmath::ortho(left, right, bottom, top, znear, zfar);
+        // // note: top/bottom flipped
+        // // let view_proj_mat = cgmath::ortho(left, right, top, bottom, znear, zfar);
+        // let ortho_mat = cgmath::ortho(left, right, bottom, top, znear, zfar);
+        // let view_proj_mat = ortho_mat;
+        // // let view_proj_mat = OPENGL_TO_WGPU_MATRIX * cgmath::ortho(left, right, top, bottom, znear, zfar);
+        // // let view_proj_mat = OPENGL_TO_WGPU_MATRIX * cgmath::ortho(left, right, bottom, top, znear, zfar);
+        //
+        // // look at positive z
+        // // let lookat = cgmath::Matrix4::look_at_rh(
+        // //     cgmath::Point3::new(0.0, 0.0, 10.0),
+        // //     cgmath::Point3::new(0.0, 0.0, 0.0),
+        // //     cgmath::Vector3::unit_y(),
+        // // );
+        // // let view_proj_mat = OPENGL_TO_WGPU_MATRIX * view_proj_mat * lookat;
+        //
+        // self.view_proj = view_proj_mat.into();
 
-        // look at positive z
-        // let lookat = cgmath::Matrix4::look_at_rh(
-        //     cgmath::Point3::new(0.0, 0.0, 10.0),
-        //     cgmath::Point3::new(0.0, 0.0, 0.0),
-        //     cgmath::Vector3::unit_y(),
-        // );
-        // let view_proj_mat = OPENGL_TO_WGPU_MATRIX * view_proj_mat * lookat;
+        // I don't know what I'm doing wrong with cgmath, but this seems to work as long as znear is 0.0
+        let view_proj_mat = cgmath::Matrix4::new(
+            2.0 / right, 0.0,                0.0, 0.0,
+            0.0,               -2.0 / bottom, 0.0, 0.0,
+            0.0,                0.0,                1.0 / (zfar-znear), 0.0,
+            -1.0,                1.0,                0.0, 1.0,
+        );
+
+        // let test_vec = cgmath::Vector4::new(100.0, 0.0, 50.1, 1.0);
+        // let out = view_proj_mat * test_vec;
+        // let out_normalized = out / out.w;
+        // let out_no_opengl_conversion = ortho_mat * test_vec;
+        // let out_no_opengl_conversion_normalized = out_no_opengl_conversion / out_no_opengl_conversion.w;
+        // panic!("Example: multiplying {:?} by view proj mat: {:?}, normalized: {:?}, no opengl conversion: {:?}, no opengl conversion normalized: {:?}", test_vec, out, out_normalized, out_no_opengl_conversion, out_no_opengl_conversion_normalized);
 
         self.view_proj = view_proj_mat.into();
-        // panic!("Example: multiplying 20.0, 20.0 by view proj mat: {:?}", view_proj_mat * cgmath::Vector4::new(20.0, 20.0, 2.0, 1.0));
 
         // self.view_proj = (OPENGL_TO_WGPU_MATRIX * cgmath::ortho(left, right, bottom, top, znear, zfar)).into();
 
@@ -150,61 +147,6 @@ impl CameraUniform {
     }
 }
 
-struct CameraController {
-    speed: f32,
-    is_up_pressed: bool,
-    is_down_pressed: bool,
-    is_forward_pressed: bool,
-    is_backward_pressed: bool,
-    is_left_pressed: bool,
-    is_right_pressed: bool,
-}
-
-impl CameraController {
-    fn new(speed: f32) -> Self {
-        Self {
-            speed,
-            is_up_pressed: false,
-            is_down_pressed: false,
-            is_forward_pressed: false,
-            is_backward_pressed: false,
-            is_left_pressed: false,
-            is_right_pressed: false,
-        }
-    }
-
-    fn process_events(&mut self, event: &HashSet<KeyCode>) -> bool {
-        self.is_up_pressed = event.contains(&KeyCode::Char(' '));
-        self.is_down_pressed = event.contains(&KeyCode::Tab);
-        self.is_forward_pressed = event.contains(&KeyCode::Char('w')) || event.contains(&KeyCode::Up);
-        self.is_backward_pressed = event.contains(&KeyCode::Char('s')) || event.contains(&KeyCode::Down);
-        self.is_left_pressed = event.contains(&KeyCode::Char('a')) || event.contains(&KeyCode::Left);
-        self.is_right_pressed = event.contains(&KeyCode::Char('d')) || event.contains(&KeyCode::Right);
-
-        // TODO: remove bools
-        true
-    }
-
-    fn update_camera(&self, camera: &mut Camera) {
-        let forward = (camera.target - camera.eye).normalize();
-
-        if self.is_forward_pressed {
-            camera.eye += forward * self.speed;
-        }
-        if self.is_backward_pressed {
-            camera.eye -= forward * self.speed;
-        }
-
-        let right = forward.cross(camera.up);
-
-        if self.is_right_pressed {
-            camera.eye += right * self.speed;
-        }
-        if self.is_left_pressed {
-            camera.eye -= right * self.speed;
-        }
-    }
-}
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -257,8 +199,6 @@ pub struct State {
     diffuse_texture: texture::Texture,
     diffuse_bind_group_layout: wgpu::BindGroupLayout,
     diffuse_bind_group: wgpu::BindGroup,
-    camera: Camera,
-    camera_controller: CameraController,
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     position_buffer: wgpu::Buffer,
@@ -387,19 +327,8 @@ impl State {
             label: Some("diffuse_bind_group"),
         });
 
-        let camera = Camera {
-            eye: (0.0, 5.0, 10.0).into(),
-            target: (0.0, 0.0, 0.0).into(),
-            up: cgmath::Vector3::unit_y(),
-            aspect: size.0 as f32 / size.1 as f32,
-            fovy: 45.0,
-            znear: 0.1,
-            zfar: 100.0,
-        };
-        let camera_controller = CameraController::new(0.2);
-
         let mut camera_uniform = CameraUniform::new();
-        camera_uniform.update_view_proj(0.0, size.0 as f32, 0.0, size.1 as f32,);
+        camera_uniform.update_view_proj(0.0, size.0 as f32, size.1 as f32, 0.0);
 
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Camera Buffer"),
@@ -440,11 +369,11 @@ impl State {
 
         let instances = [
             Instance {
-                position: [0.0, 0.0, -252.0],
+                position: [0.0, 0.0, 0.0],
                 scale: [30.0, 30.0],
             },
             Instance {
-                position: [0.0, 0.0, 6.0],
+                position: [0.0, 0.0, 2.0],
                 scale: [30.0, 30.0],
             },
             Instance {
@@ -592,8 +521,6 @@ impl State {
             diffuse_texture,
             diffuse_bind_group_layout,
             diffuse_bind_group,
-            camera,
-            camera_controller,
             camera_buffer,
             camera_bind_group,
             position_buffer,
@@ -616,10 +543,9 @@ impl State {
     pub fn resize(&mut self, new_size: (u32, u32)) {
         if new_size != self.size {
             self.size = new_size;
-            self.camera.aspect = self.size.0 as f32 / self.size.1 as f32;
 
             // adjust camera uniform
-            self.camera_uniform.update_view_proj(0.0, self.size.0 as f32, 0.0, self.size.1 as f32);
+            self.camera_uniform.update_view_proj(0.0, self.size.0 as f32, self.size.1 as f32, 0.0);
             self.queue.write_buffer(
                 &self.camera_buffer,
                 0,
