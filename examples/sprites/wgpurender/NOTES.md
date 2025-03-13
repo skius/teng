@@ -18,8 +18,14 @@ TODO look into how coords get passed from vertex to fragment shaders
   - [ ] allow defining a view into the source texture by offset(xy) and size(wh), which then computes tex coords.
   maybe by giving the instance a top-left and bottom-right uv coord, and then the vs shader
     can determine the correct uv coord by deciding which corner it is based on its model index.
+- [ ] Make sprite position center based like in CPU version
 - [ ] Use a single sprite texture atlas and run animations based on some passed 
 frame index and then sampling the correct texture location.
+  - [ ] For the frame index, I suppose it would make sense to put that into a separate buffer? if we put it into a separate buffer, we only need to update that if it has changed.
+     otherwise we can just keep it. Same actually for size and tex atlas offset - those should be constant and we don't want to resend them
+     So what do we need to resend? Position and frame index. Both are updated based on different conditions though...
+    - And how do we even use the frame index? just offset to the right based on sprite size? that would be an option.
+    - Just in general: I *think* it makes sense to split up buffers based on how frequently we need to change them? but it probably doesn't matter that much for our small simulation.
   - [ ] We have the atlas ability now. How do we actually generate the atlas though?
     - This seems to be enough for our purposes: https://umesh-kc.itch.io/free-online-texture-packer-alternative
 - [ ] Test normal maps!
