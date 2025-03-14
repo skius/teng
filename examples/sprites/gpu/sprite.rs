@@ -72,6 +72,16 @@ pub struct Sprite {
     pub center_offset: [i16; 2],
 }
 
+impl Sprite {
+    fn from_teng_and_imgpack_info(teng_info: &ImageInfo, imgpack_info: &ImgPackInfo) -> Sprite {
+        Sprite {
+            size: [imgpack_info.source_rects.w as u16, imgpack_info.source_rects.h as u16],
+            atlas_offset: [imgpack_info.frame.x as u16, imgpack_info.frame.y as u16],
+            center_offset: teng_info.center_offset,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 struct Animation {
     // The names of the frames in the sprite map. Keys into the sprites field.
@@ -120,12 +130,7 @@ impl TextureAnimationAtlas {
         let mut sprites = HashMap::new();
         for (name, info) in teng_meta.image_infos {
             let imgpack_info = imgpack_meta.frames.get(&name).unwrap();
-            let sprite = Sprite {
-                // size: info.original_size,
-                size: [imgpack_info.source_rects.w as u16, imgpack_info.source_rects.h as u16],
-                atlas_offset: [imgpack_info.frame.x as u16, imgpack_info.frame.y as u16],
-                center_offset: info.center_offset,
-            };
+            let sprite = Sprite::from_teng_and_imgpack_info(&info, imgpack_info);
             sprites.insert(name, sprite);
         }
 
@@ -137,12 +142,7 @@ impl TextureAnimationAtlas {
 
             for frame in frames {
                 let imgpack_info = imgpack_meta.frames.get(&frame.filename).unwrap();
-                let sprite = Sprite {
-                    // TODO: make sprite load from ImageInfo and ImgPackInfo helper function
-                    size: [imgpack_info.source_rects.w as u16, imgpack_info.source_rects.h as u16],
-                    atlas_offset: [imgpack_info.frame.x as u16, imgpack_info.frame.y as u16],
-                    center_offset: frame.center_offset,
-                };
+                let sprite = Sprite::from_teng_and_imgpack_info(&frame, imgpack_info);
                 sprites.insert(frame.filename.clone(), sprite);
                 frame_names.push(frame.filename);
             }
