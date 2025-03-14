@@ -28,9 +28,11 @@ frame index and then sampling the correct texture location.
     - Just in general: I *think* it makes sense to split up buffers based on how frequently we need to change them? but it probably doesn't matter that much for our small simulation.
   - [ ] We have the atlas ability now. How do we actually generate the atlas though?
     - This seems to be enough for our purposes: https://umesh-kc.itch.io/free-online-texture-packer-alternative
+  - [ ] Skip transparencies by just keeping track of where the original center of the sprite is. See image in notes app.
 - [ ] Test normal maps!
   - Keep in mind the weirdness with normal maps and the fact that the normal map is in tangent space.
   - oh! WGSL has builtin dpdx/dpdy... could be useful!
+  - Normal maps for sprites work now assuming we don't rotate the sprite.
 - [ ] Need to add lights!
   - Have something that seems to work.
 - [ ] It's probably really a good idea to have instances/sprites actually store their 'world' positions, maybe even with positive y,
@@ -47,6 +49,9 @@ frame index and then sampling the correct texture location.
   - ok no. It seems to be HBD? when I just have a full block render thing moving around there's no screen tearing.
     but if I have (even something behind the full block block, so occluded) a hbd will cause screen tearing when it's moving around
     ??? no idea why.
+- [ ] Post processing: Use rendered texture as input to new draw call where we just have one screen-sized quad and a fragment
+  shader that does some cool effect?
+
 # Ideas:
 First pass: render everything to a texture.
 Second pass: in the beginning, just display this texture over the entire screen
@@ -54,3 +59,16 @@ it should be entirely opaque that there is a second texture being rendered.
 Then there should be a "wow" effect once we start moving around that
 second texture by eg putting it on many triangles and simulating
 some "screen shatter" effect.
+Even more crazy would be if behind the screen shatter effect there is a proper 3d world being rendered.
+Or maybe instead of screen shatter effect, just "zoom out" and you see some virtual 3d model computer screen (old CRT) (maybe this model: https://www.artstation.com/artwork/rRQKbm)
+on which you can see the previous texture, but then you can now look around in the 3d world. Maybe behind you there's a
+guy saying "Are you winning son?".
+Or maybe there's just a flickering lamp somewhere. The screen would have its own illumination, maybe now it's also flickering a bit?
+Maybe the way to enter the 3D world is to choose between a blue and red pill, and if you pick blue pill the screen kind of blurs a bit and you restart the game
+If you pick the red pill however, everything goes black. Then, slowly, you're in the 3d world but at first only the CRT screen starts to light up.
+Then the lamp flickers on and you fully see that you're in the 3d world.
+
+
+
+To first get a proper screen size, we could have an override component that disables everything else if a too small screen size is detected,
+and only if the use says "yes" (or the screen resizes large enough), then the screen disappears and the game starts.
