@@ -86,3 +86,16 @@ those things, so that's a downside. I.e., for every frame instead of updating a 
 Can we perhaps have an intermediate buffer that the instance can look into? one that maps animation idx + frame idx to atlas source and transparency info?
 That buffer would be constant, and an instance would also constantly hold the animation idx, and every frame we would again just need to update frame idx.
 Yes, uniform buffers for up to 64KiB seems fine, if we need more, up to 128MiB, then storage buffer: https://webgpufundamentals.org/webgpu/lessons/webgpu-storage-buffers.html
+
+Hmm, how to handle composite animations? We want to render them in a specific order, so do we just slightly adjust the z index and have different instances?
+or do we try to do everything with one instance? if we did everything with one instance, our VertexOutput would have to be multiple uv coords that the fragment shader would have to overlay correctly.
+In particular, even if an instance only uses one animation (nothing composited), we still need to have multiple uv coords since the same shader is run for every instance.
+
+We might want to precompute composited animations and store those in the texture atlas instead? Then recompute every time we want to change the composition?
+IMO it's fine for now to do compositing. This step would be done easiest in the texture atlas generator.
+maybe a source json can indicate different composite groups?
+{
+"Characters_Human_HURT_composited": [
+  "Characters_Human_HURT_base_hurt_strip8.png", ...
+]
+}
