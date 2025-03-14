@@ -83,7 +83,9 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
 struct Camera {
     eye: cgmath::Point3<f32>,
     target: cgmath::Point3<f32>,
+    rotated_target: cgmath::Point3<f32>,
     up: cgmath::Vector3<f32>,
+    rotated_up: cgmath::Vector3<f32>,
     aspect: f32,
     fovy: f32,
     znear: f32,
@@ -92,7 +94,9 @@ struct Camera {
 
 impl Camera {
     fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
-        let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
+        let target = self.rotated_target;
+        let up = self.rotated_up;
+        let view = cgmath::Matrix4::look_at_rh(self.eye, target, up);
         let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
         proj * view
     }
@@ -124,6 +128,10 @@ struct CameraController {
     is_backward_pressed: bool,
     is_left_pressed: bool,
     is_right_pressed: bool,
+    base_yaw: f32,
+    base_pitch: f32,
+    yaw: f32,
+    pitch: f32,
 }
 
 impl CameraController {
@@ -136,10 +144,14 @@ impl CameraController {
             is_backward_pressed: false,
             is_left_pressed: false,
             is_right_pressed: false,
+            base_yaw: 0.0,
+            base_pitch: 0.0,
+            yaw: 0.0,
+            pitch: 0.0,
         }
     }
 
-    fn process_events(&mut self, event: &HashSet<KeyCode>) -> bool {
+    fn process_events(&mut self, event: &HashSet<KeyCode>, mouse_delta_x: f32, mouse_delta_y: f32) -> bool {
         self.is_up_pressed = event.contains(&KeyCode::Char(' '));
         self.is_down_pressed = event.contains(&KeyCode::Tab);
         self.is_forward_pressed = event.contains(&KeyCode::Char('w')) || event.contains(&KeyCode::Up);
@@ -147,11 +159,51 @@ impl CameraController {
         self.is_left_pressed = event.contains(&KeyCode::Char('a')) || event.contains(&KeyCode::Left);
         self.is_right_pressed = event.contains(&KeyCode::Char('d')) || event.contains(&KeyCode::Right);
 
+        // remove this if you want to test it again
+        // let mouse_delta_x = 0.0;
+        // let mouse_delta_y = 0.0;
+
+        self.yaw = self.base_yaw + (-mouse_delta_x) * 0.01;
+        self.pitch = self.base_pitch + (-mouse_delta_y) * 0.01;
+
         // TODO: remove bools
         true
     }
 
+    fn set_base_yaw_pitch_mouse(&mut self, mouse_x: f32, mouse_y: f32) {
+        // let yaw = (-mouse_x) * 0.01;
+        // let pitch = (-mouse_y) * 0.01;
+        // self.base_yaw += yaw;
+        // self.base_pitch += pitch;
+
+        self.base_yaw = self.yaw;
+        self.base_pitch = self.pitch;
+    }
+
     fn update_camera(&self, camera: &mut Camera) {
+        // readjust eye based on yaw/pitch
+        let yaw = cgmath::Rad(self.yaw);
+        let pitch = cgmath::Rad(self.pitch);
+
+        {
+            let forward = (camera.target - camera.eye).normalize();
+            let right = forward.cross(camera.up).normalize();
+            let up = right.cross(forward).normalize();
+
+            let yaw_matrix = cgmath::Matrix3::from_angle_y(yaw);
+            let pitch_matrix = cgmath::Matrix3::from_angle_x(pitch);
+
+            let rotated = yaw_matrix * pitch_matrix;
+            let new_forward = rotated * forward;
+            let new_up = rotated * up;
+
+            camera.rotated_target = camera.eye + new_forward;
+            camera.rotated_up = new_up;
+        }
+
+        // TODO: this moves just towards the center and not towards where we're looking according to our yaw and pitch
+        // probably best to just start over
+
         let forward = (camera.target - camera.eye).normalize();
 
         if self.is_forward_pressed {
@@ -383,6 +435,8 @@ impl State {
             fovy: 45.0,
             znear: 0.1,
             zfar: 100.0,
+            rotated_target: cgmath::Point3::origin(),
+            rotated_up: cgmath::Vector3::unit_y(),
         };
         let camera_controller = CameraController::new(0.2);
 
@@ -581,8 +635,12 @@ impl State {
         }
     }
 
-    pub fn input(&mut self, event: &HashSet<KeyCode>) -> bool {
-        self.camera_controller.process_events(event)
+    pub fn release_mouse(&mut self, mouse_x: f32, mouse_y: f32) {
+        self.camera_controller.set_base_yaw_pitch_mouse(mouse_x, mouse_y);
+    }
+
+    pub fn input(&mut self, event: &HashSet<KeyCode>, mouse_x: f32, mouse_y: f32,) -> bool {
+        self.camera_controller.process_events(event, mouse_x, mouse_y)
     }
 
     pub fn update_texture_to_hbd(&mut self, hbd: &HalfBlockDisplayRender) {

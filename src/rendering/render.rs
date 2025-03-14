@@ -432,6 +432,10 @@ impl Render for HalfBlockDisplayRender {
                     (color_top, color_bottom) => {
                         if color_top == color_bottom {
                             // slight optimization, don't draw the bg color.
+                            // TODO: actually, if we draw the bg color we're more likely to get the expected
+                            // effect when we render a char on top of this one. With no bg color, we just get the default bg color,
+                            // but if we override it we at least get the bg color we expect.
+                            // So, render the bg color as well.
                             let mut pixel = Pixel::new('█');
                             pixel.color = color_top;
                             pixel.bg_color = Color::Transparent;

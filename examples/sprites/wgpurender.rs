@@ -79,6 +79,7 @@ pub struct WgpuRenderComponent {
     state: learnwgpu::State,
     active: bool,
     // state: learnwgpu::shadertoy::State,
+    start_press_mouse_pos: (f32, f32),
 }
 
 impl WgpuRenderComponent {
@@ -88,6 +89,7 @@ impl WgpuRenderComponent {
         Self {
             state,
             active: true,
+            start_press_mouse_pos: (-1.0, -1.0),
         }
     }
 }
@@ -122,7 +124,36 @@ impl Component<GameState> for WgpuRenderComponent {
 
         let hbd = &mut game_state.hbd;
 
-        self.state.input(&shared_state.debounced_down_keys);
+        let mouse_x = shared_state.mouse_info.last_mouse_pos.0 as f32;
+        let mouse_y = shared_state.mouse_info.last_mouse_pos.1 as f32 * 2.0;
+
+
+        if shared_state.mouse_pressed.left {
+            self.start_press_mouse_pos = (mouse_x, mouse_y);
+        }
+
+        if shared_state.mouse_released.left {
+            assert!(!shared_state.mouse_info.left_mouse_down);
+            // delta mouse pos based on initial press
+            let delta_mouse_x = mouse_x - self.start_press_mouse_pos.0;
+            let delta_mouse_y = mouse_y - self.start_press_mouse_pos.1;
+            self.state.release_mouse(delta_mouse_x, delta_mouse_y);
+        }
+        
+        let mut delta_mouse_x = 0.0;
+        let mut delta_mouse_y = 0.0;
+        if shared_state.mouse_info.left_mouse_down {
+            // delta mouse pos based on initial press
+            delta_mouse_x = mouse_x - self.start_press_mouse_pos.0;
+            delta_mouse_y = mouse_y - self.start_press_mouse_pos.1;
+        }
+
+        if shared_state.mouse_released.left {
+            assert_eq!(delta_mouse_x, 0.0);
+            assert_eq!(delta_mouse_y, 0.0);
+        }
+
+        self.state.input(&shared_state.debounced_down_keys, delta_mouse_x, delta_mouse_y);
 
         if shared_state.pressed_keys.did_press_char_ignore_case('r') {
             self.state.update_texture_to_hbd(hbd);

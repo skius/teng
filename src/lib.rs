@@ -22,7 +22,7 @@ use crate::components::Component;
 use crate::components::debuginfo::{DebugInfo, DebugInfoComponent, DebugMessage};
 use crate::components::fpslocker::FpsLockerComponent;
 use crate::components::keyboard::{KeyPressRecorderComponent, PressedKeys};
-use crate::components::mouse::{MouseEvents, MouseInfo, MousePressedInfo, MouseTrackerComponent};
+use crate::components::mouse::{MouseEvents, MouseInfo, MousePressedInfo, MouseReleasedInfo, MouseTrackerComponent};
 use crate::components::quitter::QuitterComponent;
 use crate::components::ui::UiProxy;
 use crate::rendering::renderer::DisplayRenderer;
@@ -87,6 +87,7 @@ impl DisplayInfo {
 pub struct SharedState<S = ()> {
     pub mouse_info: MouseInfo,
     pub mouse_pressed: MousePressedInfo,
+    pub mouse_released: MouseReleasedInfo,
     pub mouse_events: MouseEvents,
     pub target_fps: Option<f64>,
     pub display_info: DisplayInfo,
@@ -108,6 +109,7 @@ impl<S: Default + 'static> SharedState<S> {
         Self {
             mouse_info: MouseInfo::default(),
             mouse_pressed: MousePressedInfo::default(),
+            mouse_released: MouseReleasedInfo::default(),
             mouse_events: MouseEvents::new(),
             target_fps: None,
             display_info: DisplayInfo::new(width, height),

@@ -35,6 +35,17 @@ impl MousePressedInfo {
     }
 }
 
+/// Information about mouse button releases since last frame.
+#[derive(Default, Debug, PartialEq)]
+pub struct MouseReleasedInfo {
+    /// Has the left mouse button been released since the last frame?
+    pub left: bool,
+    /// Has the right mouse button been released since the last frame?
+    pub right: bool,
+    /// Has the middle mouse button been released since the last frame?
+    pub middle: bool,
+}
+
 /// Aggregates mouse events since last frame.
 ///
 /// Use this to get various interpolation mechanics for mouse events, for example, a component
@@ -107,6 +118,9 @@ pub struct MouseTrackerComponent {
     did_press_left: bool,
     did_press_right: bool,
     did_press_middle: bool,
+    did_release_left: bool,
+    did_release_right: bool,
+    did_release_middle: bool,
     mouse_events: MouseEvents,
 }
 
@@ -118,6 +132,9 @@ impl MouseTrackerComponent {
             did_press_left: false,
             did_press_right: false,
             did_press_middle: false,
+            did_release_left: false,
+            did_release_right: false,
+            did_release_middle: false,
             mouse_events: MouseEvents::new(),
         }
     }
@@ -220,6 +237,21 @@ impl<S> Component<S> for MouseTrackerComponent {
                         self.did_press_middle = true;
                     }
                 },
+                MouseEvent {
+                    kind: MouseEventKind::Up(button),
+                    ..
+                } => match button {
+                    // Note: we are sticky-setting did_release_*, same as bove
+                    crossterm::event::MouseButton::Left => {
+                        self.did_release_left = true;
+                    }
+                    crossterm::event::MouseButton::Right => {
+                        self.did_release_right = true;
+                    }
+                    crossterm::event::MouseButton::Middle => {
+                        self.did_release_middle = true;
+                    }
+                },
                 _ => {}
             }
         }
@@ -231,6 +263,9 @@ impl<S> Component<S> for MouseTrackerComponent {
         shared_state.mouse_pressed.right = self.did_press_right;
         shared_state.mouse_pressed.left = self.did_press_left;
         shared_state.mouse_pressed.middle = self.did_press_middle;
+        shared_state.mouse_released.right = self.did_release_right;
+        shared_state.mouse_released.left = self.did_release_left;
+        shared_state.mouse_released.middle = self.did_release_middle;
         std::mem::swap(&mut self.mouse_events, &mut shared_state.mouse_events);
         self.mouse_events.events.clear();
         // always have the last mouse info in the queue
@@ -240,5 +275,8 @@ impl<S> Component<S> for MouseTrackerComponent {
         self.did_press_left = false;
         self.did_press_right = false;
         self.did_press_middle = false;
+        self.did_release_left = false;
+        self.did_release_right = false;
+        self.did_release_middle = false;
     }
 }
