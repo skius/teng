@@ -33,6 +33,8 @@ use teng::{
     terminal_setup,
 };
 use teng::components::keyboard::KeypressDebouncerComponent;
+use crate::gpu::GpuComponent;
+use crate::gpu::sprite::TextureAnimationAtlas;
 use crate::wgpurender::{WgpuRenderComponent, WgpuShadertoyRenderComponent, WgpuSpriteRenderComponent};
 
 enum HurtGroup {
@@ -181,13 +183,20 @@ fn main() -> io::Result<()> {
     game.add_component(Box::new(KeypressDebouncerComponent::new(70)));
     game.add_component(Box::new(GameComponent::new()));
     game.add_component(Box::new(PlayerComponent));
+    game.add_component(Box::new(GpuComponent::new()));
     // game.add_component(Box::new(WgpuSpriteRenderComponent::new()));
-    game.add_component(Box::new(WgpuRenderComponent::new()));
+    // game.add_component(Box::new(WgpuRenderComponent::new()));
     // game.add_component(Box::new(WgpuShadertoyRenderComponent::new()));
     game.add_component(Box::new(RendererComponent));
     game.run()?;
 
     terminal_cleanup()?;
+    
+    
+    // // quick texture atlas hack
+    // let (texture_atlas, img) = TextureAnimationAtlas::load("examples/sprites/data/texture_atlas.png", "examples/sprites/data/teng_atlas_meta.json", "examples/sprites/data/imgpack_atlas_meta.json");
+    // 
+    // println!("texture_atlas: {:?}", texture_atlas);
 
     Ok(())
 }

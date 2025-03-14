@@ -29,7 +29,7 @@ struct ImgPackInfo {
     trimmed: bool,
     #[serde(rename = "spriteSourceSize")]
     sprite_source_size: ImgPackXywh,
-    #[serde(rename = "sourceSize")]
+    #[serde(rename = "sourceRects")]
     source_rects: ImgPackWh,
     pivot: ImgPackXy,
 }
@@ -63,77 +63,175 @@ struct ImgPackXywh {
     h: f64,
 }
 
-struct Sprite {
-    size: [u16; 2],
-    atlas_offset: [u16; 2],
+#[derive(Debug, Clone, Copy)]
+pub struct Sprite {
+    pub size: [u16; 2],
+    pub atlas_offset: [u16; 2],
     // The proper center position of this sprite should be computed as: top_left + center_offset
     // in other words, to find the top left corner of where to render this given the desired center, is top_left = desired_center - center_offset
-    center_offset: [i16; 2],
+    pub center_offset: [i16; 2],
 }
 
+#[derive(Debug, Clone)]
 struct Animation {
-    // The indices of the frames in the sprite list.
-    frame_indices: Vec<usize>,
+    // The names of the frames in the sprite map. Keys into the sprites field.
+    // Order is relevant and determines the order of the frames in the animation.
+    frame_names: Vec<String>,
 }
 
-struct CombinedAnimation {
-    // The indices of the animations in the animation list.
-    animation_indices: Vec<usize>,
-}
-
-pub struct TextureAtlas {
-    sprites: Vec<Sprite>,
-    // indices in animations point to the sprites field.
-    animations: Vec<Animation>,
-    // indices in combined_animations point to the animations field.
-    combined_animations: Vec<CombinedAnimation>,
-}
-
-pub fn load_texture_atlas(
-    atlas_image_path: impl AsRef<Path>,
-    atlas_teng_meta_path: impl AsRef<Path>,
-    atlas_imgpack_meta_path: impl AsRef<Path>,
-) {
-    let img = image::open(atlas_image_path).unwrap();
-    let atlas_teng_meta = std::fs::read_to_string(atlas_teng_meta_path).unwrap();
-    let atlas_imgpack_meta = std::fs::read_to_string(atlas_imgpack_meta_path).unwrap();
-
-    let teng_meta: TengMeta = serde_json::from_str(&atlas_teng_meta).unwrap();
-    let imgpack_meta: ImgPackMeta = serde_json::from_str(&atlas_imgpack_meta).unwrap();
-
-    let mut sprites = Vec::new();
-    for (name, info) in teng_meta.image_infos {
-        let imgpack_info = imgpack_meta.frames.get(&name).unwrap();
-        let sprite = Sprite {
-            size: info.original_size,
-            atlas_offset: [imgpack_info.frame.x as u16, imgpack_info.frame.y as u16],
-            center_offset: info.center_offset,
-        };
-        sprites.push(sprite);
+impl Animation {
+    pub fn with_frame_indices(&self, indices: &[usize]) -> Animation {
+        let frame_names = indices.iter().map(|&i| self.frame_names[i].clone()).collect();
+        Animation {
+            frame_names,
+        }
     }
+}
 
-    let mut animations = Vec::new();
-    for (name, frames) in teng_meta.animations {
-        // TODO: overwrite frames to skip some based on the name.
+#[derive(Debug, Clone)]
+struct CombinedAnimation {
+    // The names of the animations in the animation map. Keys into the animations field.
+    // Each animation must have the same number of frames.
+    animation_names: Vec<String>,
+}
 
-        let mut frame_indices = Vec::new();
+#[derive(Debug, Clone)]
+pub struct TextureAnimationAtlas {
+    sprites: HashMap<String, Sprite>,
+    animations: HashMap<String, Animation>,
+    combined_animations: HashMap<String, CombinedAnimation>,
+}
 
-        for frame in frames {
-            let imgpack_info = imgpack_meta.frames.get(&frame.filename).unwrap();
+
+
+impl TextureAnimationAtlas {
+    pub fn load(
+        atlas_image_path: impl AsRef<Path>,
+        atlas_teng_meta_path: impl AsRef<Path>,
+        atlas_imgpack_meta_path: impl AsRef<Path>,
+    ) -> (Self, image::DynamicImage) {
+        let img = image::open(atlas_image_path).unwrap();
+        let atlas_teng_meta = std::fs::read_to_string(atlas_teng_meta_path).unwrap();
+        let atlas_imgpack_meta = std::fs::read_to_string(atlas_imgpack_meta_path).unwrap();
+
+        let teng_meta: TengMeta = serde_json::from_str(&atlas_teng_meta).unwrap();
+        let imgpack_meta: ImgPackMeta = serde_json::from_str(&atlas_imgpack_meta).unwrap();
+
+        let mut sprites = HashMap::new();
+        for (name, info) in teng_meta.image_infos {
+            let imgpack_info = imgpack_meta.frames.get(&name).unwrap();
             let sprite = Sprite {
-                size: frame.original_size,
+                // size: info.original_size,
+                size: [imgpack_info.source_rects.w as u16, imgpack_info.source_rects.h as u16],
                 atlas_offset: [imgpack_info.frame.x as u16, imgpack_info.frame.y as u16],
-                center_offset: frame.center_offset,
+                center_offset: info.center_offset,
             };
-            let sprite_index = sprites.len();
-            sprites.push(sprite);
-            frame_indices.push(sprite_index);
+            sprites.insert(name, sprite);
         }
 
-        let animation = Animation {
-            frame_indices,
+        let mut animations = HashMap::new();
+        for (name, frames) in teng_meta.animations {
+            // TODO: overwrite frames to skip some based on the name.
+
+            let mut frame_names = Vec::new();
+
+            for frame in frames {
+                let imgpack_info = imgpack_meta.frames.get(&frame.filename).unwrap();
+                let sprite = Sprite {
+                    // TODO: make sprite load from ImageInfo and ImgPackInfo helper function
+                    size: [imgpack_info.source_rects.w as u16, imgpack_info.source_rects.h as u16],
+                    atlas_offset: [imgpack_info.frame.x as u16, imgpack_info.frame.y as u16],
+                    center_offset: frame.center_offset,
+                };
+                sprites.insert(frame.filename.clone(), sprite);
+                frame_names.push(frame.filename);
+            }
+
+            let animation = Animation {
+                frame_names
+            };
+            let anim_name = name.split("_strip").next().unwrap().to_string();
+            animations.insert(anim_name, animation);
+        }
+
+        let different_parts = ["base", "bowlhair", "tools"];
+
+
+        let human_prefix = "Characters_Human_";
+        let prefix_suffix_pairs = vec![
+            ("IDLE", "idle", 9),
+            ("WALKING", "walk", 8),
+            ("RUN", "run", 8),
+            ("AXE", "axe", 10),
+            ("ATTACK", "attack", 10),
+            ("CAUGHT", "caught", 10),
+            ("JUMP", "jump", 9),
+            ("ROLL", "roll", 10),
+        ];
+
+        let mut combined_animations = HashMap::new();
+        for (prefix, suffix, _stripnum) in prefix_suffix_pairs {
+            let mut animation_names = Vec::new();
+            for part in different_parts.iter() {
+                let anim_name = format!("{human_prefix}{prefix}_{part}_{suffix}");
+                animation_names.push(anim_name);
+            }
+            let combined_animation = CombinedAnimation {
+                animation_names,
+            };
+            combined_animations.insert(suffix.to_string(), combined_animation);
+        }
+
+        let mut atlas = TextureAnimationAtlas {
+            sprites,
+            animations,
+            combined_animations: HashMap::new(),
         };
-        animations.push(animation);
+
+        atlas.push_combined_animation("PlayerIdle", human_prefix, "IDLE", "idle", &different_parts);
+        atlas.push_combined_animation("PlayerWalking", human_prefix, "WALKING", "walk", &different_parts);
+        atlas.push_combined_animation("PlayerRun", human_prefix, "RUN", "run", &different_parts);
+        atlas.push_combined_animation("PlayerAxe", human_prefix, "AXE", "axe", &different_parts);
+        atlas.push_combined_animation("PlayerAttack", human_prefix, "ATTACK", "attack", &different_parts);
+        atlas.push_combined_animation("PlayerCaught", human_prefix, "CAUGHT", "caught", &different_parts);
+        atlas.push_combined_animation("PlayerJump", human_prefix, "JUMP", "jump", &different_parts);
+        atlas.push_combined_animation("PlayerRoll", human_prefix, "ROLL", "roll", &different_parts);
+
+
+        (atlas, img)
     }
 
+    fn create_combined_animation(&self, folder_prefix: &str, prefix: &str, suffix: &str, parts: &[&str]) -> CombinedAnimation {
+        let mut animation_names = Vec::new();
+        for part in parts.iter() {
+            let anim_name = format!("{folder_prefix}{prefix}_{part}_{suffix}");
+            animation_names.push(anim_name);
+        }
+        CombinedAnimation {
+            animation_names,
+        }
+    }
+
+    fn push_combined_animation(&mut self, name: &str, folder_prefix: &str, prefix: &str, suffix: &str, parts: &[&str]) {
+        self.combined_animations.insert(name.to_string(), self.create_combined_animation(folder_prefix, prefix, suffix, parts));
+    }
+
+    // Updates all animations that are part of the combined animation to use the given frame indices.
+    fn set_combined_animation_frame_indices(&mut self, name: &str, indices: &[usize]) {
+        let combined_animation = self.combined_animations.get(name).unwrap();
+        for anim_name in &combined_animation.animation_names {
+            let animation = self.animations.get_mut(anim_name).unwrap();
+            *animation = animation.with_frame_indices(indices);
+        }
+    }
+
+    pub fn get_sprites_for_ca_with_frame(&self, name: &str, frame: usize) -> impl Iterator<Item = Sprite> {
+        let combined_animation = self.combined_animations.get(name).unwrap();
+        combined_animation.animation_names.iter().map(move |anim_name| {
+            let animation = self.animations.get(anim_name).unwrap();
+            let frame_name = &animation.frame_names[frame];
+            // panic!("Frame name: {}", frame_name);
+            self.sprites.get(frame_name).unwrap().clone()
+        })
+    }
 }

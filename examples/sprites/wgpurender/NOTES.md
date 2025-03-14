@@ -7,7 +7,7 @@ when using the perspective projection camera, clip_position coords get x y in [0
 hmm. why does the tutorial say the camera computes normalized coordinates? 
 TODO look into how coords get passed from vertex to fragment shaders
 
-
+Binding groups and how they can be optimized across pipelines: https://developer.nvidia.com/vulkan-shader-resource-binding
 
 
 # TODO:
