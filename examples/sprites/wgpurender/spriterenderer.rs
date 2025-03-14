@@ -101,6 +101,54 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
     0.0, 0.0, 0.5, 1.0,
 );
 
+struct Camera {
+    position: glam::Vec2,
+    size: glam::Vec2,
+    screen_size: glam::Vec2,
+    // A scale of 2x means every screen pixel is 2x2 world pixels.
+    // invariant: scale = size / screen_size
+    scale: f32,
+}
+
+impl Camera {
+    fn new() -> Self {
+        Self {
+            position: glam::Vec2::new(0.0, 0.0),
+            size: glam::Vec2::new(1.0, 1.0),
+            screen_size: glam::Vec2::new(1.0, 1.0),
+            scale: 1.0,
+        }
+    }
+
+    // Screen coords are input
+    fn resize(&mut self, width: f32, height: f32) {
+        self.screen_size = glam::Vec2::new(width, height);
+        self.size = glam::Vec2::new(width * self.scale, height * self.scale);
+    }
+
+    fn set_scale(&mut self, scale: f32) {
+        self.scale = scale;
+        self.size = glam::Vec2::new(self.screen_size.x * scale, self.screen_size.y * scale);
+    }
+
+    fn screen_to_world_coords(&self, x: f32, y: f32) -> (f32, f32) {
+        let x = x * self.scale;
+        let y = y * self.scale;
+        let x = x + self.position.x - self.size.x / 2.0;
+        let y = y + self.position.y - self.size.y / 2.0;
+        (x, y)
+    }
+
+    fn to_uniform(&self) -> CameraUniform {
+        let mut uniform = CameraUniform::new();
+        uniform.update_camera_position(self.position.x, self.position.y);
+        uniform.update_camera_size(self.size.x, self.size.y);
+        uniform.update_view_proj(0.0, self.size.x, self.size.y, 0.0);
+
+        uniform
+    }
+}
+
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct CameraUniform {
@@ -123,16 +171,23 @@ impl CameraUniform {
         // TODO: to make camera sizes that don't match up with the screen size work, we need to scale a bit in the vertex shader.
         // This affects the sprite size but also its position.
         // self.update_camera_size(width * 2.0, height * 2.0);
+        let width = width * 2.0;
+        let height = height * 2.0;
         self.update_camera_size(width, height);
         self.update_view_proj(0.0, width, height, 0.0);
     }
 
-    fn screen_to_world_coords(&self, x: f32, y: f32) -> (f32, f32) {
+    fn screen_to_world_coords(&self, x: f32, y: f32, screen_width: f32, screen_height: f32) -> (f32, f32) {
         // let x = x - self.camera_position[0] + self.camera_size[0] / 2.0;
         // let y = y - self.camera_position[1] + self.camera_size[1] / 2.0;
         // (x, y)
+        // adjust scale according to screen size and camera size
+        let x = x * self.camera_size[0] / screen_width;
+        let y = y * self.camera_size[1] / screen_height;
+
         let x = x + self.camera_position[0] - self.camera_size[0] / 2.0;
         let y = y + self.camera_position[1] - self.camera_size[1] / 2.0;
+        // TODO: need to take into account scale of screen, i.e., relative sizes of screen and camera.
         (x, y)
     }
 
@@ -249,7 +304,8 @@ pub struct State {
     diffuse_texture: texture::Texture,
     diffuse_bind_group_layout: wgpu::BindGroupLayout,
     diffuse_bind_group: wgpu::BindGroup,
-    camera_uniform: CameraUniform,
+    camera: Camera,
+    // camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     position_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
@@ -409,8 +465,9 @@ impl State {
             label: Some("diffuse_bind_group"),
         });
 
-        let mut camera_uniform = CameraUniform::new();
-        camera_uniform.resize(size.0 as f32, size.1 as f32);
+        let mut camera = Camera::new();
+        camera.resize(size.0 as f32, size.1 as f32);
+        let camera_uniform = camera.to_uniform();
 
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Camera Buffer"),
@@ -656,7 +713,7 @@ impl State {
             camera_bind_group,
             texture_atlas_size_bind_group,
             position_buffer,
-            camera_uniform,
+            camera,
             instances: instances.clone(),
             instance_buffer,
             texture_desc,
@@ -677,11 +734,11 @@ impl State {
             self.size = new_size;
 
             // adjust camera uniform
-            self.camera_uniform.resize(self.size.0 as f32, self.size.1 as f32);
+            self.camera.resize(self.size.0 as f32, self.size.1 as f32);
             self.queue.write_buffer(
                 &self.camera_buffer,
                 0,
-                bytemuck::cast_slice(&[self.camera_uniform]),
+                bytemuck::cast_slice(&[self.camera.to_uniform()]),
             );
 
             // adjust position buffer
@@ -729,7 +786,7 @@ impl State {
     pub fn update(&mut self, x: usize, y: usize, shared_state: &SharedState<GameState>) {
         let x = x as f32;
         let y = y as f32;
-        let (x, y) = self.camera_uniform.screen_to_world_coords(x, y);
+        let (x, y) = self.camera.screen_to_world_coords(x, y);
         self.instances[0].position = [x, y, self.instances[0].position[2]];
         if shared_state.pressed_keys.did_press_char_ignore_case('w') {
             self.instances[0].size = [self.instances[0].size[0] + 1.0, self.instances[0].size[1] + 1.0];
@@ -741,16 +798,33 @@ impl State {
         );
 
         if shared_state.pressed_keys.did_press_char_ignore_case('d') {
-            let curr_x = self.camera_uniform.camera_position[0];
-            let curr_y = self.camera_uniform.camera_position[1];
-            self.camera_uniform.update_camera_position(curr_x + 1.0, curr_y);
+            self.camera.position += glam::Vec2::new(1.0, 0.0);
             self.queue.write_buffer(
                 &self.camera_buffer,
                 0,
-                bytemuck::cast_slice(&[self.camera_uniform]),
+                bytemuck::cast_slice(&[self.camera.to_uniform()]),
             );
         }
-
+        
+        // todo adjust scale using scroll wheel
+        if shared_state.pressed_keys.did_press(KeyCode::Up) {
+            self.camera.set_scale(self.camera.scale + 0.1);
+            self.queue.write_buffer(
+                &self.camera_buffer,
+                0,
+                bytemuck::cast_slice(&[self.camera.to_uniform()]),
+            );
+        }
+        
+        if shared_state.pressed_keys.did_press(KeyCode::Down) {
+            self.camera.set_scale(self.camera.scale - 0.1);
+            self.queue.write_buffer(
+                &self.camera_buffer,
+                0,
+                bytemuck::cast_slice(&[self.camera.to_uniform()]),
+            );
+        }
+        
         // self.camera_controller.update_camera(&mut self.camera);
         // self.camera_uniform.update_view_proj(&self.camera);
         // self.queue.write_buffer(
