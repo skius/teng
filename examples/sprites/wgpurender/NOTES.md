@@ -73,3 +73,16 @@ Then the lamp flickers on and you fully see that you're in the 3d world.
 
 To first get a proper screen size, we could have an override component that disables everything else if a too small screen size is detected,
 and only if the use says "yes" (or the screen resizes large enough), then the screen disappears and the game starts.
+
+
+# Texture Atlas Tool:
+Consumes all sprites. Trims alpha on all images.
+For strip animations, splits them up and trims alpha for each animation frame.
+Stores strip animations in a separate json hash map.
+
+Animations on CPU-side would then just be sprite atlas indices and the information about removed transparency.
+but, instead of *just* passing frame index like it could be done with strips that have transparency, we have to pass
+those things, so that's a downside. I.e., for every frame instead of updating a single index, we need to update atlas source, and transparency source info.
+Can we perhaps have an intermediate buffer that the instance can look into? one that maps animation idx + frame idx to atlas source and transparency info?
+That buffer would be constant, and an instance would also constantly hold the animation idx, and every frame we would again just need to update frame idx.
+Yes, uniform buffers for up to 64KiB seems fine, if we need more, up to 128MiB, then storage buffer: https://webgpufundamentals.org/webgpu/lessons/webgpu-storage-buffers.html
