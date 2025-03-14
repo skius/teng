@@ -6,6 +6,8 @@ mod setandforgetanimations;
 mod sprite;
 mod wgpurender;
 
+mod gpu;
+
 use crate::animationcontroller::{AnimationController, KeyedAnimationResult};
 use crate::goblin::Goblin;
 use crate::impulse::Trigger;
