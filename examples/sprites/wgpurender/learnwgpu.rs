@@ -82,8 +82,8 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
 
 struct Camera {
     eye: cgmath::Point3<f32>,
-    target: cgmath::Point3<f32>,
-    rotated_target: cgmath::Point3<f32>,
+    forward: cgmath::Vector3<f32>,
+    rotated_forward: cgmath::Vector3<f32>,
     up: cgmath::Vector3<f32>,
     rotated_up: cgmath::Vector3<f32>,
     aspect: f32,
@@ -94,7 +94,7 @@ struct Camera {
 
 impl Camera {
     fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
-        let target = self.rotated_target;
+        let target = self.eye + self.rotated_forward;
         let up = self.rotated_up;
         let view = cgmath::Matrix4::look_at_rh(self.eye, target, up);
         let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
@@ -164,7 +164,9 @@ impl CameraController {
         // let mouse_delta_y = 0.0;
 
         self.yaw = self.base_yaw + (-mouse_delta_x) * 0.01;
+        // lock to 90 degrees up and down
         self.pitch = self.base_pitch + (-mouse_delta_y) * 0.01;
+        self.pitch = self.pitch.clamp(-std::f32::consts::FRAC_PI_2, std::f32::consts::FRAC_PI_2);
 
         // TODO: remove bools
         true
@@ -186,25 +188,27 @@ impl CameraController {
         let pitch = cgmath::Rad(self.pitch);
 
         {
-            let forward = (camera.target - camera.eye).normalize();
-            let right = forward.cross(camera.up).normalize();
+            let forward = camera.forward.normalize();
+            // right is always on y = 0 plane
+            let rotate_90_right = cgmath::Quaternion::from_axis_angle(cgmath::Vector3::unit_y(), cgmath::Deg(270.0));
+            let right = rotate_90_right * cgmath::Vector3::new(forward.x, 0.0, forward.z).normalize();
+            // let right = forward.cross(camera.up).normalize();
             let up = right.cross(forward).normalize();
 
             let yaw_matrix = cgmath::Matrix3::from_angle_y(yaw);
             let pitch_matrix = cgmath::Matrix3::from_angle_x(pitch);
 
-            let rotated = yaw_matrix * pitch_matrix;
-            let new_forward = rotated * forward;
-            let new_up = rotated * up;
+            let rotated_forward = yaw_matrix * pitch_matrix * forward;
+            let rotated_up = yaw_matrix * pitch_matrix * up;
 
-            camera.rotated_target = camera.eye + new_forward;
-            camera.rotated_up = new_up;
+            camera.rotated_forward = rotated_forward;
+            camera.rotated_up = rotated_up;
         }
 
         // TODO: this moves just towards the center and not towards where we're looking according to our yaw and pitch
         // probably best to just start over
 
-        let forward = (camera.target - camera.eye).normalize();
+        let forward = camera.rotated_forward;
 
         if self.is_forward_pressed {
             camera.eye += forward * self.speed;
@@ -213,7 +217,7 @@ impl CameraController {
             camera.eye -= forward * self.speed;
         }
 
-        let right = forward.cross(camera.up);
+        let right = forward.cross(camera.rotated_up);
 
         if self.is_right_pressed {
             camera.eye += right * self.speed;
@@ -221,6 +225,15 @@ impl CameraController {
         if self.is_left_pressed {
             camera.eye -= right * self.speed;
         }
+
+        if self.is_up_pressed {
+            camera.eye += camera.up * self.speed;
+        }
+        if self.is_down_pressed {
+            camera.eye -= camera.up * self.speed;
+        }
+
+        // camera.eye -= camera.up * self.speed * 0.1;
     }
 }
 
@@ -429,13 +442,13 @@ impl State {
 
         let camera = Camera {
             eye: (0.0, 5.0, 10.0).into(),
-            target: (0.0, 0.0, 0.0).into(),
+            forward: -cgmath::Vector3::unit_z(),
+            rotated_forward: -cgmath::Vector3::unit_z(),
             up: cgmath::Vector3::unit_y(),
             aspect: size.0 as f32 / size.1 as f32,
             fovy: 45.0,
             znear: 0.1,
             zfar: 100.0,
-            rotated_target: cgmath::Point3::origin(),
             rotated_up: cgmath::Vector3::unit_y(),
         };
         let camera_controller = CameraController::new(0.2);
