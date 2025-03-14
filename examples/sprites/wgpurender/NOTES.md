@@ -51,6 +51,7 @@ frame index and then sampling the correct texture location.
     ??? no idea why.
 - [ ] Post processing: Use rendered texture as input to new draw call where we just have one screen-sized quad and a fragment
   shader that does some cool effect?
+  - For that pass, optimize using just one triangle: https://wallisc.github.io/rendering/2021/04/18/Fullscreen-Pass.html
 
 # Ideas:
 First pass: render everything to a texture.
