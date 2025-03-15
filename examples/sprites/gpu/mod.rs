@@ -9,6 +9,8 @@ use crate::gpu::sprite::TextureAnimationAtlas;
 pub mod texture;
 pub mod sprite;
 pub mod rendering;
+mod animation;
+mod instancewriter;
 
 enum GpuPhase {
     TwoD,

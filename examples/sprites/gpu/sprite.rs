@@ -112,8 +112,6 @@ pub struct TextureAnimationAtlas {
     combined_animations: HashMap<String, CombinedAnimation>,
 }
 
-
-
 impl TextureAnimationAtlas {
     pub fn load(
         atlas_image_path: impl AsRef<Path>,
@@ -154,48 +152,23 @@ impl TextureAnimationAtlas {
             animations.insert(anim_name, animation);
         }
 
-        let different_parts = ["base", "bowlhair", "tools"];
-
-
-        let human_prefix = "Characters_Human_";
-        let prefix_suffix_pairs = vec![
-            ("IDLE", "idle", 9),
-            ("WALKING", "walk", 8),
-            ("RUN", "run", 8),
-            ("AXE", "axe", 10),
-            ("ATTACK", "attack", 10),
-            ("CAUGHT", "caught", 10),
-            ("JUMP", "jump", 9),
-            ("ROLL", "roll", 10),
-        ];
-
-        let mut combined_animations = HashMap::new();
-        for (prefix, suffix, _stripnum) in prefix_suffix_pairs {
-            let mut animation_names = Vec::new();
-            for part in different_parts.iter() {
-                let anim_name = format!("{human_prefix}{prefix}_{part}_{suffix}");
-                animation_names.push(anim_name);
-            }
-            let combined_animation = CombinedAnimation {
-                animation_names,
-            };
-            combined_animations.insert(suffix.to_string(), combined_animation);
-        }
-
         let mut atlas = TextureAnimationAtlas {
             sprites,
             animations,
             combined_animations: HashMap::new(),
         };
 
-        atlas.push_combined_animation("PlayerIdle", human_prefix, "IDLE", "idle", &different_parts);
-        atlas.push_combined_animation("PlayerWalking", human_prefix, "WALKING", "walk", &different_parts);
-        atlas.push_combined_animation("PlayerRun", human_prefix, "RUN", "run", &different_parts);
-        atlas.push_combined_animation("PlayerAxe", human_prefix, "AXE", "axe", &different_parts);
-        atlas.push_combined_animation("PlayerAttack", human_prefix, "ATTACK", "attack", &different_parts);
-        atlas.push_combined_animation("PlayerCaught", human_prefix, "CAUGHT", "caught", &different_parts);
-        atlas.push_combined_animation("PlayerJump", human_prefix, "JUMP", "jump", &different_parts);
-        atlas.push_combined_animation("PlayerRoll", human_prefix, "ROLL", "roll", &different_parts);
+        let different_parts = ["base", "bowlhair", "tools"];
+        let human_prefix = "Characters_Human_";
+
+        atlas.push_combined_animation(CombinedAnimationKey::PlayerIdle, human_prefix, "IDLE", "idle", &different_parts);
+        atlas.push_combined_animation(CombinedAnimationKey::PlayerWalking, human_prefix, "WALKING", "walk", &different_parts);
+        atlas.push_combined_animation(CombinedAnimationKey::PlayerRun, human_prefix, "RUN", "run", &different_parts);
+        atlas.push_combined_animation(CombinedAnimationKey::PlayerAxe, human_prefix, "AXE", "axe", &different_parts);
+        atlas.push_combined_animation(CombinedAnimationKey::PlayerAttack, human_prefix, "ATTACK", "attack", &different_parts);
+        atlas.push_combined_animation(CombinedAnimationKey::PlayerCaught, human_prefix, "CAUGHT", "caught", &different_parts);
+        atlas.push_combined_animation(CombinedAnimationKey::PlayerJump, human_prefix, "JUMP", "jump", &different_parts);
+        atlas.push_combined_animation(CombinedAnimationKey::PlayerRoll, human_prefix, "ROLL", "roll", &different_parts);
 
 
         (atlas, img)
@@ -212,8 +185,8 @@ impl TextureAnimationAtlas {
         }
     }
 
-    fn push_combined_animation(&mut self, name: &str, folder_prefix: &str, prefix: &str, suffix: &str, parts: &[&str]) {
-        self.combined_animations.insert(name.to_string(), self.create_combined_animation(folder_prefix, prefix, suffix, parts));
+    fn push_combined_animation(&mut self, name: CombinedAnimationKey, folder_prefix: &str, prefix: &str, suffix: &str, parts: &[&str]) {
+        self.combined_animations.insert(name.as_str().to_string(), self.create_combined_animation(folder_prefix, prefix, suffix, parts));
     }
 
     // Updates all animations that are part of the combined animation to use the given frame indices.
@@ -225,7 +198,24 @@ impl TextureAnimationAtlas {
         }
     }
 
-    pub fn get_sprites_for_ca_with_frame(&self, name: &str, frame: usize) -> impl Iterator<Item = Sprite> {
+    fn frame_count_ca(&self, name: &str) -> usize {
+        let combined_animation = self.combined_animations.get(name).unwrap();
+        let first_anim_name = &combined_animation.animation_names[0];
+        self.animations.get(first_anim_name).unwrap().frame_names.len()
+    }
+
+    fn frame_count_a(&self, name: &str) -> usize {
+        self.animations.get(name).unwrap().frame_names.len()
+    }
+
+    pub fn frame_count(&self, key: AnimationKey) -> usize {
+        match key {
+            AnimationKey::CombinedAnimation(combined_key) => self.frame_count_ca(combined_key.as_str()),
+            AnimationKey::Animation(single_key) => self.frame_count_a(single_key.as_str()),
+        }
+    }
+
+    pub fn get_sprites_for_ca_with_frame(&self, name: &str, frame: usize) -> impl Iterator<Item=Sprite> + '_ {
         let combined_animation = self.combined_animations.get(name).unwrap();
         combined_animation.animation_names.iter().map(move |anim_name| {
             let animation = self.animations.get(anim_name).unwrap();
@@ -234,4 +224,76 @@ impl TextureAnimationAtlas {
             self.sprites.get(frame_name).unwrap().clone()
         })
     }
+
+    pub fn get_sprites_for_a_with_frame(&self, name: &str, frame: usize) -> impl Iterator<Item = Sprite> + use<> {
+        let animation = self.animations.get(name).unwrap();
+        let frame_name = &animation.frame_names[frame];
+        Some(self.sprites.get(frame_name).copied().unwrap()).into_iter()
+    }
+
+    pub fn get_sprites_frame(&self, key: AnimationKey, frame: usize) -> Box<dyn Iterator<Item = Sprite> + '_> {
+        match key {
+            AnimationKey::CombinedAnimation(combined_key) => Box::new(self.get_sprites_for_ca_with_frame(combined_key.as_str(), frame)),
+            AnimationKey::Animation(single_key) => Box::new(self.get_sprites_for_a_with_frame(single_key.as_str(), frame)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum CombinedAnimationKey<'a> {
+    PlayerIdle,
+    PlayerWalking,
+    PlayerRun,
+    PlayerAxe,
+    PlayerAttack,
+    PlayerCaught,
+    PlayerJump,
+    PlayerRoll,
+    Custom(&'a str),
+}
+
+impl<'a> CombinedAnimationKey<'a> {
+    fn as_str(&self) -> &str {
+        match self {
+            CombinedAnimationKey::PlayerIdle => "PlayerIdle",
+            CombinedAnimationKey::PlayerWalking => "PlayerWalking",
+            CombinedAnimationKey::PlayerRun => "PlayerRun",
+            CombinedAnimationKey::PlayerAxe => "PlayerAxe",
+            CombinedAnimationKey::PlayerAttack => "PlayerAttack",
+            CombinedAnimationKey::PlayerCaught => "PlayerCaught",
+            CombinedAnimationKey::PlayerJump => "PlayerJump",
+            CombinedAnimationKey::PlayerRoll => "PlayerRoll",
+            CombinedAnimationKey::Custom(name) => name,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum SingleAnimationKey<'a> {
+    Custom(&'a str),
+}
+
+impl<'a> SingleAnimationKey<'a> {
+    fn as_str(&self) -> &str {
+        match self {
+            SingleAnimationKey::Custom(name) => name,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum AnimationKey<'a> {
+    CombinedAnimation(CombinedAnimationKey<'a>),
+    Animation(SingleAnimationKey<'a>),
+}
+
+impl<'a> AnimationKey<'a> {
+    pub const PLAYER_IDLE: AnimationKey<'static> = AnimationKey::CombinedAnimation(CombinedAnimationKey::PlayerIdle);
+    pub const PLAYER_WALKING: AnimationKey<'static> = AnimationKey::CombinedAnimation(CombinedAnimationKey::PlayerWalking);
+    pub const PLAYER_RUN: AnimationKey<'static> = AnimationKey::CombinedAnimation(CombinedAnimationKey::PlayerRun);
+    pub const PLAYER_AXE: AnimationKey<'static> = AnimationKey::CombinedAnimation(CombinedAnimationKey::PlayerAxe);
+    pub const PLAYER_ATTACK: AnimationKey<'static> = AnimationKey::CombinedAnimation(CombinedAnimationKey::PlayerAttack);
+    pub const PLAYER_CAUGHT: AnimationKey<'static> = AnimationKey::CombinedAnimation(CombinedAnimationKey::PlayerCaught);
+    pub const PLAYER_JUMP: AnimationKey<'static> = AnimationKey::CombinedAnimation(CombinedAnimationKey::PlayerJump);
+    pub const PLAYER_ROLL: AnimationKey<'static> = AnimationKey::CombinedAnimation(CombinedAnimationKey::PlayerRoll);
 }
