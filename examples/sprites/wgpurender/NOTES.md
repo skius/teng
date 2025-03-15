@@ -70,9 +70,45 @@ If you pick the red pill however, everything goes black. Then, slowly, you're in
 Then the lamp flickers on and you fully see that you're in the 3d world.
 
 
+maybe in 2d world theres a waiting different looking player somewhere and blocking a path or something, and the twist is 
+that thats a separate Computer in 3d and you have to swap over there to unblock, metroidvania style (maybe you see the blockage early,
+but cant do anything until later when u get red pill. the scene should be immediately recognizable on the 2nd screen so its an aha moment)
+maybe in the beginning you can select "Your Character" (between different options, hair color, body types), and "Your Friend" - the other player that you see.
+Hmm. Then the message would be something like "you don't have friends, you just play with yourself" which I think is kind of funny.
+
+for "moving" in the 3d world with the computer screen example, I would maybe suggest having freedom of looking around, but to switch to the other computer
+(which could be next to your computer, perhaps), you just press the right button (wasd in the direction of the screen) and you get LERPd to the other computer.
+
+Hmm. what about after you play the other character and return to your screen, you suddenly see the other character moving around on its own
+there's mulitple things to do with this, either something like Schachnovelle where you have a split personality and in truth you're playing
+with yourself, i.e., if you were to take the red pill again you don't see anyone in front of the other screen.
+the other way to approach this is to say okay now you found a friend after a while, or you reminisce about times where you did have a friend to play with,
+and when you take the red pill again you do see someone sitting in front of the other screen.
+
+if we do the option where there is no one sitting in front of the other screen (honestly sounds like the easier option from a modelling perspective)
+then it could also have a bit of a horror vibe, where your friend in the game moves around on their own but "IRL" (in 3D) you don't see anyone
+controlling the character, and if you switch to their monitor you also don't see the player moving anymore.
+you could do things where if you "enter" 2D again as the friend maybe there is some "presence" trying to get back control over the
+character, maybe some screenshake or a darkness creeping in from the edge, but im unsure how to proceed from there.
+
 
 To first get a proper screen size, we could have an override component that disables everything else if a too small screen size is detected,
 and only if the use says "yes" (or the screen resizes large enough), then the screen disappears and the game starts.
+
+# More interesting terminal ideas:
+How can we use the fact that we're inside a terminal? Right now, with half block pixels, it's really just a "worse" screen.
+Running it in the terminal is good for:
+- The wow effect
+- Being able to run it over eg SSH
+  - multiplayer could potentially be implemented by many people connecting over ssh, and inter-process-communication instead of network things.
+- Depending on inputs, it can run on mobile termux (oh actually, wgpu probably makes this difficult)
+- A simple run command, "hey do you want some time off from sysadmin? play this game right in the terminal"
+- You can render 'text' on top of the pixels, but since normal pixel art games also use fonts that are higher-res than their sprites, this is not
+that special.
+- Perhaps the ability to run any other command inside the game somehow, but I don't really want to do that I think.
+- Need a better way to do audio! it would be cool if frame rendering would not be blocked due to audio signals.
+- Inputs are currently also a bit weird. would really love keyup/keydown events.
+- 
 
 
 # Texture Atlas Tool:
