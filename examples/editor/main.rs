@@ -20,6 +20,7 @@ struct State {
     editor_scale: i64,
     // The size of the screen in terminal pixels.
     screen_size: (i64, i64),
+    // TODO: have some history of edits, Edit(coord, prev_color, new_color), that a user can undo. should be more than just pixel edits, maybe on the granularity of entire lines (holding LMB down)?
 }
 
 impl Default for State {
@@ -66,19 +67,19 @@ impl State {
             max_y,
         }
     }
-    
+
     fn move_camera(&mut self, dx: i64, dy: i64) {
         self.camera_center.0 += dx;
         self.camera_center.1 += dy;
         self.adjust_screen_to_camera();
     }
-    
+
     fn adjust_scale(&mut self, dscale: i64) {
         self.editor_scale += dscale;
         self.editor_scale = self.editor_scale.max(2);
         self.adjust_screen_to_camera();
     }
-    
+
     fn adjust_screen_to_camera(&mut self) {
         let new_camera_bounds = self.camera_bounds();
         self.image.expand(new_camera_bounds, self.default_color);
@@ -129,7 +130,7 @@ impl Component<State> for DrawComponent {
         if shared_state.pressed_keys.did_press_char_ignore_case('d') {
             shared_state.custom.move_camera(1, 0);
         }
-        
+
         if shared_state.mouse_info.left_mouse_down {
             let (x, y) = shared_state.mouse_info.last_mouse_pos;
             let (image_x, image_y) = shared_state.custom.screen_to_image(x, y);
