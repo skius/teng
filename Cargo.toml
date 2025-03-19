@@ -70,6 +70,10 @@ path = "examples/fastphysics/main.rs"
 name = "sprites"
 path = "examples/sprites/main.rs"
 
+[[example]]
+name = "editor"
+path = "examples/editor/main.rs"
+
 
 
 [dependencies]
