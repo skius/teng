@@ -112,8 +112,8 @@ impl Default for State {
     fn default() -> Self {
         Self {
             image: Default::default(),
-            // default_color: Color::Rgb([0; 3]),
-            default_color: Color::Default,
+            default_color: Color::Rgb([0; 3]),
+            // default_color: Color::Default, // TODO: BUG with this
             camera_center: (0, 0),
             editor_scale: 2,
             screen_size: (1, 1),
