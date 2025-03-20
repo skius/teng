@@ -66,6 +66,7 @@ const VERTICES: &[Vertex] = &[
 // TODO: switch from cgmath to glam-rs?
 
 struct Camera {
+    // center of the screen in world coords
     position: glam::Vec2,
     size: glam::Vec2,
     screen_size: glam::Vec2,
@@ -95,18 +96,38 @@ impl Camera {
         self.size = glam::Vec2::new(self.screen_size.x * scale, self.screen_size.y * scale);
     }
 
-    fn screen_to_world_coords(&self, x: f32, y: f32) -> (f32, f32) {
-        let x = x * self.scale;
-        let y = y * self.scale;
-        let x = x + self.position.x - self.size.x / 2.0;
-        let y = y + self.position.y - self.size.y / 2.0;
-        (x, y)
+    fn screen_to_world_coords(&self, screen_x: f32, screen_y: f32) -> (f32, f32) {
+        let diff_to_center = glam::Vec2::new(screen_x, screen_y) - self.screen_size / 2.0;
+        let world_x = diff_to_center.x * self.scale + self.position.x;
+        let world_y = -diff_to_center.y * self.scale + self.position.y;
+
+        return (world_x, world_y);
+
+
+        // let screen_x = screen_x * self.scale;
+        // let screen_y = screen_y * self.scale;
+        let world_x = screen_x + self.position.x - self.size.x / 2.0;
+        let world_y = (self.screen_size.y - screen_y - 1.0) + self.position.y - self.size.y / 2.0;
+        (world_x * self.scale, world_y * self.scale)
+
+        // the inverse:
+        // let screen_x = world_x - self.position.x + self.size.x / 2.0;
+        // let screen_y =
+    }
+    
+    fn world_to_screen_coords(&self, world_x: f32, world_y: f32) -> (f32, f32) {
+        let diff_to_center = glam::Vec2::new(world_x, world_y) - self.position;
+        let screen_x = diff_to_center.x / self.scale + self.screen_size.x / 2.0;
+        let screen_y = -diff_to_center.y / self.scale + self.screen_size.y / 2.0;
+
+        (screen_x, screen_y)
     }
 
     fn to_uniform(&self) -> CameraUniform {
         let mut uniform = CameraUniform::new();
         uniform.update_camera_position(self.position.x, self.position.y);
         uniform.update_camera_size(self.size.x, self.size.y);
+        uniform.update_screen_size(self.screen_size.x, self.screen_size.y);
         uniform.update_view_proj(0.0, self.size.x, self.size.y, 0.0);
 
         uniform
@@ -120,6 +141,9 @@ struct CameraUniform {
     camera_size: [f32; 2],
     // center of camera in world pos
     camera_position: [f32; 2],
+    // screen size
+    screen_size: [f32; 2],
+    _pad: [f32; 2],
 }
 
 impl CameraUniform {
@@ -128,6 +152,8 @@ impl CameraUniform {
             view_proj: cgmath::Matrix4::identity().into(),
             camera_size: [1.0, 1.0],
             camera_position: [0.0, 0.0],
+            screen_size: [1.0, 1.0],
+            _pad: [0.0, 0.0],
         }
     }
 
@@ -137,6 +163,10 @@ impl CameraUniform {
 
     fn update_camera_size(&mut self, width: f32, height: f32) {
         self.camera_size = [width, height];
+    }
+
+    fn update_screen_size(&mut self, width: f32, height: f32) {
+        self.screen_size = [width, height];
     }
 
     fn update_view_proj(&mut self, left: f32, right: f32, bottom: f32, top: f32) {
@@ -291,7 +321,6 @@ pub struct State {
     diffuse_bind_group: wgpu::BindGroup,
     camera: Camera,
     camera_buffer: wgpu::Buffer,
-    position_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     texture_atlas_size_bind_group: wgpu::BindGroup,
     instances: Vec<Instance>,
@@ -421,37 +450,6 @@ impl State {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let position_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Position Buffer"),
-            contents: bytemuck::cast_slice(&[[size.0 as f32, size.1 as f32]]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
-        // let instances = (0..NUM_INSTANCES_PER_ROW)
-        //     .flat_map(|z| {
-        //         (0..NUM_INSTANCES_PER_ROW).map(move |x| {
-        //             let position = cgmath::Vector3 {
-        //                 x: x as f32,
-        //                 y: 0.0,
-        //                 z: z as f32,
-        //             } - INSTANCE_DISPLACEMENT;
-        //
-        //             let rotation = if position.is_zero() {
-        //                 // this is needed so an object at (0, 0, 0) won't get scaled to zero
-        //                 // as Quaternions can effect scale if they're not created correctly
-        //                 cgmath::Quaternion::from_axis_angle(
-        //                     cgmath::Vector3::unit_z(),
-        //                     cgmath::Deg(0.0),
-        //                 )
-        //             } else {
-        //                 cgmath::Quaternion::from_axis_angle(position.normalize(), cgmath::Deg(45.0))
-        //             };
-        //
-        //             Instance { position, rotation }
-        //         })
-        //     })
-        //     .collect::<Vec<_>>();
-
         let mut instances = vec![
             Instance {
                 position: [0.0, 0.0, 3.0],
@@ -502,16 +500,6 @@ impl State {
                         },
                         count: None,
                     },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::VERTEX,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
                 ],
                 label: Some("camera_bind_group_layout"),
             });
@@ -522,10 +510,6 @@ impl State {
                 wgpu::BindGroupEntry {
                     binding: 0,
                     resource: camera_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: position_buffer.as_entire_binding(),
                 }],
             label: Some("camera_bind_group"),
         });
@@ -651,7 +635,6 @@ impl State {
             camera_buffer,
             camera_bind_group,
             texture_atlas_size_bind_group,
-            position_buffer,
             camera,
             instances: instances.clone(),
             instance_buffer,
@@ -680,22 +663,19 @@ impl State {
                 bytemuck::cast_slice(&[self.camera.to_uniform()]),
             );
 
-            // adjust position buffer
-            self.queue.write_buffer(
-                &self.position_buffer,
-                0,
-                bytemuck::cast_slice(&[[self.size.0 as f32, self.size.1 as f32]]),
-            );
-
             self.render_textures.resize(&self.device, new_size);
         }
     }
 
-    pub fn update(&mut self, x: usize, y: usize, shared_state: &SharedState<GameState>) {
+    pub fn update(&mut self, x: usize, y: usize, shared_state: &mut SharedState<GameState>) {
         let x = x as f32;
         let y = y as f32;
         let (x, y) = self.camera.screen_to_world_coords(x, y);
         self.instances[0].position = [x, y, self.instances[0].position[2]];
+        shared_state.debug_info.custom.insert("instance0.pos".to_string(), format!("{:?}", self.instances[0].position));
+        shared_state.debug_info.custom.insert("world_to_screen".to_string(), format!("{:?}", self.camera.world_to_screen_coords(x, y)));
+        shared_state.debug_info.custom.insert("camera.pos".to_string(), format!("{:?}", self.camera.position));
+
         if shared_state.pressed_keys.did_press_char_ignore_case('w') {
             self.instances[0].size = [self.instances[0].size[0] + 1.0, self.instances[0].size[1] + 1.0];
         }

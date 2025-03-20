@@ -68,7 +68,7 @@ impl Component<GameState> for GpuComponent {
         if shared_state.mouse_info.left_mouse_down {
             let (x, y) = shared_state.mouse_info.last_mouse_pos;
             let y = 2 * y;
-            self.state.update(x, y, &shared_state);
+            self.state.update(x, y, shared_state);
         }
 
 
@@ -77,8 +77,11 @@ impl Component<GameState> for GpuComponent {
             let (width, height) = self.state.get_size();
             // let rand_x = rand::random::<u32>() % width;
             // let rand_y = rand::random::<u32>() % height;
-            let rand_x = 0;
-            let rand_y = 0;
+            let (x, y) = shared_state.mouse_info.last_mouse_pos;
+            let y = 2 * y;
+            
+            let rand_x = x;
+            let rand_y = y;
             for (idx, sprite) in self.tex_atlas.get_sprites_for_ca_with_frame("PlayerRun", 0).enumerate() {
                 let instance = Instance {
                     center_offset: [sprite.center_offset[0] as f32, sprite.center_offset[1] as f32],

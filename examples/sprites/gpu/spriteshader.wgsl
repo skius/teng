@@ -7,12 +7,11 @@ struct Camera {
     camera_size: vec2<f32>,
     // position of the center of the camera in world pixels
     camera_position: vec2<f32>,
+    // screen size in pixels
+    screen_size: vec2<f32>,
 }
 @group(1) @binding(0)
 var<uniform> camera: Camera;
-
-@group(1) @binding(1)
-var<uniform> screen_size: vec2<f32>;
 
 @group(2) @binding(0)
 var<uniform> texture_atlas_dimensions: vec2<f32>;
@@ -24,7 +23,7 @@ struct VertexInput {
 }
 struct InstanceInput {
 // TODO: rephrase this to talk about the world position instead.
-    // The position in screen pixels where the center of the sprite should be drawn.
+    // The position in world position where the center of the sprite should be drawn.
     @location(5) sprite_position: vec3<f32>,
     // The size of the sprite in pixels. Since we don't scale our sprites, this is also the size in screen pixels.
     @location(6) sprite_size: vec2<f32>,
@@ -47,16 +46,32 @@ fn vs_main(
     var out: VertexOutput;
     out.tex_coords = model.tex_coords;
 
+    let scale = camera.camera_size / camera.screen_size;
+
 //    let model_pos = vec2<f32>(model.position.x, 1.0 - model.position.y);
     let model_pos = model.position.xy;
 //    let sprite_pos = vec2<f32>(instance.sprite_position.x, screen_size.y - instance.sprite_position.y) - vec2<f32>(0.0, instance.sprite_size.y);
     var sprite_pos = instance.sprite_position.xy;
 
+    // convert sprite_pos from world coords to screen coords
+    var world_x = sprite_pos.x;
+    var world_y = sprite_pos.y;
+
+// NOTE: no scale adjustment needed here since the view projection does it for us. we want to pretend that the
+// screen size is actually camera_size big.
+    var diff_to_center_x = (world_x - camera.camera_position.x) / 1.0;
+    var diff_to_center_y = -(world_y - camera.camera_position.y) / 1.0;
+
+    sprite_pos.x = diff_to_center_x + camera.camera_size.x / 2.0;
+    sprite_pos.y = diff_to_center_y + camera.camera_size.y / 2.0;
+
     // convert sprite_pos, which is in world space, to screen space by shifting according to camera position and size
 //    sprite_pos = (sprite_pos - camera.camera_position) * screen_size / camera.camera_size;
-    sprite_pos = (sprite_pos - camera.camera_position);
+//    sprite_pos = (sprite_pos - camera.camera_position);
     // camera position is in the middle of the screen, hence we need to shift by half the screen size
-    sprite_pos = sprite_pos + camera.camera_size / 2.0;
+//    sprite_pos = sprite_pos + camera.camera_size / 2.0;
+//    sprite_pos.x = sprite_pos.x - camera.camera_position.x + camera.camera_size.x / 2.0;
+//    sprite_pos.y = -sprite_pos.y + camera.camera_position.y - camera.camera_size.y / 2.0;
 
     var sprite_size = instance.sprite_size;
 //    sprite_size = sprite_size * screen_size / camera.camera_size;
