@@ -32,13 +32,20 @@ impl UiElement<State> for PreviewWindow {
         self.hbd.resize_discard(self.size.0, self.size.1 * 2); // times two due to half pixels
         self.hbd.clear();
 
+        let mouse_pos = shared_state.custom.last_mouse_pos;
+
         // render the image to the half block display
         for y in 0..self.hbd.height() {
             for x in 0..self.hbd.width() {
                 let checker_color = shared_state.custom.screen_to_checkerboard_raw(x, y);
                 self.hbd.set_color(x, y, checker_color);
 
-                let (image_x, image_y) = shared_state.custom.screen_to_image_raw(x, y);
+                let image_pos@(image_x, image_y) = shared_state.custom.screen_to_image_raw(x, y);
+                if image_pos == mouse_pos {
+                    let mut pixel = Pixel::new('█');
+                    pixel.color = Color::Rgb([200; 3]);
+                    self.hbd.set_color(x, y, pixel.color);
+                }
                 let color = shared_state.custom.image[(image_x, image_y)];
                 if !color.is_solid() {
                     continue;
@@ -84,8 +91,11 @@ impl UiElement<State> for DrawWindow {
 
     fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState<State>, depth_base: i32) {
         let depth_checkerboard = depth_base;
-        let depth_drawing = depth_base + 1;
+        let depth_mouse = depth_base + 1;
+        let depth_drawing = depth_base + 2;
         let (width, height) = shared_state.custom.screen_size;
+
+        let mouse_image_pos = shared_state.custom.last_mouse_pos;
 
         for x in 0..width {
             for y in 0..height {
@@ -96,7 +106,13 @@ impl UiElement<State> for DrawWindow {
                 pixel.bg_color = color;
                 renderer.render_pixel(x, y, pixel, depth_checkerboard);
 
-                let (image_x, image_y) = shared_state.custom.screen_to_image(x, y);
+                let image_pos@(image_x, image_y) = shared_state.custom.screen_to_image(x, y);
+                if image_pos == mouse_image_pos {
+                    let mut pixel = Pixel::new('█');
+                    pixel.color = Color::Rgb([200; 3]);
+                    renderer.render_pixel(x, y, pixel, depth_mouse);
+                }
+
                 let color = shared_state.custom.image[(image_x, image_y)];
                 let mut pixel = Pixel::new('█');
                 pixel.color = color;
@@ -121,7 +137,7 @@ impl EditHistory {
         self.edits.push((x, y, old_color, new_color));
         self.last_edit = Some((x, y, new_color));
     }
-    
+
     fn undo_one(&mut self) -> Option<(i64, i64, Color, Color)> {
         if let Some(edit@(x, y, old_color, _)) = self.edits.pop() {
             self.last_edit = Some((x, y, old_color));
@@ -147,6 +163,8 @@ struct State {
     // TODO: have some history of edits, Edit(coord, prev_color, new_color), that a user can undo. should be more than just pixel edits, maybe on the granularity of entire lines (holding LMB down)?
     // actually no, single-pixel changes are enough.
     history: EditHistory,
+    // used to draw a grey hover
+    last_mouse_pos: (i64, i64),
 }
 
 impl Default for State {
@@ -159,6 +177,7 @@ impl Default for State {
             editor_scale: 2,
             screen_size: (1, 1),
             history: EditHistory::default(),
+            last_mouse_pos: (0, 0),
         }
     }
 }
@@ -172,7 +191,7 @@ fn div_floor(a: i64, b: i64) -> i64 {
 }
 
 impl State {
-    
+
     const CHECKERBOARD_SCALE: i64 = 3;
 
     fn screen_to_image(&self, screen_x: usize, screen_y: usize) -> (i64, i64) {
@@ -241,6 +260,10 @@ impl State {
         self.adjust_screen_to_camera();
     }
 
+    fn set_mouse_pos(&mut self, pos: (usize, usize)) {
+        self.last_mouse_pos = self.screen_to_image(pos.0, pos.1);
+    }
+
     fn adjust_scale(&mut self, dscale: i64) {
         self.editor_scale += dscale;
         self.editor_scale = self.editor_scale.max(2);
@@ -256,13 +279,13 @@ impl State {
         self.screen_size = (width as i64, height as i64);
         self.adjust_screen_to_camera();
     }
-    
+
     fn draw_pixel(&mut self, x: i64, y: i64, color: Color) {
         let old_color = self.image[(x, y)];
         self.history.add_edit(x, y, old_color, color);
         self.image[(x, y)] = color;
     }
-    
+
     fn undo_one(&mut self) {
         if let Some((x, y, old_color, _)) = self.history.undo_one() {
             self.image[(x, y)] = old_color;
@@ -304,7 +327,7 @@ impl Component<State> for DrawComponent {
                 shared_state.custom.adjust_scale(-2);
             }
         }
-        
+
         if let Event::Key(ke) = event {
             if let Some(key_combination) = self.combiner.transform(ke) {
                 match key_combination {
@@ -315,8 +338,8 @@ impl Component<State> for DrawComponent {
                 }
             }
         }
-        
-        
+
+
         None
     }
 
@@ -336,8 +359,8 @@ impl Component<State> for DrawComponent {
         if shared_state.pressed_keys.did_press_char_ignore_case('d') {
             shared_state.custom.move_camera(1, 0);
         }
-        
-        
+
+        shared_state.custom.set_mouse_pos(shared_state.mouse_info.last_mouse_pos);
 
         if shared_state.mouse_info.left_mouse_down {
             let (x, y) = shared_state.mouse_info.last_mouse_pos;
