@@ -23,8 +23,8 @@ enum AnimationResult {
     Done,
     // animation is still running
     Running,
-    // trigger was issued
-    Trigger(Box<dyn Any>),
+    // triggers were issued
+    Trigger(Vec<Box<dyn Any>>),
 }
 
 struct AnimationTrigger {
