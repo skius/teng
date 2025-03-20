@@ -32,7 +32,7 @@ pub trait UiElement<S = ()> {
 
     fn update(&mut self, shared_state: &mut SharedState<S>) {}
 
-    fn render(&self, renderer: &mut dyn Renderer, depth_base: i32);
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState<S>, depth_base: i32);
 }
 
 struct Window<S> {
@@ -44,7 +44,7 @@ struct Window<S> {
 }
 
 impl<S> Window<S> {
-    fn render(&self, renderer: &mut dyn Renderer, depth_base: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState<S>, depth_base: i32) {
         // Make any render calls offset by the anchor and capped to the size
         let (width, height) = self.element.get_size();
 
@@ -64,7 +64,7 @@ impl<S> Window<S> {
                 let xi = x as i64;
                 let yi = y as i64;
                 self.renderer.render_pixel(
-                    (xi + self.anchor_x) as usize,
+                    (xi + self.anchor_x) as usize, // TODO: fix clamping if this is below zero
                     (yi + self.anchor_y) as usize,
                     pixel,
                     depth,
@@ -80,7 +80,7 @@ impl<S> Window<S> {
             height,
         };
 
-        self.element.render(&mut offset_renderer, depth_base);
+        self.element.render(&mut offset_renderer, shared_state, depth_base);
     }
 
     fn is_hover_drag(&self, x: usize, y: usize) -> bool {
@@ -133,21 +133,62 @@ impl<S> Window<S> {
         self.element
             .on_resize(new_width as usize, new_height as usize, shared_state);
     }
+
+    fn on_event(
+        &mut self,
+        event: Event,
+        shared_state: &mut SharedState<S>,
+    ) -> Option<BreakingAction> {
+        // rescale any mouse events and resize events to the window's coordinate system
+        let new_event = match event {
+            Event::Mouse(mut me) => {
+                let (screen_x, screen_y) = (me.column, me.row);
+                let window_x = screen_x as i64 - self.anchor_x;
+                let window_y = screen_y as i64 - self.anchor_y;
+                if window_x < 0 || window_y < 0 {
+                    return None;
+                }
+                let (width, height) = self.element.get_size();
+                if window_x >= width as i64 || window_y >= height as i64 {
+                    return None;
+                }
+                me.column = window_x as u16;
+                me.row = window_y as u16;
+
+                Event::Mouse(me)
+            },
+            Event::Resize(width, height) => {
+                // we handle this in a custom function call, because resizing the global window is perhaps not as interesting. can always readd this.
+                return None;
+            },
+            _ => event,
+        };
+
+        self.element.on_event(new_event, shared_state)
+    }
 }
 
 pub struct UiProxy<S> {
-    new_elements: Vec<(usize, usize, Box<dyn UiElement<S>>)>,
+    new_elements: Vec<(String, usize, usize, Box<dyn UiElement<S>>)>,
+    anchor_sets: Vec<(String, usize, usize)>,
 }
 
 impl<S> UiProxy<S> {
     pub fn new() -> Self {
         Self {
             new_elements: Vec::new(),
+            anchor_sets: Vec::new(),
         }
     }
 
-    pub fn add_window(&mut self, anchor_x: usize, anchor_y: usize, element: Box<dyn UiElement<S>>) {
-        self.new_elements.push((anchor_x, anchor_y, element));
+    pub fn add_window(&mut self, key: impl Into<String>, anchor_x: usize, anchor_y: usize, element: Box<dyn UiElement<S>>) {
+        let key = key.into();
+        self.new_elements.push((key, anchor_x, anchor_y, element));
+    }
+    
+    pub fn set_anchor(&mut self, key: impl Into<String>, anchor_x: usize, anchor_y: usize) {
+        let key = key.into();
+        self.anchor_sets.push((key, anchor_x, anchor_y));
     }
 }
 
@@ -162,6 +203,7 @@ struct Dragging {
 struct Ui<S> {
     highest_index: usize,
     elements: HashMap<usize, Window<S>>,
+    keys_to_indices: HashMap<String, usize>,
     // appearing later in the vector means appearing on top
     render_order: Vec<usize>,
     // only changes on press, not on hold, so that we can drag&drop
@@ -175,6 +217,7 @@ impl<S> Ui<S> {
         Self {
             highest_index: 0,
             elements: HashMap::new(),
+            keys_to_indices: HashMap::new(),
             render_order: Vec::new(),
             focused: None,
             move_dragging: None,
@@ -182,7 +225,7 @@ impl<S> Ui<S> {
         }
     }
 
-    fn add_window(&mut self, anchor_x: usize, anchor_y: usize, element: Box<dyn UiElement<S>>) {
+    fn add_window(&mut self, key: String, anchor_x: usize, anchor_y: usize, element: Box<dyn UiElement<S>>) {
         self.highest_index += 1;
         let index = self.highest_index;
         self.elements.insert(
@@ -194,6 +237,7 @@ impl<S> Ui<S> {
                 element,
             },
         );
+        self.keys_to_indices.insert(key, index);
         self.render_order.push(index);
     }
 
@@ -213,7 +257,7 @@ impl<S> Ui<S> {
         shared_state: &mut SharedState<S>,
     ) -> Option<BreakingAction> {
         self.get_mut_focused()
-            .and_then(|window| window.element.on_event(event, shared_state))
+            .and_then(|window| window.on_event(event, shared_state))
     }
 
     fn on_event_all(
@@ -222,7 +266,7 @@ impl<S> Ui<S> {
         shared_state: &mut SharedState<S>,
     ) -> Option<BreakingAction> {
         for window in self.elements.values_mut() {
-            if let Some(action) = window.element.on_event(event.clone(), shared_state) {
+            if let Some(action) = window.on_event(event.clone(), shared_state) {
                 return Some(action);
             }
         }
@@ -248,7 +292,7 @@ impl<S> Ui<S> {
             if let Some(window) = self.elements.get(index) {
                 // each window gets 10 depth levels.
                 // TODO: finally move to f64 depths so we can give a window more depth levels/use more than 10 windows for our assigned 100 depth levels..
-                window.render(renderer, depth_base + order as i32 * 10);
+                window.render(renderer, shared_state, depth_base + order as i32 * 10);
             }
         }
     }
@@ -258,7 +302,7 @@ pub struct UiComponent<S = ()> {
     ui: Ui<S>,
 }
 
-impl UiComponent {
+impl<S> UiComponent<S> {
     pub fn new() -> Self {
         Self { ui: Ui::new() }
     }
@@ -347,8 +391,14 @@ impl<S: 'static> Component<S> for UiComponent<S> {
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<S>) {
-        for (x, y, element) in shared_state.ui.new_elements.drain(..) {
-            self.ui.add_window(x, y, element);
+        for (key, x, y, element) in shared_state.ui.new_elements.drain(..) {
+            self.ui.add_window(key, x, y, element);
+        }
+        for (key, x, y) in shared_state.ui.anchor_sets.drain(..) {
+            let index = self.ui.keys_to_indices.get(&key).unwrap();
+            let window = self.ui.elements.get_mut(index).unwrap();
+            window.anchor_x = x as i64;
+            window.anchor_y = y as i64;
         }
 
         self.ui.update_all(shared_state);

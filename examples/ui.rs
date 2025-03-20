@@ -72,7 +72,7 @@ impl UiElement for MyWindow {
         None
     }
 
-    fn render(&self, renderer: &mut dyn Renderer, depth_base: i32) {
+    fn render(&self, renderer: &mut dyn Renderer, shared_state: &SharedState, depth_base: i32) {
         let depth_text_box = depth_base + 1;
         let depth_title_bar = depth_base + 2;
 
@@ -119,7 +119,7 @@ impl Component for Setup {
 
         shared_state
             .ui
-            .add_window(30, 15, Box::new(MyWindow::new()));
+            .add_window("first_window", 30, 15, Box::new(MyWindow::new()));
     }
 
     fn update(&mut self, update_info: UpdateInfo, shared_state: &mut SharedState<()>) {
@@ -129,10 +129,13 @@ impl Component for Setup {
 
             let anchor_x = rand::random::<usize>() % width;
             let anchor_y = rand::random::<usize>() % height;
+            
+            let key_suffix = rand::random::<u64>();
+            let key = format!("window_{}", key_suffix);
 
             shared_state
                 .ui
-                .add_window(anchor_x, anchor_y, Box::new(MyWindow::new()));
+                .add_window(key, anchor_x, anchor_y, Box::new(MyWindow::new()));
         }
     }
 }
