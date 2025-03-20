@@ -114,7 +114,7 @@ impl Camera {
         // let screen_x = world_x - self.position.x + self.size.x / 2.0;
         // let screen_y =
     }
-    
+
     fn world_to_screen_coords(&self, world_x: f32, world_y: f32) -> (f32, f32) {
         let diff_to_center = glam::Vec2::new(world_x, world_y) - self.position;
         let screen_x = diff_to_center.x / self.scale + self.screen_size.x / 2.0;
@@ -666,6 +666,30 @@ impl State {
             self.render_textures.resize(&self.device, new_size);
         }
     }
+    
+    fn move_camera(&mut self, shared_state: &SharedState<GameState>) {
+        let delta_move = 1.0;
+        let mut accum_move = glam::Vec2::new(0.0, 0.0);
+        if shared_state.pressed_keys.did_press_char_ignore_case('w') {
+            accum_move.y += delta_move;
+        }
+        if shared_state.pressed_keys.did_press_char_ignore_case('s') {
+            accum_move.y -= delta_move;
+        }
+        if shared_state.pressed_keys.did_press_char_ignore_case('a') {
+            accum_move.x -= delta_move;
+        }
+        if shared_state.pressed_keys.did_press_char_ignore_case('d') {
+            accum_move.x += delta_move;
+        }
+        
+        self.camera.position += accum_move;
+        self.queue.write_buffer(
+            &self.camera_buffer,
+            0,
+            bytemuck::cast_slice(&[self.camera.to_uniform()]),
+        );
+    }
 
     pub fn update(&mut self, x: usize, y: usize, shared_state: &mut SharedState<GameState>) {
         let x = x as f32;
@@ -679,6 +703,11 @@ impl State {
         if shared_state.pressed_keys.did_press_char_ignore_case('w') {
             self.instances[0].size = [self.instances[0].size[0] + 1.0, self.instances[0].size[1] + 1.0];
         }
+        for instance in &mut self.instances {
+            // make sure they're offset by 0.5
+            instance.position[0] = instance.position[0].floor() + 0.1;
+            instance.position[1] = instance.position[1].floor() + 0.1;
+        }
         self.queue.write_buffer(
             &self.instance_buffer,
             0,
@@ -688,14 +717,7 @@ impl State {
         // let writebuf = self.queue.write_buffer_with(&self.instance_buffer, 0, BufferSize::try_from(10).unwrap()).unwrap();
         //
 
-        if shared_state.pressed_keys.did_press_char_ignore_case('d') {
-            self.camera.position += glam::Vec2::new(1.0, 0.0);
-            self.queue.write_buffer(
-                &self.camera_buffer,
-                0,
-                bytemuck::cast_slice(&[self.camera.to_uniform()]),
-            );
-        }
+        self.move_camera(shared_state);
 
         // todo adjust scale using scroll wheel
         if shared_state.pressed_keys.did_press(KeyCode::Up) {
