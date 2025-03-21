@@ -8,12 +8,24 @@ use crate::gpu::sprite::{AnimationKey, TextureAnimationAtlas};
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Ord, PartialOrd)]
 struct AnimationFrame(usize);
 
+impl From<usize> for AnimationFrame {
+    fn from(frame: usize) -> Self {
+        Self(frame)
+    }
+}
+
 /// A counter of the number of frames that have been rendered.
 ///
 /// When the animation loops around, this counter keeps increasing.
 /// This allows for making sure every trigger is triggered, even at low frame rate.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Ord, PartialOrd)]
 struct FinishedFrames(usize);
+
+impl From<usize> for FinishedFrames {
+    fn from(frame: usize) -> Self {
+        Self(frame)
+    }
+}
 
 impl FinishedFrames {
     fn from_time_and_frame_duration(time_since_start_secs: f32, frame_duration_secs: f32) -> Self {
@@ -41,21 +53,21 @@ impl FinishedFrames {
     }
 }
 
-struct TriggerData {
-    data: Box<dyn Fn() -> Box<dyn Any>>,
-}
-
-impl TriggerData {
-    fn new<T: Clone + 'static>(data: T) -> Self {
-        Self {
-            data: Box::new(move || Box::new(data.clone()) as Box<dyn Any>),
-        }
-    }
-
-    fn get(&self) -> Box<dyn Any> {
-        (self.data)()
-    }
-}
+// struct TriggerData {
+//     data: Box<dyn Fn() -> Box<dyn Any>>,
+// }
+//
+// impl TriggerData {
+//     fn new<T: Clone + 'static>(data: T) -> Self {
+//         Self {
+//             data: Box::new(move || Box::new(data.clone()) as Box<dyn Any>),
+//         }
+//     }
+//
+//     fn get(&self) -> Box<dyn Any> {
+//         (self.data)()
+//     }
+// }
 
 enum AnimationState {
     // animation is done and can be discarded
@@ -65,14 +77,14 @@ enum AnimationState {
 }
 
 impl AnimationState {
-    fn with_triggers(self, triggers: Vec<Box<dyn Any>>) -> AnimationResult {
+    fn with_triggers<TD>(self, triggers: Vec<TD>) -> AnimationResult<TD> {
         AnimationResult {
             state: self,
             triggers,
         }
     }
 
-    fn to_result(self) -> AnimationResult {
+    fn to_result<TD>(self) -> AnimationResult<TD> {
         AnimationResult {
             state: self,
             triggers: Vec::new(),
@@ -80,43 +92,48 @@ impl AnimationState {
     }
 }
 
-// TODO: Give animations a generic type for their trigger data?
-// This would push the trait object to whichever struct is handling multiple different animation kinds, but that
-// seems more reasonable perhaps.
-pub struct AnimationResult {
-    state: AnimationState,
+pub struct AnimationResult<TriggerData> {
+    pub state: AnimationState,
     // these triggers were issued
-    triggers: Vec<Box<dyn Any>>,
+    pub triggers: Vec<TriggerData>,
 }
 
-struct AnimationTrigger {
+impl<TriggerData> AnimationResult<TriggerData> {
+    pub fn is_done(&self) -> bool {
+        match self.state {
+            AnimationState::Done => true,
+            AnimationState::Running => false,
+        }
+    }
+}
+
+struct AnimationTrigger<TriggerData> {
     trigger_frame: AnimationFrame,
-    // TODO: should this be an option for the case where nothing has been triggered? Currently triggers at frame 0 cannot be triggered, since they're initialized to that.
-    last_triggered_frame: FinishedFrames,
     data_on_trigger: TriggerData,
 }
 
 #[derive(Clone, Copy, Eq, PartialEq)]
-enum AnimationKind {
+pub enum AnimationKind {
     // play once, then stop
     Once,
     // loop forever
     Loop,
 }
 
-pub struct Animation {
+pub struct Animation<TriggerData> {
     key: AnimationKey<'static>,
     // ignoring the repeat factor
     single_iter_frame_count: usize,
     repeat_factor: usize,
+    // TODO: should this be an option for the case where nothing has been triggered? Currently triggers at frame 0 cannot be triggered, since they're initialized to that.
     last_rendered_frame: FinishedFrames,
     frame_duration_secs: f32,
     has_issued_trigger: bool,
     kind: AnimationKind,
-    triggers: Vec<AnimationTrigger>,
+    triggers: Vec<AnimationTrigger<TriggerData>>,
 }
 
-impl Animation {
+impl<TriggerData: Clone> Animation<TriggerData> {
     // TODO: turn TextureAnimationAtlas into an Rc and store, or maybe even a global?
     pub fn new(atlas: &TextureAnimationAtlas, key: AnimationKey<'static>, frame_duration_secs: f32) -> Self {
         Self {
@@ -136,10 +153,9 @@ impl Animation {
         self
     }
 
-    pub fn with_trigger(mut self, trigger_frame: AnimationFrame, data_on_trigger: TriggerData) -> Self {
+    pub fn with_trigger(mut self, trigger_frame: impl Into<AnimationFrame>, data_on_trigger: TriggerData) -> Self {
         self.triggers.push(AnimationTrigger {
-            trigger_frame,
-            last_triggered_frame: FinishedFrames(0),
+            trigger_frame: trigger_frame.into(),
             data_on_trigger,
         });
         self
@@ -154,17 +170,15 @@ impl Animation {
         self.single_iter_frame_count * self.repeat_factor
     }
 
-    fn get_triggered_triggers(&self, new_frame: FinishedFrames) -> Vec<Box<dyn Any>> {
+    fn get_triggered_triggers(&self, new_frame: FinishedFrames) -> Vec<TriggerData> {
         let last_frame = self.last_rendered_frame;
         let mut triggered_triggers = Vec::new();
 
         // TODO: exponential time, but realistically we're running this very rarely.
         for anim_frame in new_frame.animation_frames_since(last_frame, self.frame_count(), self.kind) {
-            for trigger in self.triggers.iter() {
-                if anim_frame.0 == trigger.trigger_frame.0 {
-                    // We know for a fact that `anim_frame` is past the trigger's last frame, since we're iterating over the frames since the last rendered frame.
-                    // TODO: remove the triggers last frame?
-                    triggered_triggers.push(trigger.data_on_trigger.get());
+            for trigger in &self.triggers {
+                if anim_frame == trigger.trigger_frame {
+                    triggered_triggers.push(trigger.data_on_trigger.clone());
                 }
             }
         }
@@ -180,15 +194,15 @@ impl Animation {
         }
     }
 
-    pub fn update(&mut self, time_since_start_secs: f32) -> AnimationResult {
+    pub fn update(&mut self, time_since_start_secs: f32) -> AnimationResult<TriggerData> {
         let frame = FinishedFrames::from_time_and_frame_duration(time_since_start_secs, self.frame_duration_secs);
         if frame <= self.last_rendered_frame {
             // Nothing's changed
             return AnimationState::Running.to_result();
         }
-        self.last_rendered_frame = frame;
-
         let triggered_triggers = self.get_triggered_triggers(frame);
+
+        self.last_rendered_frame = frame;
 
         if frame.0 >= self.frame_count() && self.is_once() {
             return AnimationState::Done.with_triggers(triggered_triggers);

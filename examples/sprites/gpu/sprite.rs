@@ -81,7 +81,7 @@ impl Sprite {
             center_offset: teng_info.center_offset,
         }
     }
-    
+
     pub fn to_instance(&self, position: [f32; 3]) -> Instance {
         Instance {
             size: [self.size[0] as f32, self.size[1] as f32],
@@ -180,6 +180,7 @@ impl TextureAnimationAtlas {
         atlas.push_combined_animation(CombinedAnimationKey::PlayerJump, human_prefix, "JUMP", "jump", &different_parts);
         atlas.push_combined_animation(CombinedAnimationKey::PlayerRoll, human_prefix, "ROLL", "roll", &different_parts);
 
+        // TODO: set frame indices
 
         (atlas, img)
     }
