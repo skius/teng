@@ -10,6 +10,9 @@ use teng::rendering::color::Color;
 use teng::rendering::render::HalfBlockDisplayRender;
 use teng::SharedState;
 use crate::GameState;
+use crate::gpu::animation::Animation;
+use crate::gpu::instancewriter::InstanceWriter;
+use crate::gpu::sprite::TextureAnimationAtlas;
 use crate::gpu::texture;
 
 #[repr(C)]
@@ -666,7 +669,7 @@ impl State {
             self.render_textures.resize(&self.device, new_size);
         }
     }
-    
+
     fn move_camera(&mut self, shared_state: &SharedState<GameState>) {
         let delta_move = 1.0;
         let mut accum_move = glam::Vec2::new(0.0, 0.0);
@@ -682,7 +685,7 @@ impl State {
         if shared_state.pressed_keys.did_press_char_ignore_case('d') {
             accum_move.x += delta_move;
         }
-        
+
         self.camera.position += accum_move;
         self.queue.write_buffer(
             &self.camera_buffer,
@@ -691,7 +694,7 @@ impl State {
         );
     }
 
-    pub fn update(&mut self, x: usize, y: usize, shared_state: &mut SharedState<GameState>) {
+    pub fn update(&mut self, x: usize, y: usize, anim: &mut Animation, atlas: &TextureAnimationAtlas, shared_state: &mut SharedState<GameState>) {
         let x = x as f32;
         let y = y as f32;
         let (x, y) = self.camera.screen_to_world_coords(x, y);
@@ -699,20 +702,34 @@ impl State {
         shared_state.debug_info.custom.insert("instance0.pos".to_string(), format!("{:?}", self.instances[0].position));
         shared_state.debug_info.custom.insert("world_to_screen".to_string(), format!("{:?}", self.camera.world_to_screen_coords(x, y)));
         shared_state.debug_info.custom.insert("camera.pos".to_string(), format!("{:?}", self.camera.position));
+        
+        let mut instance_writer = InstanceWriter::new(&mut self.instances);
+        // TODO: how to make .clear not necessary? or do we need it? basically, I think it would be nice to have
+        // 'preallocated' slots for every animation that a Animation::render call can just write into.
+        // Also, layering needs to be determined. A proper animation controller is needed.
+        instance_writer.clear();
+        anim.render(atlas, [x, y].into(), 0, &mut instance_writer);
+        drop(instance_writer);
 
-        if shared_state.pressed_keys.did_press_char_ignore_case('w') {
-            self.instances[0].size = [self.instances[0].size[0] + 1.0, self.instances[0].size[1] + 1.0];
-        }
+        // if shared_state.pressed_keys.did_press_char_ignore_case('w') {
+        //     self.instances[0].size = [self.instances[0].size[0] + 1.0, self.instances[0].size[1] + 1.0];
+        // }
         for instance in &mut self.instances {
             // make sure they're offset by 0.5
             instance.position[0] = instance.position[0].floor() + 0.1;
             instance.position[1] = instance.position[1].floor() + 0.1;
         }
-        self.queue.write_buffer(
-            &self.instance_buffer,
-            0,
-            bytemuck::cast_slice(&self.instances),
-        );
+        // TODO: only recreate if size actually changed.
+        self.instance_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Instance Buffer"),
+            contents: bytemuck::cast_slice(&self.instances),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        });
+        // self.queue.write_buffer(
+        //     &self.instance_buffer,
+        //     0,
+        //     bytemuck::cast_slice(&self.instances),
+        // );
         // try write_buffer_with
         // let writebuf = self.queue.write_buffer_with(&self.instance_buffer, 0, BufferSize::try_from(10).unwrap()).unwrap();
         //

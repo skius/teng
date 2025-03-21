@@ -1,10 +1,11 @@
 //! This module contains functionality and data types used for anything GPU related.
 
+use std::time::Instant;
 use teng::components::Component;
 use teng::{SetupInfo, SharedState, UpdateInfo};
 use crate::GameState;
 use crate::gpu::rendering::Instance;
-use crate::gpu::sprite::TextureAnimationAtlas;
+use crate::gpu::sprite::{AnimationKey, TextureAnimationAtlas};
 
 pub mod texture;
 pub mod sprite;
@@ -23,18 +24,24 @@ pub struct GpuComponent {
     phase: GpuPhase,
     active: bool,
     tex_atlas: TextureAnimationAtlas,
+    animtest: animation::Animation,
+    animtest_start: Instant,
 }
 
 impl GpuComponent {
     pub fn new() -> Self {
         let (tex_atlas, tex_atlas_img) = TextureAnimationAtlas::load("examples/sprites/data/texture_atlas.png", "examples/sprites/data/teng_atlas_meta.json", "examples/sprites/data/imgpack_atlas_meta.json");
 
+        let anim = animation::Animation::new(&tex_atlas, AnimationKey::PLAYER_IDLE, 0.1);
+        
         let state = pollster::block_on(rendering::State::new((10, 10), tex_atlas_img));
         Self {
             state,
             phase: GpuPhase::TwoD,
             active: true,
             tex_atlas,
+            animtest: anim,
+            animtest_start: Instant::now(),
         }
     }
 }
@@ -65,34 +72,38 @@ impl Component<GameState> for GpuComponent {
             return;
         }
 
+        self.animtest.update(self.animtest_start.elapsed().as_secs_f32());
+        
+
         if shared_state.mouse_info.left_mouse_down {
             let (x, y) = shared_state.mouse_info.last_mouse_pos;
             let y = 2 * y;
-            self.state.update(x, y, shared_state);
+            self.state.update(x, y, &mut self.animtest, &self.tex_atlas, shared_state);
         }
 
+        
+        
 
-
-        if shared_state.pressed_keys.did_press_char_ignore_case('p') {
-            let (width, height) = self.state.get_size();
-            // let rand_x = rand::random::<u32>() % width;
-            // let rand_y = rand::random::<u32>() % height;
-            let (x, y) = shared_state.mouse_info.last_mouse_pos;
-            let y = 2 * y;
-            
-            let rand_x = x;
-            let rand_y = y;
-            for (idx, sprite) in self.tex_atlas.get_sprites_for_ca_with_frame("PlayerRun", 0).enumerate() {
-                let instance = Instance {
-                    center_offset: [sprite.center_offset[0] as f32, sprite.center_offset[1] as f32],
-                    position: [rand_x as f32, rand_y as f32, 1.0 -0.1 * idx as f32],
-                    size: [sprite.size[0] as f32, sprite.size[1] as f32],
-                    sprite_tex_atlas_offset: [sprite.atlas_offset[0] as f32, sprite.atlas_offset[1] as f32],
-                };
-
-                self.state.add_instance(instance);
-            }
-        }
+        // if shared_state.pressed_keys.did_press_char_ignore_case('p') {
+        //     let (width, height) = self.state.get_size();
+        //     // let rand_x = rand::random::<u32>() % width;
+        //     // let rand_y = rand::random::<u32>() % height;
+        //     let (x, y) = shared_state.mouse_info.last_mouse_pos;
+        //     let y = 2 * y;
+        //     
+        //     let rand_x = x;
+        //     let rand_y = y;
+        //     for (idx, sprite) in self.tex_atlas.get_sprites_for_ca_with_frame("PlayerRun", 0).enumerate() {
+        //         let instance = Instance {
+        //             center_offset: [sprite.center_offset[0] as f32, sprite.center_offset[1] as f32],
+        //             position: [rand_x as f32, rand_y as f32, 1.0 -0.1 * idx as f32],
+        //             size: [sprite.size[0] as f32, sprite.size[1] as f32],
+        //             sprite_tex_atlas_offset: [sprite.atlas_offset[0] as f32, sprite.atlas_offset[1] as f32],
+        //         };
+        // 
+        //         self.state.add_instance(instance);
+        //     }
+        // }
 
         let game_state = &mut shared_state.custom;
 

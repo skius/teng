@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 use serde::{Deserialize, Serialize};
+use crate::gpu::rendering::Instance;
 
 #[derive(Serialize, Deserialize)]
 struct TengMeta {
@@ -78,6 +79,15 @@ impl Sprite {
             size: [imgpack_info.source_rects.w as u16, imgpack_info.source_rects.h as u16],
             atlas_offset: [imgpack_info.frame.x as u16, imgpack_info.frame.y as u16],
             center_offset: teng_info.center_offset,
+        }
+    }
+    
+    pub fn to_instance(&self, position: [f32; 3]) -> Instance {
+        Instance {
+            size: [self.size[0] as f32, self.size[1] as f32],
+            sprite_tex_atlas_offset: [self.atlas_offset[0] as f32, self.atlas_offset[1] as f32],
+            center_offset: [self.center_offset[0] as f32, self.center_offset[1] as f32],
+            position,
         }
     }
 }

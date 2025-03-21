@@ -1,14 +1,14 @@
 use crate::gpu::rendering::Instance;
 
-pub struct InstanceWriter {
-    instances: Vec<Instance>,
+pub struct InstanceWriter<'a> {
+    instances: &'a mut Vec<Instance>,
 }
 
 
-impl InstanceWriter {
-    pub fn new() -> Self {
+impl<'a> InstanceWriter<'a> {
+    pub fn new(instances: &'a mut Vec<Instance>) -> Self {
         Self {
-            instances: Vec::new(),
+            instances,
         }
     }
 
