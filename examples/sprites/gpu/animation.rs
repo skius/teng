@@ -117,6 +117,7 @@ pub struct Animation {
 }
 
 impl Animation {
+    // TODO: turn TextureAnimationAtlas into an Rc and store, or maybe even a global?
     pub fn new(atlas: &TextureAnimationAtlas, key: AnimationKey<'static>, frame_duration_secs: f32) -> Self {
         Self {
             key,
